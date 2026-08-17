@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
 const { errorHandler } = require('./middleware/errorMiddleware');
 
@@ -12,8 +14,15 @@ connectDB();
 
 const app = express();
 
+// Security HTTP headers
+app.use(helmet());
+
+// Cookie parser
+app.use(cookieParser());
+
 // Body parser
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Enable CORS with dynamic origins
 const allowedOrigins = [
@@ -45,6 +54,8 @@ app.use('/api/contact', require('./routes/contactRoutes'));
 app.use('/api/properties', require('./routes/propertyRoutes'));
 app.use('/api/posts', require('./routes/postRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
+
+app.get('/health', (req, res) => res.json({ status: 'ok', db: 'omvik-crm' }));
 
 app.get('/', (req, res) => {
   res.send('OMVIK API is running...');
