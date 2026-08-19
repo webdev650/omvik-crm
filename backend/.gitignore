@@ -1,2 +1,14 @@
 node_modules/
 .env
+
+# Test & verification scripts (dev-only, not needed in production)
+test_*.js
+verify_*.js
+seed_*.js
+find_*.js
+reset_*.js
+
+# One-off dev utilities
+cookies.txt
+sample_leads_*.csv
+sample_leads_*.xlsx
