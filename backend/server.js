@@ -21,6 +21,9 @@ startFollowupCron();
 
 const app = express();
 
+// Trust proxy for reverse proxies (Render, Vercel, Heroku) for secure cookies & rate limiting
+app.set('trust proxy', 1);
+
 // Security HTTP headers
 app.use(helmet());
 
@@ -63,7 +66,11 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
     // Allow any localhost origin (e.g. 5173, 5174, 3000)
-    if (/^http:\/\/localhost:\d+$/.test(origin) || allowedOrigins.indexOf(origin) !== -1) {
+    if (
+      /^http:\/\/localhost:\d+$/.test(origin) ||
+      /^https:\/\/.*\.vercel\.app$/.test(origin) ||
+      allowedOrigins.indexOf(origin) !== -1
+    ) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
