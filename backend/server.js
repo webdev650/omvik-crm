@@ -54,6 +54,7 @@ const allowedOrigins = [
   'http://192.168.29.34:3000',
   'https://omvik.vercel.app',
   'https://omvlik-crm1.vercel.app',
+  'https://omvik-crm-gi06.vercel.app',
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
