@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 
 const baseURL =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) ||
-  'http://localhost:5000/api';
+  'https://omvik-crm-dy3u.onrender.com/api';
 
 const api = axios.create({
   baseURL,

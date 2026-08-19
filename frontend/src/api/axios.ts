@@ -2,7 +2,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 
 const meta = import.meta as any;
-const baseURL = (meta && meta.env && meta.env.VITE_API_URL) || 'http://localhost:5000/api';
+const baseURL = (meta && meta.env && meta.env.VITE_API_URL) || 'https://omvik-crm-dy3u.onrender.com/api';
 
 const api = axios.create({
   baseURL,
