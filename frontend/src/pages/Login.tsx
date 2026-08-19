@@ -109,10 +109,10 @@ export default function Login() {
 
               <Button
                 type="submit"
-                disabled={isSubmitting || isLoading}
+                disabled={isSubmitting}
                 className="w-full mt-2"
               >
-                {isSubmitting || isLoading ? 'Signing in...' : 'Sign In'}
+                {isSubmitting ? 'Signing in...' : 'Sign In'}
               </Button>
             </form>
           </CardContent>
