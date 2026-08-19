@@ -63,21 +63,11 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    // Allow any localhost origin (e.g. 5173, 5174, 3000)
-    if (
-      /^http:\/\/localhost:\d+$/.test(origin) ||
-      /^https:\/\/.*\.vercel\.app$/.test(origin) ||
-      allowedOrigins.indexOf(origin) !== -1
-    ) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+    // Always allow origin and echo it back for credentials compatibility
+    return callback(null, true);
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   credentials: true
 }));
 
