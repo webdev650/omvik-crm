@@ -175,9 +175,16 @@ export default function Navbar() {
             <p className="text-xs font-bold text-slate-100">{user?.name}</p>
             <p className="text-[10px] font-mono text-slate-400">{user?.email}</p>
           </div>
-          <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-wider">
-            {user?.role}
-          </span>
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-wider">
+              {user?.role}
+            </span>
+            {user?.employeeId && (
+              <span className="text-[10px] font-mono text-indigo-400 font-bold">
+                {user.employeeId}
+              </span>
+            )}
+          </div>
         </div>
 
         <NotificationBell />

@@ -156,6 +156,7 @@ export default function UsersPage() {
         <Table>
           <TableHeader className="bg-slate-950/60">
             <TableRow className="border-slate-800 hover:bg-transparent">
+              <TableHead className="text-slate-400 font-semibold">ID</TableHead>
               <TableHead className="text-slate-400 font-semibold">Employee Name</TableHead>
               <TableHead className="text-slate-400 font-semibold">Email Address</TableHead>
               <TableHead className="text-slate-400 font-semibold">Role</TableHead>
@@ -167,14 +168,14 @@ export default function UsersPage() {
             {isLoadingUsers ? (
               [1, 2, 3, 4, 5].map((i) => (
                 <TableRow key={i} className="border-slate-800/60">
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={6}>
                     <div className="h-8 w-full bg-slate-800/40 rounded-xl animate-pulse" />
                   </TableCell>
                 </TableRow>
               ))
             ) : users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-12">
+                <TableCell colSpan={6} className="text-center py-12">
                   <div className="max-w-sm mx-auto space-y-3">
                     <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-2xl mx-auto">
                       👥
@@ -198,6 +199,11 @@ export default function UsersPage() {
             ) : (
               users.map((u: any) => (
                 <TableRow key={u._id} className="border-slate-800/60 hover:bg-slate-850/50">
+                  <TableCell>
+                    <span className="font-mono text-xs font-bold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2 py-1 rounded-md">
+                      {u.employeeId || '—'}
+                    </span>
+                  </TableCell>
                   <TableCell className="font-semibold text-slate-200">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
