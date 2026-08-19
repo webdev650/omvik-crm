@@ -9,7 +9,9 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
     if (typeof window !== 'undefined') {
@@ -19,11 +21,14 @@ export default function Navbar() {
     navigate('/login');
   };
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsAdminOpen(false);
+      }
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -37,7 +42,7 @@ export default function Navbar() {
         : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
     }`;
 
-  const isAdminOrSuper = user?.role && ['admin', 'super_admin'].includes(user.role);
+  const isAdminOrSuper = user?.role && ['admin', 'super_admin', 'director'].includes(user.role);
   const isAdminActive = location.pathname.startsWith('/admin/');
 
   return (
@@ -80,7 +85,7 @@ export default function Navbar() {
             🏡 Site Visits
           </NavLink>
 
-          {/* ADMIN SECTION DROPDOWN (ONLY VISIBLE TO ADMIN & SUPER_ADMIN) */}
+          {/* ADMIN SECTION DROPDOWN (ONLY VISIBLE TO ADMIN, SUPER_ADMIN & DIRECTOR) */}
           {isAdminOrSuper && (
             <div className="relative inline-block text-left" ref={dropdownRef}>
               <button
@@ -168,34 +173,62 @@ export default function Navbar() {
         </nav>
       </div>
 
-      {/* User Info & Actions */}
-      <div className="flex items-center gap-4">
-        <div className="hidden md:flex items-center gap-2 text-right">
-          <div>
-            <p className="text-xs font-bold text-slate-100">{user?.name}</p>
-            <p className="text-[10px] font-mono text-slate-400">{user?.email}</p>
-          </div>
-          <div className="flex flex-col items-end gap-0.5">
-            <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-wider">
-              {user?.role}
-            </span>
-            {user?.employeeId && (
-              <span className="text-[10px] font-mono text-indigo-400 font-bold">
-                {user.employeeId}
-              </span>
-            )}
-          </div>
-        </div>
-
+      {/* User Profile Dropdown Menu & Notifications (Available to EVERY role) */}
+      <div className="flex items-center gap-3">
         <NotificationBell />
 
-        <Button
-          variant="outline"
-          onClick={handleLogout}
-          className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 text-xs h-9 px-3"
-        >
-          Sign Out
-        </Button>
+        <div className="relative inline-block text-left" ref={userDropdownRef}>
+          <button
+            type="button"
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            className="flex items-center gap-2.5 p-1.5 px-2.5 rounded-xl border border-slate-800 bg-slate-900/80 hover:bg-slate-800/80 transition-all cursor-pointer shadow-md"
+          >
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-blue-600 flex items-center justify-center font-bold text-white text-xs shadow-md shadow-indigo-600/20">
+              {user?.name?.charAt(0).toUpperCase() || 'U'}
+            </div>
+            <div className="hidden md:flex flex-col text-left pr-1">
+              <span className="text-xs font-bold text-slate-100 leading-tight">{user?.name}</span>
+              <span className="text-[10px] font-mono text-indigo-400 font-bold leading-tight">
+                {user?.employeeId || user?.role?.toUpperCase()}
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-400">▼</span>
+          </button>
+
+          {isUserMenuOpen && (
+            <div className="absolute right-0 mt-2 w-52 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100 space-y-1">
+              <div className="px-3 py-1.5 border-b border-slate-800/60 mb-1">
+                <p className="text-xs font-bold text-slate-100 truncate">{user?.name}</p>
+                <div className="flex items-center justify-between mt-0.5">
+                  <span className="text-[10px] font-mono text-indigo-400 font-bold">{user?.employeeId || '—'}</span>
+                  <span className="text-[9px] uppercase font-bold text-slate-400">{user?.role?.replace('_', ' ')}</span>
+                </div>
+              </div>
+
+              <NavLink
+                to="/profile"
+                onClick={() => setIsUserMenuOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg mx-1 transition-colors ${
+                    isActive ? 'bg-indigo-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`
+                }
+              >
+                <span>👤</span> My Profile & ID
+              </NavLink>
+
+              <button
+                onClick={() => {
+                  setIsUserMenuOpen(false);
+                  handleLogout();
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-lg mx-1 text-left transition-colors cursor-pointer"
+              >
+                <span>🚪</span> Sign Out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

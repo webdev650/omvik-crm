@@ -62,3 +62,22 @@ export function getStageBadgeVariant(stage: string): BadgeProps['variant'] {
       return 'secondary';
   }
 }
+
+export function getRoleBadgeVariant(role?: string): string {
+  switch (role) {
+    case 'super_admin':
+    case 'admin':
+    case 'director':
+      return 'bg-amber-500/10 border-amber-500/30 text-amber-400';
+    case 'team_lead':
+      return 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300';
+    case 'telecaller':
+      return 'bg-blue-500/10 border-blue-500/30 text-blue-400';
+    case 'marketing':
+      return 'bg-purple-500/10 border-purple-500/30 text-purple-300';
+    case 'finance':
+      return 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400';
+    default:
+      return 'bg-slate-800 border-slate-700 text-slate-300';
+  }
+}

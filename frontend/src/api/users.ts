@@ -35,3 +35,8 @@ export async function updateUser(
   const response = await api.patch(`/users/${id}`, data);
   return response.data;
 }
+
+export async function updateOwnProfile(data: { name?: string; phone?: string }) {
+  const response = await api.patch('/users/me', data);
+  return response.data;
+}
