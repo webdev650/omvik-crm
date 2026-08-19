@@ -25,6 +25,11 @@ const userSchema = new mongoose.Schema(
       unique: true,
       sparse: true
     },
+    phone: {
+      type: String,
+      trim: true,
+      default: ''
+    },
     role: {
       type: String,
       enum: [

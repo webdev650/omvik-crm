@@ -4,13 +4,17 @@ const {
   getUsers,
   getUserById,
   createUser,
-  updateUser
+  updateUser,
+  updateOwnProfile
 } = require('../controllers/userController');
 const { protect } = require('../middlewares/auth');
 const { authorize } = require('../middlewares/rbac');
 
 // All user management routes require authentication
 router.use(protect);
+
+// Self-service profile update route for all logged in users (placed before /:id)
+router.patch('/me', updateOwnProfile);
 
 router
   .route('/')

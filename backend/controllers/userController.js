@@ -153,7 +153,7 @@ const updateUser = async (req, res, next) => {
     }
 
     const updatedUser = await User.findByIdAndUpdate(id, updates, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true
     })
       .select('-password')
@@ -169,9 +169,42 @@ const updateUser = async (req, res, next) => {
   }
 };
 
+// @desc    Self-service profile update for logged in user (strictly whitelisted fields: name, phone)
+// @route   PATCH /api/users/me
+// @access  Private (all logged in users)
+const updateOwnProfile = async (req, res, next) => {
+  try {
+    const { name, phone } = req.body;
+
+    const updates = {};
+    if (name !== undefined) updates.name = name.trim();
+    if (phone !== undefined) updates.phone = phone.trim();
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'No valid self-editable profile fields provided' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(req.user._id, updates, {
+      returnDocument: 'after',
+      runValidators: true
+    })
+      .select('-password')
+      .populate('teamId', 'name description');
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: updatedUser
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
   createUser,
-  updateUser
+  updateUser,
+  updateOwnProfile
 };
