@@ -6,7 +6,6 @@ const mongoSanitize = require('express-mongo-sanitize');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
-const { errorHandler } = require('./middleware/errorMiddleware');
 
 // Load env vars
 dotenv.config();
@@ -54,7 +53,9 @@ const allowedOrigins = [
   'http://localhost:3001',
   'http://192.168.29.34:3000',
   'https://omvik.vercel.app',
-];
+  'https://omvlik-crm1.vercel.app',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -98,8 +99,18 @@ app.get('/', (req, res) => {
   res.send('OMVIK API is running...');
 });
 
-// Error handler
-app.use(errorHandler);
+// 404 handler for unknown routes
+app.use((req, res) => {
+  res.status(404).json({ message: `Route ${req.originalUrl} not found` });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({
+    message: err.message || 'Internal Server Error'
+  });
+});
 
 const PORT = process.env.PORT || 5000;
 
