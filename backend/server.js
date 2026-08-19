@@ -24,8 +24,18 @@ const app = express();
 // Trust proxy for reverse proxies (Render, Vercel, Heroku) for secure cookies & rate limiting
 app.set('trust proxy', 1);
 
+// Enable CORS at top of middleware stack (reflects request origin for credentials support)
+app.use(cors({
+  origin: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  credentials: true
+}));
+
 // Security HTTP headers
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
 
 // Data sanitization against NoSQL query injection (strips $ and .)
 app.use(mongoSanitize());
@@ -46,30 +56,6 @@ app.use(cookieParser());
 // Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Enable CORS with dynamic origins
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://192.168.29.34:3000',
-  'https://omvik.vercel.app',
-  'https://omvlik-crm1.vercel.app',
-  'https://omvik-crm-gi06.vercel.app',
-  process.env.FRONTEND_URL,
-].filter(Boolean);
-
-app.use(cors({
-  origin: function (origin, callback) {
-    // Always allow origin and echo it back for credentials compatibility
-    return callback(null, true);
-  },
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-  credentials: true
-}));
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
