@@ -12,6 +12,9 @@ export default function Navbar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('omvik_token');
+    }
     await logout();
     navigate('/login');
   };

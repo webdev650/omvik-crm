@@ -2,12 +2,15 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-const generateTokenAndSetCookie = (res, userId) => {
+const generateTokenAndSetCookie = (req, res, userId) => {
   const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: '7d'
   });
 
-  const isProd = process.env.NODE_ENV === 'production';
+  const host = req?.headers?.host || '';
+  const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+  const isProd = process.env.NODE_ENV === 'production' || !isLocal;
+
   res.cookie('token', token, {
     httpOnly: true,
     sameSite: isProd ? 'none' : 'lax',
@@ -40,14 +43,15 @@ const register = async (req, res, next) => {
       teamId: teamId || null
     });
 
-    generateTokenAndSetCookie(res, user._id);
+    const token = generateTokenAndSetCookie(req, res, user._id);
 
     const userObj = user.toObject();
     delete userObj.password;
 
     res.status(201).json({
       success: true,
-      user: userObj
+      user: userObj,
+      token
     });
   } catch (error) {
     next(error);
@@ -75,14 +79,15 @@ const login = async (req, res, next) => {
       return res.status(403).json({ message: 'User account is deactivated' });
     }
 
-    generateTokenAndSetCookie(res, user._id);
+    const token = generateTokenAndSetCookie(req, res, user._id);
 
     const userObj = user.toObject();
     delete userObj.password;
 
     res.json({
       success: true,
-      user: userObj
+      user: userObj,
+      token
     });
   } catch (error) {
     next(error);
@@ -103,7 +108,9 @@ const getMe = async (req, res) => {
 // @route   POST /api/auth/logout
 // @access  Private
 const logout = async (req, res) => {
-  const isProd = process.env.NODE_ENV === 'production';
+  const host = req?.headers?.host || '';
+  const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+  const isProd = process.env.NODE_ENV === 'production' || !isLocal;
   res.cookie('token', '', {
     httpOnly: true,
     sameSite: isProd ? 'none' : 'lax',

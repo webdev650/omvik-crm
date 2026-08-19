@@ -13,6 +13,20 @@ const api = axios.create({
   }
 });
 
+// Global Axios Request Interceptor: attach token header as fallback
+api.interceptors.request.use(
+  (config) => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('omvik_token');
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // Global Axios Response Error Interceptor
 api.interceptors.response.use(
   (response) => response,

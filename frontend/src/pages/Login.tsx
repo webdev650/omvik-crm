@@ -35,6 +35,9 @@ export default function Login() {
     try {
       const response = await api.post('/auth/login', values);
       if (response.data && response.data.user) {
+        if (response.data.token) {
+          localStorage.setItem('omvik_token', response.data.token);
+        }
         login(response.data.user);
         navigate('/dashboard');
       }
