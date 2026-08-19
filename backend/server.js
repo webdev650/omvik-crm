@@ -77,7 +77,7 @@ app.use('/api/properties', require('./routes/propertyRoutes'));
 app.use('/api/posts', require('./routes/postRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
 
-app.get('/health', (req, res) => res.json({ status: 'ok', db: 'omvik-crm' }));
+app.get('/health', (req, res) => res.json({ status: 'ok_v2', db: 'omvik-crm' }));
 
 app.get('/', (req, res) => {
   res.send('OMVIK API is running...');
