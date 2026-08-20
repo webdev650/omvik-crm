@@ -66,8 +66,8 @@ export default function CustomersPage() {
                     <TableHead>Primary Mobile</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>City</TableHead>
-                    <TableHead>Deals Count</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead className="text-right">Deals Count</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -82,7 +82,7 @@ export default function CustomersPage() {
                       <TableCell className="font-mono text-slate-300 text-xs">{c.primaryMobile}</TableCell>
                       <TableCell className="text-slate-400 text-xs">{c.email || '—'}</TableCell>
                       <TableCell className="text-slate-400 text-xs">{c.city || '—'}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-right">
                         <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-mono text-xs font-bold">
                           {c.opportunityCount || 1} Deals
                         </span>

@@ -202,7 +202,7 @@ export default function LeadsList() {
                       {opp.createdAt ? new Date(opp.createdAt).toLocaleDateString() : 'N/A'}
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell className="text-right">
                       <span className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold">
                         View →
                       </span>

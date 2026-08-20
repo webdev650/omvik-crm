@@ -91,7 +91,7 @@ export default function DuplicateMonitorPage() {
                     <TableHead>Mobile</TableHead>
                     <TableHead>Target Project</TableHead>
                     <TableHead>Existing Owner</TableHead>
-                    <TableHead>Blocked Time</TableHead>
+                    <TableHead className="text-right">Blocked Time</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -103,7 +103,7 @@ export default function DuplicateMonitorPage() {
                       <TableCell className="text-indigo-400 text-xs font-semibold">
                         {item.existingOpportunity?.owner?.name || 'Assigned'}
                       </TableCell>
-                      <TableCell className="text-slate-500 font-mono text-xs">
+                      <TableCell className="text-slate-500 font-mono text-xs text-right">
                         {new Date(item.createdAt).toLocaleString('en-IN', {
                           month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                         })}
