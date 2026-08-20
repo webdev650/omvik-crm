@@ -3,7 +3,10 @@ const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('cloudinary').v2;
 const router = express.Router();
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect } = require('../middlewares/auth');
+const { authorize } = require('../middlewares/rbac');
+
+const admin = authorize('super_admin', 'admin', 'director');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,

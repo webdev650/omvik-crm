@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middlewares/authMiddleware');
+const { protect } = require('../middlewares/auth');
+const { authorize } = require('../middlewares/rbac');
 const {
   submitDailyReport,
   getTodayReport,

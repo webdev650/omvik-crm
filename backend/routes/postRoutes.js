@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const postController = require('../controllers/postController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect } = require('../middlewares/auth');
+const { authorize } = require('../middlewares/rbac');
+
+const admin = authorize('super_admin', 'admin', 'director');
 
 router.route('/')
   .get(postController.getPosts)

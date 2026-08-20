@@ -5,7 +5,10 @@ const {
   getContactSubmissions,
   updateContactStatus,
 } = require('../controllers/contactController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect } = require('../middlewares/auth');
+const { authorize } = require('../middlewares/rbac');
+
+const admin = authorize('super_admin', 'admin', 'director');
 
 router.route('/').post(submitContactForm).get(protect, admin, getContactSubmissions);
 router.route('/:id').put(protect, admin, updateContactStatus);
