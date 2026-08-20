@@ -36,7 +36,17 @@ export async function updateUser(
   return response.data;
 }
 
-export async function updateOwnProfile(data: { name?: string; phone?: string }) {
+export async function updateOwnProfile(data: { name?: string; phone?: string; nudgesEnabled?: boolean }) {
   const response = await api.patch('/users/me', data);
+  return response.data;
+}
+
+export async function getUserActiveOppCount(id: string) {
+  const response = await api.get(`/users/${id}/active-opportunities-count`);
+  return response.data;
+}
+
+export async function offboardUser(id: string, data: { newOwnerId: string; reason: string }) {
+  const response = await api.post(`/users/${id}/offboard`, data);
   return response.data;
 }

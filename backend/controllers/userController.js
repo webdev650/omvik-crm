@@ -1,6 +1,10 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Team = require('../models/Team');
+const Opportunity = require('../models/Opportunity');
+const AssignmentHistory = require('../models/AssignmentHistory');
+const Followup = require('../models/Followup');
+const Notification = require('../models/Notification');
 const AuditLog = require('../models/AuditLog');
 
 // @desc    Get all users (Admin view with populated team)
@@ -246,10 +250,140 @@ const updateOwnProfile = async (req, res, next) => {
   }
 };
 
+// @desc    Offboard a departing employee: reassign all active opportunities and scheduled followups, deactivate user account, notify new owner, log audit trail.
+// @route   POST /api/users/:id/offboard
+// @access  Private (admin, super_admin)
+const offboardUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { newOwnerId, reason } = req.body;
+
+    if (!newOwnerId || !reason || !reason.trim()) {
+      return res.status(400).json({ message: 'Replacement owner (newOwnerId) and offboarding reason are required.' });
+    }
+
+    const departingUser = await User.findById(id);
+    if (!departingUser) {
+      return res.status(404).json({ message: 'Departing employee user not found.' });
+    }
+
+    if (id === newOwnerId.toString()) {
+      return res.status(400).json({ message: 'Replacement owner cannot be the departing employee.' });
+    }
+
+    const newOwner = await User.findById(newOwnerId);
+    if (!newOwner || !newOwner.isActive) {
+      return res.status(400).json({ message: 'Selected replacement owner is invalid or inactive.' });
+    }
+
+    // Privilege Escalation Guard
+    if (departingUser.role === 'super_admin' && req.user.role !== 'super_admin') {
+      return res.status(403).json({ message: 'Forbidden: Only a Super Admin can offboard another Super Admin.' });
+    }
+
+    // 1. Find all active opportunities owned by departing user
+    const activeOpps = await Opportunity.find({ owner: departingUser._id, isActive: true });
+    const reassignedCount = activeOpps.length;
+
+    let reassignedFollowupsCount = 0;
+
+    // 2. Process each opportunity reassignment
+    for (const opp of activeOpps) {
+      // Update owner
+      opp.owner = newOwner._id;
+      await opp.save();
+
+      // Create AssignmentHistory entry
+      await AssignmentHistory.create({
+        opportunity: opp._id,
+        assignedTo: newOwner._id,
+        assignedBy: req.user._id
+      });
+
+      // Reassign scheduled / pending followups on this opportunity owned by departing user
+      const followupsToReassign = await Followup.find({
+        opportunity: opp._id,
+        owner: departingUser._id,
+        status: { $in: ['scheduled', 'pending', 'overdue'] }
+      });
+
+      for (const f of followupsToReassign) {
+        f.owner = newOwner._id;
+        await f.save();
+        reassignedFollowupsCount++;
+      }
+    }
+
+    // 3. Deactivate departing user account
+    departingUser.isActive = false;
+    await departingUser.save();
+
+    // 4. Create ONE Notification for newOwner if opportunities were reassigned
+    if (reassignedCount > 0) {
+      await Notification.create({
+        user: newOwner._id,
+        message: `📋 You have received ${reassignedCount} active opportunities and ${reassignedFollowupsCount} follow-ups from ${departingUser.name}'s offboarding.`,
+        link: '/leads',
+        type: 'assignment'
+      });
+    }
+
+    // 5. Create ONE AuditLog entry
+    await AuditLog.create({
+      user: req.user._id,
+      action: 'USER_OFFBOARDED',
+      entity: 'User',
+      entityId: departingUser._id,
+      reason: `Offboarded ${departingUser.name} (${departingUser.email}). Reassigned ${reassignedCount} opportunities and ${reassignedFollowupsCount} followups to ${newOwner.name}. Reason: ${reason.trim()}`,
+      metadata: {
+        departingUserId: departingUser._id,
+        departingUserName: departingUser.name,
+        newOwnerId: newOwner._id,
+        newOwnerName: newOwner.name,
+        reassignedCount,
+        reassignedFollowupsCount,
+        reason: reason.trim()
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Employee ${departingUser.name} offboarded successfully. ${reassignedCount} opportunities reassigned to ${newOwner.name}.`,
+      deactivatedUser: {
+        _id: departingUser._id,
+        name: departingUser.name,
+        email: departingUser.email,
+        employeeId: departingUser.employeeId
+      },
+      reassignedCount,
+      reassignedFollowupsCount
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get count of active opportunities owned by a user (for offboarding modal count)
+ * @route   GET /api/users/:id/active-opportunities-count
+ * @access  Private (admin, super_admin)
+ */
+const getUserActiveOppCount = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const count = await Opportunity.countDocuments({ owner: id, isActive: true });
+    res.json({ success: true, count });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
   createUser,
   updateUser,
-  updateOwnProfile
+  updateOwnProfile,
+  offboardUser,
+  getUserActiveOppCount
 };

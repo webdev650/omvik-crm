@@ -5,7 +5,9 @@ const {
   getUserById,
   createUser,
   updateUser,
-  updateOwnProfile
+  updateOwnProfile,
+  offboardUser,
+  getUserActiveOppCount
 } = require('../controllers/userController');
 const { protect } = require('../middlewares/auth');
 const { authorize } = require('../middlewares/rbac');
@@ -15,6 +17,9 @@ router.use(protect);
 
 // Self-service profile update route for all logged in users (placed before /:id)
 router.patch('/me', updateOwnProfile);
+
+router.get('/:id/active-opportunities-count', authorize('super_admin', 'admin', 'director'), getUserActiveOppCount);
+router.post('/:id/offboard', authorize('super_admin', 'admin'), offboardUser);
 
 router
   .route('/')
