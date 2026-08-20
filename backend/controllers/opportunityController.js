@@ -1,6 +1,7 @@
 const Opportunity = require('../models/Opportunity');
 const User = require('../models/User');
 const AssignmentHistory = require('../models/AssignmentHistory');
+const AuditLog = require('../models/AuditLog');
 
 // @desc    Assign single opportunity to a user
 // @route   PATCH /api/opportunities/:id/assign
@@ -37,6 +38,16 @@ const assignOne = async (req, res, next) => {
       opportunity: opportunity._id,
       assignedTo: targetUser._id,
       assignedBy: req.user._id
+    });
+
+    // Record Audit Log for high-risk ownership assignment mutation
+    await AuditLog.create({
+      user: req.user._id,
+      action: 'OPPORTUNITY_REASSIGNED',
+      entity: 'Opportunity',
+      entityId: opportunity._id,
+      reason: `Reassigned opportunity to rep ${targetUser.name} (${targetUser.email})`,
+      metadata: { targetUserId: targetUser._id, assignedBy: req.user._id }
     });
 
     res.json({

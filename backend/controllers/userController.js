@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Team = require('../models/Team');
+const AuditLog = require('../models/AuditLog');
 
 // @desc    Get all users (Admin view with populated team)
 // @route   GET /api/users
@@ -191,6 +192,16 @@ const updateUser = async (req, res, next) => {
     })
       .select('-password')
       .populate('teamId', 'name description');
+
+    // Record Audit Log for user modification
+    await AuditLog.create({
+      user: req.user._id,
+      action: 'USER_MODIFIED',
+      entity: 'User',
+      entityId: user._id,
+      reason: `User ${user.email} modified (${Object.keys(updates).join(', ')})`,
+      metadata: { targetUserId: user._id, targetEmail: user.email, updates }
+    });
 
     res.json({
       success: true,
