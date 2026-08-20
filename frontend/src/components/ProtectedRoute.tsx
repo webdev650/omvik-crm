@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 
 interface ProtectedRouteProps {
@@ -9,6 +9,7 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const { user, isLoading } = useAuthStore();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -23,6 +24,15 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // FORCE FIRST-LOGIN PASSWORD CHANGE GATE
+  if (user.mustChangePassword && location.pathname !== '/force-change-password') {
+    return <Navigate to="/force-change-password" replace />;
+  }
+
+  if (!user.mustChangePassword && location.pathname === '/force-change-password') {
+    return <Navigate to="/dashboard" replace />;
   }
 
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {

@@ -16,6 +16,7 @@ import ImportLeadsPage from './pages/admin/ImportLeads';
 import ProfilePage from './pages/ProfilePage';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import ForceChangePassword from './pages/ForceChangePassword';
 import MustChangePasswordModal from './components/MustChangePasswordModal';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -33,6 +34,14 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route
+        path="/force-change-password"
+        element={
+          <ProtectedRoute>
+            <ForceChangePassword />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/dashboard"
         element={

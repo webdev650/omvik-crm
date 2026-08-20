@@ -30,6 +30,7 @@ router.post('/logout', protect, logout);
 
 // Password Security & Recovery Routes
 router.post('/change-password', protect, changePassword);
+router.patch('/change-password', protect, changePassword);
 router.post('/forgot-password', loginLimiter, forgotPassword);
 router.post('/reset-password', loginLimiter, resetPassword);
 

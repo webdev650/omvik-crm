@@ -48,8 +48,8 @@ const createUser = async (req, res, next) => {
   try {
     const { name, email, password, role, teamId, projectIds } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Name, email, and password are required' });
+    if (!name || !email) {
+      return res.status(400).json({ message: 'Name and email are required' });
     }
 
     // Privilege Escalation Guard: Only super_admin can create another super_admin
@@ -64,7 +64,11 @@ const createUser = async (req, res, next) => {
       return res.status(400).json({ message: 'User already exists with this email address' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    // Generate random server-side temporary password if not explicitly supplied
+    const crypto = require('crypto');
+    const sendEmail = require('../utils/sendEmail');
+    const tempPassword = password && password.trim() ? password.trim() : `Omvik#${crypto.randomBytes(4).toString('hex')}`;
+    const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
     const user = await User.create({
       name: name.trim(),
@@ -86,14 +90,42 @@ const createUser = async (req, res, next) => {
       }
     }
 
+    // Send Welcome & Temporary Password Email
+    const loginUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`;
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: 'Welcome to OMVIK CRM — Temporary Account Credentials',
+        message: `Your OMVIK CRM account is ready.\n\nTemporary Password: ${tempPassword}\n\nPlease sign in at ${loginUrl} and change your password on first login.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #1e293b;">
+            <h2 style="color: #4f46e5;">Welcome to OMVIK CRM</h2>
+            <p>Hello <strong>${user.name}</strong>,</p>
+            <p>Your staff account has been created. Here are your temporary login credentials:</p>
+            <div style="background-color: #f1f5f9; padding: 12px; border-radius: 8px; font-family: monospace; margin: 16px 0;">
+              <strong>Email:</strong> ${user.email}<br/>
+              <strong>Temporary Password:</strong> ${tempPassword}
+            </div>
+            <p style="margin: 20px 0;">
+              <a href="${loginUrl}" style="background-color: #4f46e5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Sign In & Set Private Password</a>
+            </p>
+            <p style="font-size: 12px; color: #64748b;">You will be prompted to set a new private password upon your first login.</p>
+          </div>
+        `
+      });
+    } catch (emailErr) {
+      console.error('[createUser Email Notice]', emailErr.message);
+    }
+
     const createdUser = await User.findById(user._id)
       .select('-password')
       .populate('teamId', 'name description');
 
     res.status(201).json({
       success: true,
-      message: 'Employee user created successfully',
-      user: createdUser
+      message: 'Employee user created successfully. Credentials emailed.',
+      user: createdUser,
+      tempPassword
     });
   } catch (error) {
     next(error);
