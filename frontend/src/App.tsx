@@ -14,6 +14,9 @@ import TeamsPage from './pages/admin/TeamsPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import ImportLeadsPage from './pages/admin/ImportLeads';
 import ProfilePage from './pages/ProfilePage';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import MustChangePasswordModal from './components/MustChangePasswordModal';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
@@ -25,8 +28,11 @@ export default function App() {
   return (
     <>
       <Toaster position="top-right" theme="dark" richColors />
+      <MustChangePasswordModal />
       <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route
         path="/dashboard"
         element={
