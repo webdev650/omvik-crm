@@ -4,6 +4,7 @@ const Notification = require('../models/Notification');
 const User = require('../models/User');
 const Team = require('../models/Team');
 const Leave = require('../models/Leave');
+const sendAdminAlert = require('../utils/sendAdminAlert');
 
 /**
  * Calculates overlapping approved leave hours for a given owner within [oppCreatedAt, now]
@@ -129,6 +130,11 @@ async function runSlaSweep(tier1Hours = 36, tier2Hours = 48, tier3Hours = 72) {
           type: 'sla_breach'
         });
       }
+
+      sendAdminAlert({
+        subject: `72h Reassignment Eligible Lead #${opp._id}`,
+        message: `Opportunity #${opp._id} (Owner: ${opp.owner?.name || 'Unassigned'}) has been uncontacted >${Math.round(adjustedTier3)}h and is now eligible for reassignment.`
+      });
     }
   }
 

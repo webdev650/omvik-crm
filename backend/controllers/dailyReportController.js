@@ -4,6 +4,7 @@ const Followup = require('../models/Followup');
 const SiteVisit = require('../models/SiteVisit');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const sendAdminAlert = require('../utils/sendAdminAlert');
 
 // @desc    Submit End-of-Day (EOD) report with automatic system activity cross-checking
 // @route   POST /api/daily-reports
@@ -79,6 +80,11 @@ const submitDailyReport = async (req, res, next) => {
 
     // If discrepancy flag is raised, notify all Admins and Super Admins directly
     if (discrepancyFlag) {
+      sendAdminAlert({
+        subject: `Daily Report Discrepancy Flagged for ${req.user.name}`,
+        message: `${req.user.name}'s daily report on ${todayStr} failed system activity cross-check. ${discrepancyNote}`
+      });
+
       const adminUsers = await User.find({ role: { $in: ['admin', 'super_admin', 'director'] } });
       const notifications = adminUsers.map((admin) => ({
         user: admin._id,

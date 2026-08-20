@@ -13,11 +13,13 @@ dotenv.config();
 // Connect to database
 connectDB();
 
-// Start SLA & Followup Cron Jobs
+// Start SLA, Followup & Daily Digest Cron Jobs
 const { startSlaCron } = require('./jobs/slaSweep');
 const { startFollowupCron } = require('./jobs/followupSweep');
+const { startDailyDigestCron } = require('./jobs/dailyDigest');
 startSlaCron();
 startFollowupCron();
+startDailyDigestCron();
 
 const app = express();
 

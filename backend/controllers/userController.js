@@ -6,6 +6,7 @@ const AssignmentHistory = require('../models/AssignmentHistory');
 const Followup = require('../models/Followup');
 const Notification = require('../models/Notification');
 const AuditLog = require('../models/AuditLog');
+const sendAdminAlert = require('../utils/sendAdminAlert');
 
 // @desc    Get all users (Admin view with populated team)
 // @route   GET /api/users
@@ -344,6 +345,11 @@ const offboardUser = async (req, res, next) => {
         reassignedFollowupsCount,
         reason: reason.trim()
       }
+    });
+
+    sendAdminAlert({
+      subject: `Employee Offboarded: ${departingUser.name}`,
+      message: `Employee ${departingUser.name} (${departingUser.email}) was offboarded by ${req.user.name}. ${reassignedCount} active opportunities and ${reassignedFollowupsCount} follow-ups reassigned to ${newOwner.name}. Reason: ${reason.trim()}`
     });
 
     res.status(200).json({

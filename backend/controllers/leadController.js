@@ -1,4 +1,5 @@
 const { processIncomingLead, overrideDuplicate } = require('../services/duplicateEngine');
+const sendAdminAlert = require('../utils/sendAdminAlert');
 
 // @desc    Submit a new lead
 // @route   POST /api/leads
@@ -65,6 +66,11 @@ const overrideDuplicateLead = async (req, res, next) => {
       reason.trim(),
       req.user
     );
+
+    sendAdminAlert({
+      subject: `Duplicate Lead Override by ${req.user.name}`,
+      message: `${req.user.name} (super_admin) overrode a duplicate lead for customer ID ${customerId} on project ID ${projectId}. Reason: ${reason.trim()}`
+    });
 
     res.status(201).json({
       success: true,

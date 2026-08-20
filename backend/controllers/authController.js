@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const sendEmail = require('../utils/sendEmail');
+const sendAdminAlert = require('../utils/sendAdminAlert');
 
 const generateTokenAndSetCookie = (req, res, userId) => {
   const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
@@ -204,6 +205,12 @@ const forgotPassword = async (req, res, next) => {
         subject: `Your 6-Digit Reset OTP: ${otp} — OMVIK CRM`,
         message: messageText,
         html: htmlMessage
+      });
+
+      // Informational admin alert (DOES NOT contain OTP code for security)
+      sendAdminAlert({
+        subject: `Password Reset Requested for ${user.name}`,
+        message: `${user.name} (${user.email}) requested a password reset at ${new Date().toLocaleTimeString()}.`
       });
 
       res.json({
