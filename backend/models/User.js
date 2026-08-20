@@ -51,6 +51,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    nudgesEnabled: {
+      type: Boolean,
+      default: true
+    },
     resetPasswordTokenHash: {
       type: String,
       select: false

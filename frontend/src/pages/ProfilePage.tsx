@@ -9,17 +9,20 @@ import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { Badge, getRoleBadgeVariant } from '../components/ui/badge';
+import { Switch } from '../components/ui/switch';
 
 export default function ProfilePage() {
   const { user, setUser } = useAuthStore();
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
+  const [nudgesEnabled, setNudgesEnabled] = useState(user?.nudgesEnabled !== false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
       setName(user.name || '');
       setPhone(user.phone || '');
+      setNudgesEnabled(user.nudgesEnabled !== false);
     }
   }, [user]);
 
@@ -45,7 +48,7 @@ export default function ProfilePage() {
       return;
     }
     setErrorMsg(null);
-    mutation.mutate({ name: name.trim(), phone: phone.trim() });
+    mutation.mutate({ name: name.trim(), phone: phone.trim(), nudgesEnabled });
   };
 
   return (
@@ -174,6 +177,23 @@ export default function ProfilePage() {
                     value={user?.email || ''}
                     disabled
                     className="bg-slate-950/40 border-slate-800/60 text-slate-500 cursor-not-allowed"
+                  />
+                </div>
+
+                {/* Nudge Mascot Preference */}
+                <div className="flex items-center justify-between p-4 rounded-xl bg-slate-950/60 border border-slate-800">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="nudges" className="text-sm font-bold text-slate-100 cursor-pointer">
+                      🤖 Show Helpful AI Nudges & Mascot
+                    </Label>
+                    <p className="text-xs text-slate-400">
+                      Receive occasional alerts for overdue follow-ups, SLA breaches, and clean inbox progress.
+                    </p>
+                  </div>
+                  <Switch
+                    id="nudges"
+                    checked={nudgesEnabled}
+                    onCheckedChange={setNudgesEnabled}
                   />
                 </div>
 

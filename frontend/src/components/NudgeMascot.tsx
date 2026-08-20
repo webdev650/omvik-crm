@@ -1,0 +1,127 @@
+import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import useAuth from '../hooks/useAuth';
+import { getMyPerformance } from '../api/reports';
+
+export default function NudgeMascot() {
+  const { user } = useAuth();
+  const [isVisible, setIsVisible] = useState(false);
+  const [message, setMessage] = useState('');
+  const [isReducedMotion, setIsReducedMotion] = useState(false);
+
+  // Fetch real performance & overdue follow-up counts
+  const { data } = useQuery({
+    queryKey: ['myPerformance'],
+    queryFn: getMyPerformance,
+    enabled: !!user && user.nudgesEnabled !== false
+  });
+
+  useEffect(() => {
+    // Check OS accessibility preference for reduced motion
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setIsReducedMotion(mediaQuery.matches);
+
+    // Check if user disabled nudges or dismissed today
+    if (!user || user.nudgesEnabled === false) {
+      setIsVisible(false);
+      return;
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const dismissedToday = localStorage.getItem('omvik_nudge_dismissed_today');
+    if (dismissedToday === todayStr) {
+      setIsVisible(false);
+      return;
+    }
+
+    // Set timer to trigger mascot nudge popup after 8 seconds on turn/load
+    const timer = setTimeout(() => {
+      const perf = data?.performance || {};
+      const overdue = perf.followupsOverdue || 0;
+      const won = perf.opportunitiesWon || 0;
+
+      if (overdue > 0) {
+        setMessage(`👀 You have ${overdue} overdue follow-up task${overdue > 1 ? 's' : ''} waiting for action!`);
+      } else if (won > 0) {
+        setMessage(`🎉 Great progress! You have closed ${won} deal${won > 1 ? 's' : ''} won. Keep it up!`);
+      } else {
+        setMessage('✨ Fantastic job! Your daily action inbox is clean today.');
+      }
+
+      setIsVisible(true);
+    }, 8000);
+
+    return () => clearTimeout(timer);
+  }, [user, data]);
+
+  const handleDismiss = () => {
+    setIsVisible(false);
+  };
+
+  const handleDismissToday = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    localStorage.setItem('omvik_nudge_dismissed_today', todayStr);
+    setIsVisible(false);
+  };
+
+  if (!isVisible || !user || user.nudgesEnabled === false) {
+    return null;
+  }
+
+  return (
+    <div className={`fixed bottom-6 right-6 z-50 flex items-end gap-3 max-w-sm animate-in fade-in slide-in-from-bottom-5 duration-300 ${isReducedMotion ? '' : 'transition-transform'}`}>
+      {/* Nudge Speech Bubble */}
+      <div className="bg-slate-900 border border-indigo-500/40 p-4 rounded-2xl shadow-2xl backdrop-blur-2xl text-slate-100 space-y-2.5 relative">
+        <button
+          onClick={handleDismiss}
+          className="absolute top-2 right-2 text-slate-400 hover:text-white text-xs p-1"
+          title="Close nudge"
+        >
+          ✕
+        </button>
+
+        <div className="flex items-center gap-2 text-xs font-bold text-indigo-400 uppercase tracking-widest">
+          <span>🤖 Omvik Sales Assistant</span>
+        </div>
+
+        <p className="text-xs text-slate-200 leading-relaxed pr-4">
+          {message}
+        </p>
+
+        <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400 border-t border-slate-800/80">
+          <button
+            onClick={handleDismissToday}
+            className="hover:text-indigo-300 font-semibold underline decoration-dotted cursor-pointer"
+          >
+            Don't show today
+          </button>
+          <button
+            onClick={handleDismiss}
+            className="px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-bold cursor-pointer"
+          >
+            Got it
+          </button>
+        </div>
+      </div>
+
+      {/* SVG Animated Mascot Character */}
+      <div className={`w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-600 flex items-center justify-center shadow-xl shadow-indigo-600/40 border border-indigo-400/30 ${isReducedMotion ? '' : 'animate-bounce'}`}>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="w-8 h-8 text-white"
+        >
+          <rect x="3" y="11" width="18" height="10" rx="2" />
+          <circle cx="12" cy="5" r="2" />
+          <path d="M12 7v4" />
+          <line x1="8" y1="16" x2="8.01" y2="16" />
+          <line x1="16" y1="16" x2="16.01" y2="16" />
+        </svg>
+      </div>
+    </div>
+  );
+}

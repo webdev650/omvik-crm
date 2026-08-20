@@ -23,6 +23,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ForceChangePassword from './pages/ForceChangePassword';
 import MustChangePasswordModal from './components/MustChangePasswordModal';
+import NudgeMascot from './components/NudgeMascot';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
@@ -35,6 +36,7 @@ export default function App() {
     <>
       <Toaster position="top-right" theme="dark" richColors />
       <MustChangePasswordModal />
+      <NudgeMascot />
       <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />

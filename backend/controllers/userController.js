@@ -207,11 +207,12 @@ const updateUser = async (req, res, next) => {
 // @access  Private (all logged in users)
 const updateOwnProfile = async (req, res, next) => {
   try {
-    const { name, phone } = req.body;
+    const { name, phone, nudgesEnabled } = req.body;
 
     const updates = {};
     if (name !== undefined) updates.name = name.trim();
     if (phone !== undefined) updates.phone = phone.trim();
+    if (nudgesEnabled !== undefined) updates.nudgesEnabled = Boolean(nudgesEnabled);
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ message: 'No valid self-editable profile fields provided' });
