@@ -256,6 +256,18 @@ export default function Navbar() {
                   </NavLink>
 
                   <NavLink
+                    to="/admin/employee-history"
+                    onClick={() => setIsAdminOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg mx-1 transition-colors ${
+                        isActive ? 'bg-indigo-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      }`
+                    }
+                  >
+                    <span>📈</span> Employee History
+                  </NavLink>
+
+                  <NavLink
                     to="/admin/data-quality"
                     onClick={() => setIsAdminOpen(false)}
                     className={({ isActive }) =>

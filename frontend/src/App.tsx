@@ -21,6 +21,7 @@ import CustomersPage from './pages/CustomersPage';
 import CustomerDetail from './pages/CustomerDetail';
 import DailyReportPage from './pages/DailyReport';
 import FlaggedReportsPage from './pages/admin/FlaggedReportsPage';
+import AdminEmployeeHistory from './pages/admin/AdminEmployeeHistory';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ForceChangePassword from './pages/ForceChangePassword';
@@ -218,6 +219,22 @@ export default function App() {
         element={
           <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director']}>
             <FlaggedReportsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/employee-history"
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director', 'team_lead']}>
+            <AdminEmployeeHistory />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/employee-history/:userId"
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director', 'team_lead']}>
+            <AdminEmployeeHistory />
           </ProtectedRoute>
         }
       />
