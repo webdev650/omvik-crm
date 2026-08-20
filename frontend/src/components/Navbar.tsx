@@ -75,6 +75,14 @@ export default function Navbar() {
           >
             Leads List
           </NavLink>
+          <NavLink
+            to="/customers"
+            className={({ isActive }) =>
+              navLinkClass({ isActive: isActive && !location.pathname.startsWith('/customers/') })
+            }
+          >
+            👥 Customers
+          </NavLink>
           <NavLink to="/pipeline" className={navLinkClass}>
             📋 Pipeline
           </NavLink>

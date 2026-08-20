@@ -79,9 +79,20 @@ export default function OpportunityDetail() {
                       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                         Customer
                       </p>
-                      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                        {opp.customer?.name}
-                      </h1>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                          {opp.customer?.name}
+                        </h1>
+                        {opp.customer?._id && (
+                          <Button
+                            onClick={() => navigate(`/customers/${opp.customer._id}`)}
+                            variant="outline"
+                            className="h-7 text-[11px] font-bold border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10"
+                          >
+                            View Customer 360 →
+                          </Button>
+                        )}
+                      </div>
                       <p className="text-slate-400 font-mono text-sm mt-1">
                         {opp.customer?.primaryMobile}
                       </p>

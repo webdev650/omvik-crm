@@ -15,6 +15,8 @@ import ReportsPage from './pages/admin/ReportsPage';
 import ImportLeadsPage from './pages/admin/ImportLeads';
 import ProfilePage from './pages/ProfilePage';
 import MyPerformance from './pages/MyPerformance';
+import CustomersPage from './pages/CustomersPage';
+import CustomerDetail from './pages/CustomerDetail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ForceChangePassword from './pages/ForceChangePassword';
@@ -40,6 +42,22 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ForceChangePassword />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customers"
+        element={
+          <ProtectedRoute>
+            <CustomersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customers/:id"
+        element={
+          <ProtectedRoute>
+            <CustomerDetail />
           </ProtectedRoute>
         }
       />
