@@ -73,7 +73,8 @@ const createUser = async (req, res, next) => {
       role: role || 'telecaller',
       teamId: teamId || null,
       projectIds: projectIds || [],
-      isActive: true
+      isActive: true,
+      mustChangePassword: true
     });
 
     // If user is assigned to a team, update team's memberIds list
