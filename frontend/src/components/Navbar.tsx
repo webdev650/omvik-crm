@@ -3,13 +3,40 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import { Button } from './ui/button';
 import NotificationBell from './NotificationBell';
+import { searchGlobal } from '../api/search';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  // Global Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      setIsSearchOpen(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await searchGlobal(searchQuery);
+        setSearchResults(res.results || []);
+        setIsSearchOpen(true);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -61,6 +88,48 @@ export default function Navbar() {
               Real-Estate CRM
             </p>
           </div>
+        </div>
+
+        {/* Global Search Input */}
+        <div className="relative min-w-[220px] sm:min-w-[280px]">
+          <input
+            type="text"
+            placeholder="🔍 Search name, phone, lead..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => searchQuery.trim().length >= 2 && setIsSearchOpen(true)}
+            className="w-full h-9 px-3.5 text-xs bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all shadow-inner"
+          />
+
+          {isSearchOpen && (
+            <div className="absolute top-11 left-0 w-80 sm:w-96 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-2xl py-2 z-50 max-h-80 overflow-y-auto space-y-1">
+              {isSearching ? (
+                <div className="p-3 text-xs text-slate-400 text-center animate-pulse">Searching CRM records...</div>
+              ) : searchResults.length === 0 ? (
+                <div className="p-3 text-xs text-slate-400 text-center">No matching leads or customers found.</div>
+              ) : (
+                searchResults.map((item) => (
+                  <div
+                    key={`${item.type}-${item.id}`}
+                    onClick={() => {
+                      setIsSearchOpen(false);
+                      setSearchQuery('');
+                      navigate(item.link);
+                    }}
+                    className="p-2.5 px-3 hover:bg-slate-800/80 cursor-pointer transition-colors border-b border-slate-800/40 last:border-0"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-100 truncate">{item.label}</span>
+                      <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300">
+                        {item.type}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5 font-mono truncate">{item.sublabel}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         <nav className="flex flex-wrap items-center gap-1.5 sm:gap-2 border-l border-slate-800 pl-4 sm:pl-6">
@@ -176,6 +245,30 @@ export default function Navbar() {
                     }
                   >
                     <span>📊</span> Executive Reports
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/data-quality"
+                    onClick={() => setIsAdminOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg mx-1 transition-colors ${
+                        isActive ? 'bg-indigo-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      }`
+                    }
+                  >
+                    <span>🛡️</span> Data Quality Centre
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/duplicates"
+                    onClick={() => setIsAdminOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg mx-1 transition-colors ${
+                        isActive ? 'bg-indigo-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      }`
+                    }
+                  >
+                    <span>🚫</span> Duplicate Monitor
                   </NavLink>
                 </div>
               )}

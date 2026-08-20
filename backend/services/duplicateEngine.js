@@ -120,6 +120,21 @@ async function processIncomingLead(leadInput, submittingUser) {
         resultingOpportunity: existingOpportunity ? existingOpportunity._id : null
       });
 
+      // Log attempt to Duplicate Monitor log
+      try {
+        const DuplicateAttemptLog = require('../models/DuplicateAttemptLog');
+        await DuplicateAttemptLog.create({
+          rawName: leadInput.rawName,
+          rawMobile: leadInput.rawMobile,
+          project: leadInput.project,
+          source: leadInput.source,
+          matchedCustomer: customer._id,
+          existingOpportunity: existingOpportunity ? existingOpportunity._id : null
+        });
+      } catch (logErr) {
+        console.error('Error logging duplicate attempt:', logErr);
+      }
+
       return {
         isDuplicate: true,
         existingOpportunity,

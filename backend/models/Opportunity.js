@@ -47,6 +47,11 @@ const opportunitySchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    escalationLevel: {
+      type: String,
+      enum: ['none', 'employee', 'manager', 'reassignment_eligible'],
+      default: 'none'
+    },
     lastContactedAt: {
       type: Date,
       default: null
