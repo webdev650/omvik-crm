@@ -27,7 +27,7 @@ async function cleanTestData() {
   console.log('   Remaining Official Users:');
   remainingUsers.forEach(u => console.log(`   - [${u.employeeId || 'SYS'}] ${u.name} (${u.email}) - ${u.role}`));
 
-  // 2. Wipe Test Transactional Collections
+  // 2. Wipe Test Transactional Collections (Including leaves)
   const collectionsToWipe = [
     'opportunities',
     'customers',
@@ -39,13 +39,18 @@ async function cleanTestData() {
     'notifications',
     'auditlogs',
     'assignmenthistories',
-    'duplicateattemptlogs'
+    'duplicateattemptlogs',
+    'leaves'
   ];
 
   console.log('\n2. Wiping test transactional data collections...');
   for (const colName of collectionsToWipe) {
-    const res = await db.collection(colName).deleteMany({});
-    console.log(`   - ${colName.padEnd(25)} : Wiped ${res.deletedCount} test documents.`);
+    try {
+      const res = await db.collection(colName).deleteMany({});
+      console.log(`   - ${colName.padEnd(25)} : Wiped ${res.deletedCount} test documents.`);
+    } catch (e) {
+      console.log(`   - ${colName.padEnd(25)} : Collection does not exist or empty.`);
+    }
   }
 
   // 3. Reset ID Counters in `counters` collection
