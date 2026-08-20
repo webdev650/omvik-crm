@@ -158,7 +158,7 @@ const changePassword = async (req, res, next) => {
   }
 };
 
-// @desc    Send password reset email with secure hashed token
+// @desc    Send 6-digit password reset OTP email
 // @route   POST /api/auth/forgot-password
 // @access  Public
 const forgotPassword = async (req, res, next) => {
@@ -173,46 +173,42 @@ const forgotPassword = async (req, res, next) => {
     if (!user || !user.isActive) {
       return res.json({
         success: true,
-        message: 'If an active account exists for that email, a password reset link has been sent.'
+        message: 'If an active account exists for that email, a 6-digit verification OTP has been sent.'
       });
     }
 
-    // Generate random 32-byte token & sha256 hash
-    const rawToken = crypto.randomBytes(32).toString('hex');
-    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    // Generate 6-digit numeric OTP & sha256 hash
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
 
-    user.resetPasswordTokenHash = hashedToken;
+    user.resetPasswordTokenHash = hashedOtp;
     user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes expiry
     await user.save({ validateBeforeSave: false });
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
-
-    const messageText = `You requested a password reset for your OMVIK CRM account.\n\nPlease click the link below to set a new password (valid for 15 minutes):\n${resetUrl}\n\nIf you did not request this, please ignore this email.`;
+    const messageText = `Your 6-digit password reset OTP for OMVIK CRM is: ${otp}\n\nThis OTP is valid for 15 minutes.`;
 
     const htmlMessage = `
-      <div style="font-family: Arial, sans-serif; padding: 20px; color: #1e293b;">
-        <h2 style="color: #4f46e5;">OMVIK CRM Password Reset</h2>
-        <p>You requested a password reset for your OMVIK CRM account.</p>
-        <p style="margin: 20px 0;">
-          <a href="${resetUrl}" style="background-color: #4f46e5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Reset Password</a>
-        </p>
-        <p style="font-size: 12px; color: #64748b;">Or copy & paste this link into your browser: <br/><code>${resetUrl}</code></p>
-        <p style="font-size: 12px; color: #94a3b8; margin-top: 20px;">This link will expire in 15 minutes.</p>
+      <div style="font-family: Arial, sans-serif; padding: 24px; color: #0f172a; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+        <h2 style="color: #4f46e5; font-size: 20px; margin-bottom: 8px;">OMVIK CRM Password Reset</h2>
+        <p style="font-size: 14px; color: #475569; margin-top: 0;">Use the 6-digit Verification OTP below to reset your account password:</p>
+        <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 16px; border-radius: 12px; text-align: center; margin: 20px 0;">
+          <span style="font-family: monospace; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1e1b4b;">${otp}</span>
+        </div>
+        <p style="font-size: 12px; color: #64748b;">This OTP code is valid for 15 minutes. If you did not request a password reset, please ignore this message.</p>
       </div>
     `;
 
     try {
       await sendEmail({
         email: user.email,
-        subject: 'OMVIK CRM — Password Reset Request',
+        subject: `Your 6-Digit Reset OTP: ${otp} — OMVIK CRM`,
         message: messageText,
         html: htmlMessage
       });
 
       res.json({
         success: true,
-        message: 'Password reset link sent to your email.'
+        message: 'A 6-digit verification OTP has been sent to your email.'
       });
     } catch (emailErr) {
       console.error('[forgotPassword Email Error]', emailErr);
@@ -227,43 +223,38 @@ const forgotPassword = async (req, res, next) => {
   }
 };
 
-// @desc    Reset password using valid token
+// @desc    Reset password using 6-digit numeric OTP
 // @route   POST /api/auth/reset-password
 // @access  Public
 const resetPassword = async (req, res, next) => {
   try {
-    const { token, newPassword } = req.body;
-    if (!token || !newPassword || newPassword.length < 6) {
-      return res.status(400).json({ message: 'Valid token and new password (min 6 chars) are required.' });
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword || newPassword.length < 6) {
+      return res.status(400).json({ message: 'Email, 6-digit OTP, and new password (min 6 chars) are required.' });
     }
 
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const cleanOtp = otp.toString().trim();
+    const hashedOtp = crypto.createHash('sha256').update(cleanOtp).digest('hex');
 
     const user = await User.findOne({
-      resetPasswordTokenHash: hashedToken,
+      email: email.toLowerCase().trim(),
+      resetPasswordTokenHash: hashedOtp,
       resetPasswordExpires: { $gt: Date.now() }
     }).select('+resetPasswordTokenHash +resetPasswordExpires');
 
     if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired password reset token.' });
+      return res.status(400).json({ message: 'Invalid or expired 6-digit OTP code. Please request a new OTP.' });
     }
 
     user.password = await bcrypt.hash(newPassword, 12);
-    user.mustChangePassword = false;
     user.resetPasswordTokenHash = undefined;
     user.resetPasswordExpires = undefined;
+    user.mustChangePassword = false;
     await user.save();
-
-    const authToken = generateTokenAndSetCookie(req, res, user._id);
-
-    const userObj = user.toObject();
-    delete userObj.password;
 
     res.json({
       success: true,
-      message: 'Password reset successfully',
-      user: userObj,
-      token: authToken
+      message: 'Password reset successfully! You can now log in with your new password.'
     });
   } catch (error) {
     next(error);

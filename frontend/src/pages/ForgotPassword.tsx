@@ -65,20 +65,20 @@ export default function ForgotPassword() {
           <CardContent>
             {statusMsg ? (
               <div className="space-y-4 text-center py-2">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl mx-auto">
-                  ✉️
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-2xl mx-auto">
+                  🔢
                 </div>
-                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-medium">
+                <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium">
                   {statusMsg}
                 </div>
                 <p className="text-xs text-slate-400">
-                  Please check your inbox (and spam folder) for the password reset link.
+                  Check your email inbox for your 6-digit numeric verification OTP.
                 </p>
                 <Button
-                  onClick={() => navigate('/login')}
-                  className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold"
+                  onClick={() => navigate(`/reset-password?email=${encodeURIComponent(email.trim())}`)}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-10"
                 >
-                  Return to Login
+                  Enter 6-Digit OTP →
                 </Button>
               </div>
             ) : (
