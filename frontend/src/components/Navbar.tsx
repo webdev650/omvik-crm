@@ -172,6 +172,9 @@ export default function Navbar() {
           <NavLink to="/performance" className={navLinkClass}>
             📊 My Performance
           </NavLink>
+          <NavLink to="/leave" className={navLinkClass}>
+            🌴 Leave & SLA
+          </NavLink>
 
           {/* ADMIN SECTION DROPDOWN (ONLY VISIBLE TO ADMIN, SUPER_ADMIN & DIRECTOR) */}
           {isAdminOrSuper && (

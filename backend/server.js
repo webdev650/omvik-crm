@@ -82,6 +82,7 @@ app.use('/api/search', require('./routes/searchRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
 app.use('/api/daily-reports', require('./routes/dailyReportRoutes'));
+app.use('/api/leave', require('./routes/leaveRoutes'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok_v2', db: 'omvik-crm' }));
 
