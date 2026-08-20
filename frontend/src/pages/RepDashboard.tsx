@@ -154,6 +154,23 @@ export default function RepDashboard() {
     return priorityQueue;
   }, [priorityQueue, activeFilter]);
 
+  // Personal Performance Metrics
+  const perfMetrics = useMemo(() => {
+    const totalDeals = opps.length;
+    const wonDeals = opps.filter((o) => o.stage === 'won').length;
+    const conversionRate = totalDeals > 0 ? Math.round((wonDeals / totalDeals) * 100) : 0;
+    const siteVisits = opps.filter((o) => ['site_visit', 'negotiation', 'won'].includes(o.stage)).length;
+    const completedFollowups = followups.filter((f) => f.status === 'completed').length;
+
+    return {
+      totalDeals,
+      wonDeals,
+      conversionRate,
+      siteVisits,
+      completedFollowups
+    };
+  }, [opps, followups]);
+
   const isLoading = loadingFollowups || loadingOpps;
 
   return (
@@ -227,6 +244,30 @@ export default function RepDashboard() {
               <p className="text-[11px] text-slate-400 mt-1">Pending follow-ups</p>
             </CardContent>
           </Card>
+        </div>
+
+        {/* My Performance & Conversion Statistics */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 rounded-2xl bg-indigo-950/40 border border-indigo-500/20 backdrop-blur-xl">
+          <div className="space-y-1">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-400">My Conversion Rate</p>
+            <p className="text-2xl font-black text-white">{perfMetrics.conversionRate}%</p>
+            <p className="text-[11px] text-indigo-300/80">{perfMetrics.wonDeals} deals closed won</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400">Site Visits Driven</p>
+            <p className="text-2xl font-black text-emerald-300">{perfMetrics.siteVisits}</p>
+            <p className="text-[11px] text-slate-400">Total qualified visits</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-cyan-400">Completed Calls</p>
+            <p className="text-2xl font-black text-cyan-300">{perfMetrics.completedFollowups}</p>
+            <p className="text-[11px] text-slate-400">Logged touchpoints</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-amber-400">Assigned Pipeline</p>
+            <p className="text-2xl font-black text-amber-300">{perfMetrics.totalDeals}</p>
+            <p className="text-[11px] text-slate-400">Active assigned leads</p>
+          </div>
         </div>
 
         {/* Priority Work Queue Table / List */}

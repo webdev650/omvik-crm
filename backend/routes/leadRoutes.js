@@ -11,7 +11,7 @@ const { authorize, applyDataScope } = require('../middlewares/rbac');
 
 router.use(protect);
 
-router.get('/export', applyDataScope, authorize('super_admin', 'admin', 'director', 'team_lead'), exportLeads);
+router.get('/export', applyDataScope, exportLeads);
 router.post('/', submitLead);
 router.post('/override', authorize('super_admin'), overrideDuplicateLead);
 router.post('/import/preview', authorize('super_admin', 'admin', 'director'), upload.single('file'), previewImport);

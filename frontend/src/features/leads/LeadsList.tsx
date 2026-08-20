@@ -16,7 +16,7 @@ export default function LeadsList() {
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
-  const canExport = ['super_admin', 'admin', 'director', 'team_lead'].includes(currentUser?.role || '');
+  const canExport = !!currentUser;
 
   // Fetch Projects for Filter Dropdown
   const { data: projectsData } = useQuery({
