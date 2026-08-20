@@ -19,6 +19,8 @@ import ProfilePage from './pages/ProfilePage';
 import MyPerformance from './pages/MyPerformance';
 import CustomersPage from './pages/CustomersPage';
 import CustomerDetail from './pages/CustomerDetail';
+import DailyReportPage from './pages/DailyReport';
+import FlaggedReportsPage from './pages/admin/FlaggedReportsPage';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ForceChangePassword from './pages/ForceChangePassword';
@@ -199,6 +201,23 @@ export default function App() {
               <Navbar />
               <ReportsPage />
             </div>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/daily-report"
+        element={
+          <ProtectedRoute>
+            <DailyReportPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/flagged-reports"
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director']}>
+            <FlaggedReportsPage />
           </ProtectedRoute>
         }
       />

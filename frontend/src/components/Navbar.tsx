@@ -163,6 +163,9 @@ export default function Navbar() {
           <NavLink to="/followups" className={navLinkClass}>
             📅 Follow-ups
           </NavLink>
+          <NavLink to="/daily-report" className={navLinkClass}>
+            📝 EOD Report
+          </NavLink>
           <NavLink to="/site-visits" className={navLinkClass}>
             🏡 Site Visits
           </NavLink>
@@ -274,6 +277,18 @@ export default function Navbar() {
                     }
                   >
                     <span>🚫</span> Duplicate Monitor
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/flagged-reports"
+                    onClick={() => setIsAdminOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg mx-1 transition-colors ${
+                        isActive ? 'bg-indigo-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      }`
+                    }
+                  >
+                    <span>🚨</span> Flagged EOD Reports
                   </NavLink>
                 </div>
               )}
