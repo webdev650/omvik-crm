@@ -14,6 +14,7 @@ import TeamsPage from './pages/admin/TeamsPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import ImportLeadsPage from './pages/admin/ImportLeads';
 import ProfilePage from './pages/ProfilePage';
+import MyPerformance from './pages/MyPerformance';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ForceChangePassword from './pages/ForceChangePassword';
@@ -39,6 +40,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ForceChangePassword />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/performance"
+        element={
+          <ProtectedRoute>
+            <MyPerformance />
           </ProtectedRoute>
         }
       />

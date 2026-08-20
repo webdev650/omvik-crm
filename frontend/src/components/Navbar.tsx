@@ -84,6 +84,9 @@ export default function Navbar() {
           <NavLink to="/site-visits" className={navLinkClass}>
             🏡 Site Visits
           </NavLink>
+          <NavLink to="/performance" className={navLinkClass}>
+            📊 My Performance
+          </NavLink>
 
           {/* ADMIN SECTION DROPDOWN (ONLY VISIBLE TO ADMIN, SUPER_ADMIN & DIRECTOR) */}
           {isAdminOrSuper && (
@@ -215,6 +218,18 @@ export default function Navbar() {
                 }
               >
                 <span>👤</span> My Profile & ID
+              </NavLink>
+
+              <NavLink
+                to="/performance"
+                onClick={() => setIsUserMenuOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg mx-1 transition-colors ${
+                    isActive ? 'bg-indigo-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`
+                }
+              >
+                <span>📊</span> My Performance
               </NavLink>
 
               <button
