@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Mail, ArrowRight, ArrowLeft, KeyRound, Building2 } from 'lucide-react';
 import api from '../api/axios';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/card';
+import OtpVerificationCard from '../components/OtpVerificationCard';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
@@ -9,11 +11,13 @@ import { Label } from '../components/ui/label';
 export default function ForgotPassword() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
+  const [step, setStep] = useState<'request' | 'verify'>('request');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Step 1: Request 6-digit OTP email
+  const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setStatusMsg(null);
@@ -27,8 +31,9 @@ export default function ForgotPassword() {
     try {
       const response = await api.post('/auth/forgot-password', { email: email.trim() });
       if (response.data?.message) {
-        setStatusMsg(response.data.message);
+        setStatusMsg('A 6-digit OTP code has been sent to your email.');
       }
+      setStep('verify');
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Failed to request password reset. Please try again.';
       setErrorMsg(msg);
@@ -37,88 +42,152 @@ export default function ForgotPassword() {
     }
   };
 
+  // Resend OTP handler
+  const handleResendOtp = async () => {
+    setErrorMsg(null);
+    try {
+      const response = await api.post('/auth/forgot-password', { email: email.trim() });
+      setStatusMsg('A fresh 6-digit OTP has been dispatched to your email.');
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Failed to resend OTP.';
+      setErrorMsg(msg);
+      throw err;
+    }
+  };
+
+  // Step 2: Verify OTP & Reset Password
+  const handleVerifyOtp = async (otp: string, newPassword?: string) => {
+    setErrorMsg(null);
+    setIsSubmitting(true);
+    try {
+      const response = await api.post('/auth/reset-password', {
+        email: email.trim(),
+        otp,
+        newPassword
+      });
+
+      if (response.data?.success) {
+        navigate('/login');
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Verification failed. The OTP code may be invalid or expired.';
+      setErrorMsg(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans">
-      {/* Background Accent Orbs */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen w-full bg-[#060a17] text-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans selection:bg-indigo-500 selection:text-white">
+      
+      {/* Background Ambient Purple/Indigo Gradient Orbs */}
+      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-gradient-to-tr from-indigo-600/25 via-purple-600/20 to-blue-500/15 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-gradient-to-br from-purple-600/20 via-indigo-600/25 to-blue-600/15 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="w-full max-w-md space-y-6 relative z-10">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold uppercase tracking-widest">
-            OMVIK Realcon CRM
-          </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white">
-            Account Password Recovery
-          </h1>
-          <p className="text-xs text-slate-400">
-            Enter your account email below to receive secure password reset instructions.
-          </p>
-        </div>
+      {/* SVG Brick Pattern Background */}
+      <div
+        className="absolute inset-0 opacity-40 pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='40' viewBox='0 0 80 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h80v40H0z' fill='none'/%3E%3Cpath d='M0 20h80M0 40h80M40 0v20M80 0v20M20 20v20M60 20v20' stroke='%231b274c' stroke-width='1.5'/%3E%3C/svg%3E")`,
+          backgroundSize: '80px 40px'
+        }}
+      />
 
-        <Card className="border-slate-800/80 bg-slate-900/90 shadow-2xl backdrop-blur-xl">
-          <CardHeader>
-            <CardTitle>Forgot Password?</CardTitle>
-            <CardDescription>We'll send a 15-minute secure reset link to your inbox</CardDescription>
-          </CardHeader>
-
-          <CardContent>
-            {statusMsg ? (
-              <div className="space-y-4 text-center py-2">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center text-2xl mx-auto">
-                  🔢
+      <div className="w-full max-w-md relative z-10">
+        <AnimatePresence mode="wait">
+          {step === 'request' ? (
+            <motion.div
+              key="request-card"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="rounded-[36px] bg-gradient-to-b from-indigo-500/20 via-purple-500/10 to-indigo-600/20 p-2 sm:p-3 shadow-2xl backdrop-blur-2xl border border-white/10"
+            >
+              <div className="rounded-[30px] bg-white text-slate-900 p-7 sm:p-9 shadow-2xl space-y-6 text-center">
+                <div className="inline-flex p-3.5 rounded-2xl bg-indigo-50 text-indigo-600 shadow-sm border border-indigo-100/50">
+                  <KeyRound className="w-7 h-7 stroke-[2.2]" />
                 </div>
-                <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium">
-                  {statusMsg}
+
+                <div className="space-y-1.5">
+                  <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+                    Forgot Password?
+                  </h2>
+                  <p className="text-xs text-slate-500 leading-relaxed px-2">
+                    Enter your account email below to receive a secure 6-digit numeric verification OTP.
+                  </p>
                 </div>
-                <p className="text-xs text-slate-400">
-                  Check your email inbox for your 6-digit numeric verification OTP.
-                </p>
-                <Button
-                  onClick={() => navigate(`/reset-password?email=${encodeURIComponent(email.trim())}`)}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-10"
-                >
-                  Enter 6-Digit OTP →
-                </Button>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {errorMsg && (
-                  <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium">
-                    {errorMsg}
+
+                <form onSubmit={handleRequestOtp} className="space-y-4 text-left">
+                  {errorMsg && (
+                    <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-600 text-xs font-semibold flex items-center gap-2">
+                      <span>⚠️</span>
+                      <span>{errorMsg}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email" className="text-xs font-bold text-slate-700">
+                      Email Address
+                    </Label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
+                      <Input
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="aparna@omvikrealcon.com"
+                        className="pl-10 h-11 bg-slate-50 border-slate-200 text-slate-900 text-xs rounded-xl focus:bg-white focus:border-indigo-600"
+                      />
+                    </div>
                   </div>
-                )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g. admin@omvik.com"
-                    className="bg-slate-950 border-slate-800 text-slate-100"
-                  />
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-2xl shadow-lg shadow-indigo-600/30 transition-all duration-300 flex items-center justify-center gap-2 group"
+                  >
+                    {isSubmitting ? (
+                      <span className="flex items-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Dispatching Code...
+                      </span>
+                    ) : (
+                      <>
+                        <span>Send 6-Digit OTP</span>
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
+                  </Button>
+                </form>
+
+                <div className="pt-2 border-t border-slate-100 text-xs text-slate-500 flex items-center justify-center gap-1">
+                  <Link to="/login" className="font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1">
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back to Sign In</span>
+                  </Link>
                 </div>
-
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-10 mt-2"
-                >
-                  {isSubmitting ? 'Sending Instructions...' : 'Send Password Reset Link'}
-                </Button>
-              </form>
-            )}
-          </CardContent>
-
-          <CardFooter className="justify-center border-t border-slate-800/60 text-xs text-slate-400">
-            Remember your password?{' '}
-            <Link to="/login" className="text-indigo-400 hover:underline font-semibold ml-1">
-              Sign In
-            </Link>
-          </CardFooter>
-        </Card>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="verify-card"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+            >
+              <OtpVerificationCard
+                email={email}
+                onVerify={handleVerifyOtp}
+                onResend={handleResendOtp}
+                isSubmitting={isSubmitting}
+                errorMsg={errorMsg}
+                successMsg={statusMsg}
+                requireNewPassword={true}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
