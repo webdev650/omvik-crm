@@ -10,8 +10,7 @@ import {
   useSensors,
   useDroppable,
   DragStartEvent,
-  DragEndEvent,
-  DragOverEvent
+  DragEndEvent
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -19,6 +18,7 @@ import {
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { ArrowRight, MoveRight, Layers, Phone, Building2, User, ChevronRight } from 'lucide-react';
 
 import Navbar from '../../components/Navbar';
 import { getOpportunities, updateOpportunityStage } from '../../api/opportunities';
@@ -39,7 +39,7 @@ export const PIPELINE_STAGES = [
   { id: 'lost', label: 'Lost', color: 'border-red-500/30 text-red-400 bg-red-500/10' },
 ];
 
-// ── Individual Kanban Card Component ────────────────────────────────────────
+// ── Desktop Sortable Kanban Card Component ──────────────────────────────────
 
 interface CardProps {
   opp: any;
@@ -70,8 +70,8 @@ function KanbanCardItem({ opp, isDragging, onSelect }: CardProps) {
       {...attributes}
       {...listeners}
       onClick={onSelect}
-      className={`group p-4 rounded-xl border bg-slate-900/90 hover:bg-slate-800/90 hover:border-indigo-500/50 shadow-lg cursor-grab active:cursor-grabbing transition-all duration-150 space-y-3 ${
-        opp.slaBreached ? 'border-red-500/30' : 'border-slate-800'
+      className={`group p-4 rounded-xl border bg-[#131c31] hover:bg-slate-800/90 hover:border-indigo-500/50 shadow-lg cursor-grab active:cursor-grabbing transition-all duration-150 space-y-3 ${
+        opp.slaBreached ? 'border-red-500/30' : 'border-slate-800/80'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -106,7 +106,7 @@ function KanbanCardItem({ opp, isDragging, onSelect }: CardProps) {
   );
 }
 
-// ── Droppable Stage Column Component ────────────────────────────────────────
+// ── Droppable Stage Column Component (Desktop) ──────────────────────────────
 
 interface ColumnProps {
   stage: typeof PIPELINE_STAGES[0];
@@ -125,23 +125,21 @@ function KanbanColumn({ stage, opportunities, onCardClick }: ColumnProps) {
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col min-w-[280px] w-72 rounded-2xl border bg-slate-950/60 backdrop-blur-xl p-3 shadow-xl transition-colors duration-200 ${
+      className={`flex flex-col min-w-[280px] w-72 rounded-2xl border bg-[#0b0f19] p-3 shadow-xl transition-colors duration-200 ${
         isOver ? 'border-indigo-500/60 bg-indigo-950/20 ring-2 ring-indigo-500/20' : 'border-slate-800/80'
       }`}
     >
-      {/* Column Header */}
       <div className="flex items-center justify-between px-2 py-2 mb-3 border-b border-slate-800">
         <div className="flex items-center gap-2">
           <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${stage.color}`}>
             {stage.label}
           </span>
         </div>
-        <span className="text-xs font-bold text-slate-400 font-mono bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+        <span className="text-xs font-bold text-slate-400 font-mono bg-[#131c31] px-2 py-0.5 rounded-md border border-slate-800">
           {opportunities.length}
         </span>
       </div>
 
-      {/* Cards Scroll Container */}
       <div className="flex-1 overflow-y-auto space-y-3 min-h-[300px] max-h-[calc(100vh-280px)] pr-1">
         <SortableContext items={oppIds} strategy={verticalListSortingStrategy}>
           {opportunities.map((opp) => (
@@ -163,19 +161,20 @@ function KanbanColumn({ stage, opportunities, onCardClick }: ColumnProps) {
   );
 }
 
-// ── Main Kanban Board Component ─────────────────────────────────────────────
+// ── Main Pipeline / Kanban Component ────────────────────────────────────────
 
 export default function KanbanBoard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [selectedProject, setSelectedProject] = useState<string>('');
+  const [mobileActiveStage, setMobileActiveStage] = useState<string>('new');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [lostModalOpp, setLostModalOpp] = useState<any | null>(null);
   const [lostReasonInput, setLostReasonInput] = useState<string>('');
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
 
-  // Configure sensors for touch and click sensitivity
+  // Sensor configuration for desktop drag-and-drop
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
@@ -200,14 +199,10 @@ export default function KanbanBoard() {
     mutationFn: ({ id, stage, lostReason }: { id: string; stage: string; lostReason?: string }) =>
       updateOpportunityStage(id, { stage, lostReason }),
     onMutate: async ({ id, stage }) => {
-      // 1. Cancel outgoing refetches so they don't overwrite optimistic update
       await queryClient.cancelQueries({ queryKey: ['opportunities'] });
-
-      // 2. Snapshot previous value for rollback
       const queryKey = ['opportunities', '', selectedProject];
       const previousData = queryClient.getQueryData(queryKey);
 
-      // 3. Optimistically update opportunity stage in local query cache
       queryClient.setQueryData(queryKey, (old: any) => {
         if (!old || !Array.isArray(old.opportunities)) return old;
         return {
@@ -224,13 +219,11 @@ export default function KanbanBoard() {
       const msg = err.response?.data?.message || 'Failed to update stage';
       setErrorBanner(msg);
 
-      // Roll back to previous snapshot if request fails
       if (context?.previousData) {
         queryClient.setQueryData(context.queryKey, context.previousData);
       }
     },
     onSettled: () => {
-      // Sync with server state
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     }
@@ -251,7 +244,6 @@ export default function KanbanBoard() {
     return map;
   }, [opportunities]);
 
-  // Active dragging item reference for overlay
   const activeOpp = useMemo(
     () => opportunities.find((o) => o._id === activeId),
     [activeId, opportunities]
@@ -270,7 +262,6 @@ export default function KanbanBoard() {
     const oppId = String(active.id);
     let targetStageId = String(over.id);
 
-    // If over item is a card rather than column, find which column/stage it belongs to
     if (!PIPELINE_STAGES.some((s) => s.id === targetStageId)) {
       const overOpp = opportunities.find((o) => o._id === targetStageId);
       if (overOpp) {
@@ -283,15 +274,22 @@ export default function KanbanBoard() {
     const currentOpp = opportunities.find((o) => o._id === oppId);
     if (!currentOpp || currentOpp.stage === targetStageId) return;
 
-    // Check if target is 'lost' -> prompt for lostReason
     if (targetStageId === 'lost') {
       setLostModalOpp({ oppId, targetStage: 'lost' });
       setLostReasonInput('');
       return;
     }
 
-    // Otherwise execute mutation immediately
     stageMutation.mutate({ id: oppId, stage: targetStageId });
+  };
+
+  const handleMobileStageChange = (oppId: string, newStage: string) => {
+    if (newStage === 'lost') {
+      setLostModalOpp({ oppId, targetStage: 'lost' });
+      setLostReasonInput('');
+      return;
+    }
+    stageMutation.mutate({ id: oppId, stage: newStage });
   };
 
   const submitLostReason = () => {
@@ -311,30 +309,34 @@ export default function KanbanBoard() {
     setLostReasonInput('');
   };
 
+  const activeStageConfig = PIPELINE_STAGES.find((s) => s.id === mobileActiveStage) || PIPELINE_STAGES[0];
+  const activeStageOpps = groupedOpportunities[mobileActiveStage] || [];
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-8 relative overflow-hidden">
-      <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100 font-sans pb-16">
+      <Navbar />
 
-      <div className="max-w-[1600px] mx-auto relative z-10 space-y-6">
-        <Navbar />
-
-        {/* Header & Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <main className="max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Page Hero Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#131c31] border border-slate-800/80 p-5 sm:p-6 rounded-2xl shadow-sm">
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-white flex items-center gap-2">
-              <span>📋 Visual Pipeline Kanban</span>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[11px] font-bold uppercase tracking-wider mb-2">
+              <Layers className="w-3.5 h-3.5" />
+              <span>Pipeline & Stage Progression</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              Visual Pipeline Kanban
             </h1>
-            <p className="text-sm text-slate-400 mt-1">
-              Drag and drop opportunities to update stages in real time.
+            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Drag & drop or tap to move deals through your sales funnel stages.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <select
               value={selectedProject}
               onChange={(e) => setSelectedProject(e.target.value)}
-              className="h-10 rounded-xl border border-slate-800 bg-slate-900 px-4 py-1.5 text-xs font-semibold text-slate-200 focus:border-indigo-500 focus:outline-none"
+              className="h-10 rounded-xl border border-slate-800 bg-[#0b0f19] px-3.5 text-xs font-semibold text-slate-200 focus:border-indigo-500 focus:outline-none"
             >
               <option value="">All Projects</option>
               {projects.map((p: any) => (
@@ -345,7 +347,7 @@ export default function KanbanBoard() {
             </select>
 
             <Link to="/leads">
-              <Button variant="outline" className="h-10 text-xs px-4">
+              <Button variant="outline" className="h-10 text-xs px-3.5 border-slate-800 rounded-xl font-bold">
                 📑 List View
               </Button>
             </Link>
@@ -362,59 +364,152 @@ export default function KanbanBoard() {
           </div>
         )}
 
-        {/* Loading / Error States */}
-        {isLoading ? (
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="min-w-[280px] w-72 h-[450px] bg-slate-900/40 rounded-2xl animate-pulse" />
-            ))}
+        {/* ── 1. MOBILE RESPONSIVE SINGLE-COLUMN STAGE SELECTOR VIEW (< md: / 375px–768px) ── */}
+        <div className="block md:hidden space-y-4">
+          {/* Scrollable Horizontal Stage Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-2 no-scrollbar">
+            {PIPELINE_STAGES.map((st) => {
+              const count = (groupedOpportunities[st.id] || []).length;
+              const isActive = mobileActiveStage === st.id;
+
+              return (
+                <button
+                  key={st.id}
+                  onClick={() => setMobileActiveStage(st.id)}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 border min-h-[44px] ${
+                    isActive
+                      ? 'bg-indigo-600 text-white border-indigo-500 shadow-md'
+                      : 'bg-[#131c31] text-slate-300 border-slate-800/80 hover:bg-slate-800'
+                  }`}
+                >
+                  <span>{st.label}</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${isActive ? 'bg-white/20 text-white' : 'bg-slate-900 text-slate-400'}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        ) : isError ? (
-          <div className="p-12 border border-red-500/20 bg-red-500/5 rounded-2xl text-center space-y-3">
-            <p className="text-red-400 font-semibold">Failed to load pipeline opportunities.</p>
-            <Button onClick={() => refetch()} variant="outline" className="text-xs">
-              Retry
-            </Button>
-          </div>
-        ) : (
-          /* Kanban Board DnD Container */
-          <DndContext
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
-            <div className="flex gap-4 overflow-x-auto pb-6 pt-2 scrollbar-thin scrollbar-thumb-slate-800">
-              {PIPELINE_STAGES.map((stage) => (
-                <KanbanColumn
-                  key={stage.id}
-                  stage={stage}
-                  opportunities={groupedOpportunities[stage.id] || []}
-                  onCardClick={(oppId) => navigate(`/leads/${oppId}`)}
-                />
-              ))}
+
+          {/* Current Selected Stage Cards Container */}
+          <div className="bg-[#131c31] border border-slate-800/80 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${activeStageConfig.color}`}>
+                {activeStageConfig.label} ({activeStageOpps.length})
+              </span>
+              <span className="text-[11px] text-slate-400">Tap card to view details</span>
             </div>
 
-            {/* Drag Overlay for smooth card visual feedback */}
-            <DragOverlay>
-              {activeOpp ? (
-                <div className="w-72 p-4 rounded-xl border border-indigo-500/60 bg-slate-900 shadow-2xl scale-105 opacity-95">
-                  <h4 className="text-sm font-bold text-white">
-                    {activeOpp.customer?.name || activeOpp.rawName}
-                  </h4>
-                  <p className="text-xs text-indigo-400 mt-1">
-                    {activeOpp.project?.name}
-                  </p>
-                </div>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
-        )}
+            {activeStageOpps.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 text-xs">
+                No active deals in this stage.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {activeStageOpps.map((opp) => (
+                  <div
+                    key={opp._id}
+                    className="p-4 rounded-xl bg-[#0b0f19] border border-slate-800/80 space-y-3"
+                  >
+                    <div
+                      onClick={() => navigate(`/leads/${opp._id}`)}
+                      className="cursor-pointer space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-white">
+                          {opp.customer?.name || opp.rawName || 'Unnamed Lead'}
+                        </h4>
+                        {opp.slaBreached && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">
+                            SLA Breached
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="text-xs text-slate-400 font-mono space-y-0.5">
+                        <p>🏙️ {opp.project?.name || 'No Project'}</p>
+                        <p>📱 {opp.customer?.primaryMobile || 'N/A'}</p>
+                        <p>👤 Owner: {opp.owner?.name || 'Unassigned'}</p>
+                      </div>
+                    </div>
+
+                    {/* Mobile "Move to Stage" Action Dropdown */}
+                    <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Move Stage:
+                      </span>
+                      <select
+                        value={opp.stage || 'new'}
+                        onChange={(e) => handleMobileStageChange(opp._id, e.target.value)}
+                        className="h-9 px-2.5 rounded-lg bg-[#131c31] border border-slate-700 text-slate-100 text-xs font-semibold focus:outline-none focus:border-indigo-500 min-h-[36px]"
+                      >
+                        {PIPELINE_STAGES.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── 2. DESKTOP MULTI-COLUMN KANBAN BOARD (md: and above) ── */}
+        <div className="hidden md:block">
+          {isLoading ? (
+            <div className="flex gap-4 overflow-x-auto pb-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="min-w-[280px] w-72 h-[450px] bg-[#131c31] rounded-2xl animate-pulse" />
+              ))}
+            </div>
+          ) : isError ? (
+            <div className="p-12 border border-red-500/20 bg-red-500/5 rounded-2xl text-center space-y-3">
+              <p className="text-red-400 font-semibold text-xs">Failed to load pipeline opportunities.</p>
+              <Button onClick={() => refetch()} variant="outline" className="text-xs">
+                Retry
+              </Button>
+            </div>
+          ) : (
+            <DndContext
+              sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="flex gap-4 overflow-x-auto pb-6 pt-2 scrollbar-thin scrollbar-thumb-slate-800">
+                {PIPELINE_STAGES.map((stage) => (
+                  <KanbanColumn
+                    key={stage.id}
+                    stage={stage}
+                    opportunities={groupedOpportunities[stage.id] || []}
+                    onCardClick={(oppId) => navigate(`/leads/${oppId}`)}
+                  />
+                ))}
+              </div>
+
+              <DragOverlay>
+                {activeOpp ? (
+                  <div className="w-72 p-4 rounded-xl border border-indigo-500/60 bg-[#131c31] shadow-2xl scale-105 opacity-95">
+                    <h4 className="text-sm font-bold text-white">
+                      {activeOpp.customer?.name || activeOpp.rawName}
+                    </h4>
+                    <p className="text-xs text-indigo-400 mt-1">
+                      {activeOpp.project?.name}
+                    </p>
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          )}
+        </div>
 
         {/* Lost Reason Modal */}
         {lostModalOpp && (
           <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="max-w-md w-full p-6 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <div className="max-w-md w-full p-6 bg-[#131c31] border border-slate-800 rounded-2xl shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <span>🚫 Reason for Lost Opportunity</span>
               </h3>
               <p className="text-xs text-slate-400">
@@ -426,20 +521,20 @@ export default function KanbanBoard() {
                 onChange={(e) => setLostReasonInput(e.target.value)}
                 placeholder="e.g. Client purchased another project, budget constraints, etc."
                 rows={3}
-                className="w-full rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-xl border border-slate-800 bg-[#0b0f19] p-3 text-xs text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none"
               />
 
               <div className="flex items-center justify-end gap-3 pt-2">
                 <Button
                   variant="outline"
                   onClick={() => setLostModalOpp(null)}
-                  className="text-xs h-9"
+                  className="text-xs h-10 border-slate-800 rounded-xl"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={submitLostReason}
-                  className="bg-red-600 hover:bg-red-500 text-white text-xs h-9 px-4"
+                  className="bg-red-600 hover:bg-red-500 text-white text-xs h-10 px-4 rounded-xl font-bold"
                 >
                   Confirm Lost
                 </Button>
@@ -447,7 +542,7 @@ export default function KanbanBoard() {
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

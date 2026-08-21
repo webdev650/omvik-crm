@@ -169,7 +169,7 @@ export default function UsersPage() {
       {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
             User & Employee Directory
           </h1>
           <p className="text-xs text-slate-400 mt-1">
@@ -179,106 +179,159 @@ export default function UsersPage() {
 
         <Button
           onClick={() => setIsAddOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-10 shadow-lg shadow-indigo-600/20"
+          className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-11 min-h-[44px] shadow-lg shadow-indigo-600/20 rounded-xl"
         >
           <span>+ Add User</span>
         </Button>
       </div>
 
-      {/* Users Table */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur-xl overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Employee Name</TableHead>
-              <TableHead>Email Address</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Assigned Team</TableHead>
-              <TableHead>Status & Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoadingUsers ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-xs text-slate-400">
-                  Loading user directory...
-                </TableCell>
-              </TableRow>
-            ) : users.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-xs text-slate-400">
-                  No users found in database.
-                </TableCell>
-              </TableRow>
-            ) : (
-              users.map((u: any) => (
-                <TableRow key={u._id} className="hover:bg-slate-800/50 transition-colors">
-                  <TableCell className="font-mono text-xs text-indigo-400 font-bold">
-                    {u.employeeId || 'SYS'}
-                  </TableCell>
-                  <TableCell className="font-bold text-white">
-                    {u.name}
-                    {u._id === currentUser?._id && (
-                      <span className="ml-2 text-[10px] text-indigo-400 font-normal">(You)</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-300">
-                    {u.email}
-                  </TableCell>
-                  <TableCell>
+      {/* Users Container */}
+      <div className="rounded-2xl border border-slate-800/80 bg-[#131c31] shadow-sm overflow-hidden">
+        {isLoadingUsers ? (
+          <div className="p-8 text-center text-xs text-slate-400">
+            Loading user directory...
+          </div>
+        ) : users.length === 0 ? (
+          <div className="p-8 text-center text-xs text-slate-400">
+            No users found in database.
+          </div>
+        ) : (
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-slate-800 bg-[#0b0f19]">
+                    <TableHead className="text-slate-400 text-xs font-bold uppercase">ID</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-bold uppercase">Employee Name</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-bold uppercase">Email Address</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-bold uppercase">Role</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-bold uppercase">Assigned Team</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-bold uppercase">Status & Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((u: any) => (
+                    <TableRow key={u._id} className="hover:bg-slate-800/40 border-b border-slate-800/40 transition-colors">
+                      <TableCell className="font-mono text-xs text-indigo-400 font-bold">
+                        {u.employeeId || 'SYS'}
+                      </TableCell>
+                      <TableCell className="font-bold text-white">
+                        {u.name}
+                        {u._id === currentUser?._id && (
+                          <span className="ml-2 text-[10px] text-indigo-400 font-normal">(You)</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-slate-300">
+                        {u.email}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getRoleBadgeVariant(u.role)} className="text-[10px] uppercase font-bold">
+                          {u.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-300">
+                        {u.teamId?.name || <span className="text-slate-500 italic">Unassigned</span>}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-semibold ${u.isActive ? 'text-emerald-400' : 'text-slate-500'}`}>
+                              {u.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                            <Switch
+                              checked={u.isActive}
+                              onCheckedChange={(checked) => {
+                                toggleActiveMutation.mutate({ id: u._id, isActive: checked });
+                              }}
+                              disabled={u._id === currentUser?._id}
+                            />
+                          </div>
+
+                          {u.isActive && u._id !== currentUser?._id && (
+                            <Button
+                              onClick={() => {
+                                setOffboardUserModal(u);
+                                setNewOwnerId('');
+                                setOffboardReason('');
+                              }}
+                              variant="outline"
+                              className="h-8 px-2.5 text-[11px] font-bold border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-lg"
+                            >
+                              🚪 Offboard
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Stacked Card View (< md:) */}
+            <div className="block md:hidden divide-y divide-slate-800/80">
+              {users.map((u: any) => (
+                <div key={u._id} className="p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                        <span>{u.name}</span>
+                        {u._id === currentUser?._id && <span className="text-[10px] text-indigo-400">(You)</span>}
+                      </h4>
+                      <p className="text-xs font-mono text-indigo-400">{u.employeeId || 'SYS'}</p>
+                    </div>
                     <Badge variant={getRoleBadgeVariant(u.role)} className="text-[10px] uppercase font-bold">
                       {u.role}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="text-xs text-slate-300">
-                    {u.teamId?.name || <span className="text-slate-500 italic">Unassigned</span>}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      {/* Active Status Switch */}
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-semibold ${u.isActive ? 'text-emerald-400' : 'text-slate-500'}`}>
-                          {u.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                        <Switch
-                          checked={u.isActive}
-                          onCheckedChange={(checked) => {
-                            toggleActiveMutation.mutate({ id: u._id, isActive: checked });
-                          }}
-                          disabled={u._id === currentUser?._id}
-                        />
-                      </div>
+                  </div>
 
-                      {/* One-Click Offboard Action Button */}
-                      {u.isActive && u._id !== currentUser?._id && (
-                        <Button
-                          onClick={() => {
-                            setOffboardUserModal(u);
-                            setNewOwnerId('');
-                            setOffboardReason('');
-                          }}
-                          variant="outline"
-                          className="h-7 px-2.5 text-[11px] font-bold border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                        >
-                          🚪 Offboard
-                        </Button>
-                      )}
+                  <div className="text-xs text-slate-300 space-y-1 font-mono">
+                    <p className="truncate">📧 {u.email}</p>
+                    <p className="text-slate-400">🛡️ Pod: {u.teamId?.name || 'Unassigned'}</p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-semibold ${u.isActive ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        {u.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                      <Switch
+                        checked={u.isActive}
+                        onCheckedChange={(checked) => {
+                          toggleActiveMutation.mutate({ id: u._id, isActive: checked });
+                        }}
+                        disabled={u._id === currentUser?._id}
+                      />
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+
+                    {u.isActive && u._id !== currentUser?._id && (
+                      <Button
+                        onClick={() => {
+                          setOffboardUserModal(u);
+                          setNewOwnerId('');
+                          setOffboardReason('');
+                        }}
+                        variant="outline"
+                        className="h-8 px-2.5 text-[11px] font-bold border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-lg min-h-[36px]"
+                      >
+                        🚪 Offboard
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Add User Dialog */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md bg-[#131c31] border-slate-800 text-slate-100">
           <DialogHeader>
-            <DialogTitle>Add New Employee User</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-white">Add New Employee User</DialogTitle>
+            <DialogDescription className="text-slate-400">
               Create an account for a new team member. Role & team dictate data access boundaries.
             </DialogDescription>
           </DialogHeader>
@@ -291,11 +344,12 @@ export default function UsersPage() {
             )}
 
             <div className="space-y-1.5">
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="name" className="text-xs text-slate-300">Full Name</Label>
               <Input
                 id="name"
                 placeholder="e.g. Vikram Malhotra"
                 {...register('name')}
+                className="bg-[#0b0f19] border-slate-800 text-xs h-11 rounded-xl"
               />
               {errors.name && (
                 <p className="text-xs text-red-400">{errors.name.message}</p>
@@ -303,12 +357,13 @@ export default function UsersPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email" className="text-xs text-slate-300">Email Address</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="vikram@omvik.com"
                 {...register('email')}
+                className="bg-[#0b0f19] border-slate-800 text-xs h-11 rounded-xl"
               />
               {errors.email && (
                 <p className="text-xs text-red-400">{errors.email.message}</p>
@@ -316,25 +371,26 @@ export default function UsersPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="password">Temporary Password</Label>
+              <Label htmlFor="password" className="text-xs text-slate-300">Temporary Password</Label>
               <Input
                 id="password"
                 type="password"
                 placeholder="••••••••"
                 {...register('password')}
+                className="bg-[#0b0f19] border-slate-800 text-xs h-11 rounded-xl"
               />
               {errors.password && (
                 <p className="text-xs text-red-400">{errors.password.message}</p>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="role">Role</Label>
+                <Label htmlFor="role" className="text-xs text-slate-300">Role</Label>
                 <select
                   id="role"
                   {...register('role')}
-                  className="flex h-10 w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-100 focus:border-indigo-500 focus:outline-none"
+                  className="flex h-11 w-full rounded-xl border border-slate-800 bg-[#0b0f19] px-3 text-xs text-slate-100 focus:border-indigo-500 focus:outline-none"
                 >
                   <option value="telecaller">Telecaller / Rep</option>
                   <option value="team_lead">Team Lead</option>
@@ -351,11 +407,11 @@ export default function UsersPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="teamId">Assigned Team (Optional)</Label>
+                <Label htmlFor="teamId" className="text-xs text-slate-300">Assigned Team (Optional)</Label>
                 <select
                   id="teamId"
                   {...register('teamId')}
-                  className="flex h-10 w-full rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-100 focus:border-indigo-500 focus:outline-none"
+                  className="flex h-11 w-full rounded-xl border border-slate-800 bg-[#0b0f19] px-3 text-xs text-slate-100 focus:border-indigo-500 focus:outline-none"
                 >
                   <option value="">No Team (Unassigned)</option>
                   {teams.map((t: any) => (
@@ -367,21 +423,21 @@ export default function UsersPage() {
               </div>
             </div>
 
-            <DialogFooter className="pt-4 border-t border-slate-800">
+            <DialogFooter className="pt-4 border-t border-slate-800/80">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsAddOpen(false)}
-                className="h-9 text-xs"
+                className="h-10 text-xs border-slate-800 rounded-xl"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting || createMutation.isPending}
-                className="h-9 text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold"
+                className="h-10 text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl"
               >
-                {isSubmitting || createMutation.isPending ? 'Creating...' : 'Create Employee Account'}
+                {isSubmitting || createMutation.isPending ? 'Creating...' : 'Create Account'}
               </Button>
             </DialogFooter>
           </form>
@@ -391,37 +447,35 @@ export default function UsersPage() {
       {/* Offboard User Confirmation & Reassignment Modal */}
       {offboardUserModal && (
         <Dialog open={!!offboardUserModal} onOpenChange={() => setOffboardUserModal(null)}>
-          <DialogContent className="max-w-lg border-red-500/30">
+          <DialogContent className="max-w-lg bg-[#131c31] border-red-500/30 text-slate-100">
             <DialogHeader>
-              <DialogTitle className="text-red-400 flex items-center gap-2">
+              <DialogTitle className="text-red-400 flex items-center gap-2 text-base">
                 <span>🚨 Offboard Employee: {offboardUserModal.name}</span>
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-slate-400 text-xs">
                 Reassign all active opportunities, pipeline deals, and scheduled follow-ups to another active team member in one atomic action.
               </DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleConfirmOffboard} className="space-y-5 pt-2">
-              {/* Active Opportunities Counter Badge */}
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+              <div className="p-4 rounded-xl bg-[#0b0f19] border border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                   Active Workload Audit
                 </span>
                 {isLoadingOppCount ? (
                   <p className="text-xs text-slate-500 animate-pulse">Calculating active workload...</p>
                 ) : (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-white">
+                    <span className="text-xs font-semibold text-white">
                       Active Opportunities Owned:
                     </span>
-                    <Badge className={activeOppCount > 0 ? 'bg-indigo-500/20 text-indigo-300 font-mono text-sm font-bold' : 'bg-slate-800 text-slate-400 font-mono text-sm'}>
+                    <Badge className={activeOppCount > 0 ? 'bg-indigo-500/20 text-indigo-300 font-mono text-xs font-bold' : 'bg-slate-800 text-slate-400 font-mono text-xs'}>
                       {activeOppCount} {activeOppCount === 1 ? 'deal' : 'deals'}
                     </Badge>
                   </div>
                 )}
               </div>
 
-              {/* Replacement Owner Selector */}
               <div className="space-y-1.5">
                 <Label htmlFor="replacementOwner" className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                   Select Replacement Owner <span className="text-red-400">*</span>
@@ -430,7 +484,7 @@ export default function UsersPage() {
                   id="replacementOwner"
                   value={newOwnerId}
                   onChange={(e) => setNewOwnerId(e.target.value)}
-                  className="flex h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-100 font-semibold focus:border-red-500 focus:outline-none"
+                  className="flex h-11 w-full rounded-xl border border-slate-800 bg-[#0b0f19] px-3 text-xs text-slate-100 font-semibold focus:border-red-500 focus:outline-none"
                   required
                 >
                   <option value="">-- Choose Active Employee / Rep --</option>
@@ -442,7 +496,6 @@ export default function UsersPage() {
                 </select>
               </div>
 
-              {/* Offboarding Reason Input */}
               <div className="space-y-1.5">
                 <Label htmlFor="offboardReason" className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                   Offboarding Reason <span className="text-red-400">*</span>
@@ -452,7 +505,7 @@ export default function UsersPage() {
                   placeholder="e.g. Resigned, Role reassignment, Department transfer..."
                   value={offboardReason}
                   onChange={(e) => setOffboardReason(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-xs h-11 text-slate-100"
+                  className="bg-[#0b0f19] border-slate-800 text-xs h-11 text-slate-100 rounded-xl"
                   required
                 />
               </div>
@@ -462,16 +515,16 @@ export default function UsersPage() {
                   type="button"
                   variant="outline"
                   onClick={() => setOffboardUserModal(null)}
-                  className="h-10 text-xs"
+                  className="h-10 text-xs border-slate-800 rounded-xl"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={offboardMutation.isPending}
-                  className="h-10 text-xs bg-red-600 hover:bg-red-500 text-white font-bold px-4"
+                  className="h-10 text-xs bg-red-600 hover:bg-red-500 text-white font-bold px-4 rounded-xl"
                 >
-                  {offboardMutation.isPending ? 'Reassigning Work & Deactivating...' : 'Confirm One-Click Offboard'}
+                  {offboardMutation.isPending ? 'Reassigning...' : 'Confirm Offboard'}
                 </Button>
               </DialogFooter>
             </form>

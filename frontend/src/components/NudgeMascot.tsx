@@ -92,9 +92,9 @@ export default function NudgeMascot() {
   }
 
   return (
-    <div className={`fixed bottom-6 right-6 z-50 flex items-end gap-3 max-w-sm animate-in fade-in slide-in-from-bottom-5 duration-300 ${isReducedMotion ? '' : 'transition-transform'}`}>
+    <div className={`fixed bottom-4 right-4 left-4 sm:left-auto max-w-[calc(100vw-32px)] sm:max-w-sm z-50 flex items-end gap-2.5 sm:gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300 ${isReducedMotion ? '' : 'transition-transform'}`}>
       {/* Nudge Speech Bubble */}
-      <div className="bg-slate-900 border border-indigo-500/40 p-4 rounded-2xl shadow-2xl backdrop-blur-2xl text-slate-100 space-y-2.5 relative">
+      <div className="flex-1 bg-slate-900 border border-indigo-500/40 p-3.5 sm:p-4 rounded-2xl shadow-2xl backdrop-blur-2xl text-slate-100 space-y-2 relative min-w-0">
         <button
           onClick={handleDismiss}
           className="absolute top-2 right-2 text-slate-400 hover:text-white text-xs p-1"
@@ -103,7 +103,7 @@ export default function NudgeMascot() {
           ✕
         </button>
 
-        <div className="flex items-center gap-2 text-xs font-bold text-indigo-400 uppercase tracking-widest">
+        <div className="flex items-center gap-2 text-[11px] font-bold text-indigo-400 uppercase tracking-widest">
           <span>🤖 Omvik Assistant</span>
         </div>
 
@@ -120,7 +120,7 @@ export default function NudgeMascot() {
           </button>
           <button
             onClick={handleDismiss}
-            className="px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-bold cursor-pointer"
+            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold cursor-pointer"
           >
             Got it
           </button>
@@ -128,7 +128,7 @@ export default function NudgeMascot() {
       </div>
 
       {/* SVG Animated Mascot Character */}
-      <div className={`w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-600 flex items-center justify-center shadow-xl shadow-indigo-600/40 border border-indigo-400/30 ${isReducedMotion ? '' : 'animate-bounce'}`}>
+      <div className={`w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-600 flex items-center justify-center shadow-xl shadow-indigo-600/40 border border-indigo-400/30 ${isReducedMotion ? '' : 'animate-bounce'}`}>
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -136,7 +136,7 @@ export default function NudgeMascot() {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="w-8 h-8 text-white"
+          className="w-6 h-6 sm:w-8 sm:h-8 text-white"
         >
           <rect x="3" y="11" width="18" height="10" rx="2" />
           <circle cx="12" cy="5" r="2" />
