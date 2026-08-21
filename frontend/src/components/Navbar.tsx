@@ -24,7 +24,9 @@ import {
   FolderKanban,
   UserPlus,
   History,
-  TrendingUp
+  TrendingUp,
+  Layers,
+  FileWarning
 } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 import NotificationBell from './NotificationBell';
@@ -231,7 +233,7 @@ export default function Navbar() {
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -10 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 mt-2 w-72 sm:w-80 rounded-2xl bg-[#0d1322] border border-slate-800 shadow-2xl backdrop-blur-2xl p-4 z-50 space-y-3"
+                  className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-[#0d1322] border border-slate-800 shadow-2xl backdrop-blur-2xl p-4 z-50 space-y-3 max-h-[85vh] overflow-y-auto"
                 >
                   <div className="p-3 rounded-xl bg-[#131c31] border border-slate-800/80 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-blue-500 p-0.5 shadow-md flex-shrink-0">
@@ -253,47 +255,115 @@ export default function Navbar() {
                     </div>
                   </div>
 
-                  <div className="space-y-1 pt-1">
-                    {/* DIRECT MANAGEMENT ITEMS FOR ADMIN ROLES */}
-                    {isAdminOrSuper && (
-                      <>
-                        <NavLink
-                          to="/admin/users"
-                          onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-600 hover:text-white transition-all min-h-[44px]"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <Users className="w-4 h-4 text-indigo-400" />
-                            <span className="font-bold">👥 User Directory (+ Add User)</span>
-                          </div>
-                          <ChevronRight className="w-4 h-4 opacity-50" />
-                        </NavLink>
+                  {/* ADMIN MANAGEMENT ITEMS DIRECTLY IN PROFILE LIST */}
+                  {isAdminOrSuper && (
+                    <div className="space-y-1 pt-1 border-t border-slate-800/80">
+                      <div className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-400 px-2 py-1">
+                        ⚙️ Admin Desk Quick Access
+                      </div>
+                      
+                      <NavLink
+                        to="/admin/users"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-600 hover:text-white transition-all min-h-[44px]"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Users className="w-4 h-4 text-indigo-400" />
+                          <span className="font-bold">👥 User Directory (+ Add User)</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 opacity-50" />
+                      </NavLink>
 
-                        <NavLink
-                          to="/admin/reports"
-                          onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white min-h-[44px]"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <BarChart3 className="w-4 h-4 text-indigo-400" />
-                            <span>📊 Executive Reports</span>
-                          </div>
-                          <ChevronRight className="w-4 h-4 opacity-50" />
-                        </NavLink>
+                      <NavLink
+                        to="/admin/reports"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white min-h-[44px]"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <BarChart3 className="w-4 h-4 text-indigo-400" />
+                          <span>📊 Executive Reports</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 opacity-50" />
+                      </NavLink>
 
-                        <NavLink
-                          to="/admin/employee-history"
-                          onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white min-h-[44px]"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <History className="w-4 h-4 text-indigo-400" />
-                            <span>📈 Employee Work History</span>
-                          </div>
-                          <ChevronRight className="w-4 h-4 opacity-50" />
-                        </NavLink>
-                      </>
-                    )}
+                      <NavLink
+                        to="/admin/employee-history"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white min-h-[44px]"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <History className="w-4 h-4 text-indigo-400" />
+                          <span>📈 Employee Work History</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 opacity-50" />
+                      </NavLink>
+
+                      <NavLink
+                        to="/admin/import"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white min-h-[44px]"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <FileSpreadsheet className="w-4 h-4 text-indigo-400" />
+                          <span>📥 Bulk Lead Import</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 opacity-50" />
+                      </NavLink>
+
+                      <NavLink
+                        to="/admin/projects"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white min-h-[44px]"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Building2 className="w-4 h-4 text-indigo-400" />
+                          <span>🏢 Real-Estate Projects</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 opacity-50" />
+                      </NavLink>
+
+                      <NavLink
+                        to="/admin/teams"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white min-h-[44px]"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <ShieldCheck className="w-4 h-4 text-indigo-400" />
+                          <span>🛡️ Teams & Sales Pods</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 opacity-50" />
+                      </NavLink>
+
+                      <NavLink
+                        to="/admin/data-quality"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white min-h-[44px]"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Layers className="w-4 h-4 text-indigo-400" />
+                          <span>🛡️ Data Quality Centre</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 opacity-50" />
+                      </NavLink>
+
+                      <NavLink
+                        to="/admin/flagged-reports"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-amber-500/10 border border-amber-500/20 text-amber-300 hover:bg-amber-500/20 min-h-[44px]"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <FileWarning className="w-4 h-4 text-amber-400" />
+                          <span>🚨 Flagged EOD Discrepancies</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 opacity-50" />
+                      </NavLink>
+                    </div>
+                  )}
+
+                  <div className="space-y-1 pt-2 border-t border-slate-800/80">
+                    <div className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 px-2 py-1">
+                      Account & Navigation
+                    </div>
 
                     <NavLink to="/dashboard" onClick={() => setIsUserMenuOpen(false)} className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white min-h-[44px]">
                       <div className="flex items-center gap-2.5">
