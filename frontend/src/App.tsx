@@ -187,8 +187,8 @@ export default function App() {
       <Route
         path="/admin/import"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
-            <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 font-sans">
+          <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director', 'team_lead']}>
+            <div className="min-h-screen bg-[#0b0f19] text-slate-100 p-4 sm:p-6 font-sans">
               <Navbar />
               <ImportLeadsPage />
             </div>

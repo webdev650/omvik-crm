@@ -99,11 +99,20 @@ export default function LeadsList() {
 
           {canExport && (
             <Button
+              onClick={() => navigate('/admin/import')}
+              className="h-10 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs gap-1.5 rounded-xl shadow-sm min-h-[40px]"
+            >
+              📥 Import Data
+            </Button>
+          )}
+
+          {canExport && (
+            <Button
               onClick={handleExport}
               disabled={isExporting || opportunities.length === 0}
-              className="h-10 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs gap-1.5 rounded-xl shadow-sm"
+              className="h-10 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs gap-1.5 rounded-xl shadow-sm min-h-[40px]"
             >
-              📥 {isExporting ? 'Exporting...' : 'Export'}
+              📊 {isExporting ? 'Exporting...' : 'Export'}
             </Button>
           )}
         </div>
