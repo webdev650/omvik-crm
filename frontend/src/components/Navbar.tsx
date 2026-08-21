@@ -22,7 +22,9 @@ import {
   FileSpreadsheet,
   AlertTriangle,
   FolderKanban,
-  UserPlus
+  UserPlus,
+  History,
+  TrendingUp
 } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 import NotificationBell from './NotificationBell';
@@ -174,11 +176,19 @@ export default function Navbar() {
           <NavLink to="/leads" className={({ isActive }) => primaryNavLinkClass({ isActive: isActive && !location.pathname.startsWith('/leads/') })}>Leads List</NavLink>
           <NavLink to="/customers" className={({ isActive }) => primaryNavLinkClass({ isActive: isActive && !location.pathname.startsWith('/customers/') })}>Customers</NavLink>
           
-          {/* DIRECT USERS / ADD USER LINK ON MAIN TOP BAR */}
+          {/* DIRECT USERS, REPORTS, & EMPLOYEE HISTORY LINKS ON MAIN TOP BAR */}
           {isAdminOrSuper && (
-            <NavLink to="/admin/users" className={primaryNavLinkClass}>
-              Users (+ Add User)
-            </NavLink>
+            <>
+              <NavLink to="/admin/users" className={primaryNavLinkClass}>
+                Users (+ Add User)
+              </NavLink>
+              <NavLink to="/admin/reports" className={primaryNavLinkClass}>
+                Executive Reports
+              </NavLink>
+              <NavLink to="/admin/employee-history" className={primaryNavLinkClass}>
+                Employee History
+              </NavLink>
+            </>
           )}
 
           <NavLink to="/pipeline" className={primaryNavLinkClass}>Pipeline</NavLink>
@@ -244,19 +254,45 @@ export default function Navbar() {
                   </div>
 
                   <div className="space-y-1 pt-1">
-                    {/* DIRECT ADD USER / USER DIRECTORY ITEM FOR ADMIN ROLES */}
+                    {/* DIRECT MANAGEMENT ITEMS FOR ADMIN ROLES */}
                     {isAdminOrSuper && (
-                      <NavLink
-                        to="/admin/users"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-600 hover:text-white transition-all min-h-[44px]"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <Users className="w-4 h-4 text-indigo-400" />
-                          <span className="font-bold">👥 User Directory (+ Add User)</span>
-                        </div>
-                        <ChevronRight className="w-4 h-4 opacity-50" />
-                      </NavLink>
+                      <>
+                        <NavLink
+                          to="/admin/users"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-600 hover:text-white transition-all min-h-[44px]"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Users className="w-4 h-4 text-indigo-400" />
+                            <span className="font-bold">👥 User Directory (+ Add User)</span>
+                          </div>
+                          <ChevronRight className="w-4 h-4 opacity-50" />
+                        </NavLink>
+
+                        <NavLink
+                          to="/admin/reports"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white min-h-[44px]"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <BarChart3 className="w-4 h-4 text-indigo-400" />
+                            <span>📊 Executive Reports</span>
+                          </div>
+                          <ChevronRight className="w-4 h-4 opacity-50" />
+                        </NavLink>
+
+                        <NavLink
+                          to="/admin/employee-history"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white min-h-[44px]"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <History className="w-4 h-4 text-indigo-400" />
+                            <span>📈 Employee Work History</span>
+                          </div>
+                          <ChevronRight className="w-4 h-4 opacity-50" />
+                        </NavLink>
+                      </>
                     )}
 
                     <NavLink to="/dashboard" onClick={() => setIsUserMenuOpen(false)} className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white min-h-[44px]">
@@ -324,6 +360,35 @@ export default function Navbar() {
               <span>🌴 Leave & SLA</span>
             </NavLink>
 
+            {isAdminOrSuper && (
+              <>
+                <NavLink
+                  to="/admin/reports"
+                  className={({ isActive }) =>
+                    `px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 min-h-[36px] ${
+                      isActive
+                        ? 'bg-slate-800 text-indigo-300 font-bold border border-indigo-500/30'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                    }`
+                  }
+                >
+                  <span>📊 Executive Reports</span>
+                </NavLink>
+                <NavLink
+                  to="/admin/employee-history"
+                  className={({ isActive }) =>
+                    `px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 min-h-[36px] ${
+                      isActive
+                        ? 'bg-slate-800 text-indigo-300 font-bold border border-indigo-500/30'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                    }`
+                  }
+                >
+                  <span>📈 Employee History</span>
+                </NavLink>
+              </>
+            )}
+
             {/* Admin Desk Dropdown */}
             {isAdminOrSuper && (
               <div className="relative inline-block text-left" ref={dropdownRef}>
@@ -385,7 +450,11 @@ export default function Navbar() {
               <NavLink to="/leads" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>Leads List</NavLink>
               <NavLink to="/customers" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>Customers</NavLink>
               {isAdminOrSuper && (
-                <NavLink to="/admin/users" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>👥 User Directory (+ Add User)</NavLink>
+                <>
+                  <NavLink to="/admin/users" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>👥 User Directory (+ Add User)</NavLink>
+                  <NavLink to="/admin/reports" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>📊 Executive Reports</NavLink>
+                  <NavLink to="/admin/employee-history" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>📈 Employee History</NavLink>
+                </>
               )}
               <NavLink to="/pipeline" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>Pipeline</NavLink>
               <NavLink to="/followups" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>Follow-ups</NavLink>
