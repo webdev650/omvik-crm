@@ -99,7 +99,7 @@ export default function Navbar() {
         : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
     }`;
 
-  const isAdminOrSuper = user?.role && ['admin', 'super_admin', 'director'].includes(user.role);
+  const isAdminOrSuper = user?.role && ['admin', 'super_admin', 'director', 'team_lead'].includes(user.role);
   const isAdminActive = location.pathname.startsWith('/admin/');
 
   return (
