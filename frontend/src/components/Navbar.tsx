@@ -173,6 +173,14 @@ export default function Navbar() {
           <NavLink to="/dashboard" className={primaryNavLinkClass}>Dashboard</NavLink>
           <NavLink to="/leads" className={({ isActive }) => primaryNavLinkClass({ isActive: isActive && !location.pathname.startsWith('/leads/') })}>Leads List</NavLink>
           <NavLink to="/customers" className={({ isActive }) => primaryNavLinkClass({ isActive: isActive && !location.pathname.startsWith('/customers/') })}>Customers</NavLink>
+          
+          {/* DIRECT USERS / ADD USER LINK ON MAIN TOP BAR */}
+          {isAdminOrSuper && (
+            <NavLink to="/admin/users" className={primaryNavLinkClass}>
+              Users (+ Add User)
+            </NavLink>
+          )}
+
           <NavLink to="/pipeline" className={primaryNavLinkClass}>Pipeline</NavLink>
           <NavLink to="/followups" className={primaryNavLinkClass}>Follow-ups</NavLink>
           <NavLink to="/daily-report" className={primaryNavLinkClass}>EOD Report</NavLink>
@@ -236,6 +244,21 @@ export default function Navbar() {
                   </div>
 
                   <div className="space-y-1 pt-1">
+                    {/* DIRECT ADD USER / USER DIRECTORY ITEM FOR ADMIN ROLES */}
+                    {isAdminOrSuper && (
+                      <NavLink
+                        to="/admin/users"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-600 hover:text-white transition-all min-h-[44px]"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Users className="w-4 h-4 text-indigo-400" />
+                          <span className="font-bold">👥 User Directory (+ Add User)</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 opacity-50" />
+                      </NavLink>
+                    )}
+
                     <NavLink to="/dashboard" onClick={() => setIsUserMenuOpen(false)} className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white min-h-[44px]">
                       <div className="flex items-center gap-2.5">
                         <Home className="w-4 h-4 text-indigo-400" />
@@ -322,8 +345,8 @@ export default function Navbar() {
                     <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-800/60 mb-1">
                       Admin Control Desk
                     </div>
+                    <NavLink to="/admin/users" onClick={() => setIsAdminOpen(false)} className="flex items-center gap-2 px-3 py-2 text-xs text-[#6366f1] font-bold hover:bg-slate-800 rounded-lg mx-1 min-h-[40px]"><span>👥</span> User Directory (+ Add User)</NavLink>
                     <NavLink to="/admin/projects" onClick={() => setIsAdminOpen(false)} className="flex items-center gap-2 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg mx-1 min-h-[40px]"><span>🏢</span> Real-Estate Projects</NavLink>
-                    <NavLink to="/admin/users" onClick={() => setIsAdminOpen(false)} className="flex items-center gap-2 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg mx-1 min-h-[40px]"><span>👥</span> User Directory</NavLink>
                     <NavLink to="/admin/teams" onClick={() => setIsAdminOpen(false)} className="flex items-center gap-2 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg mx-1 min-h-[40px]"><span>🛡️</span> Teams & Sales Pods</NavLink>
                     <NavLink to="/admin/import" onClick={() => setIsAdminOpen(false)} className="flex items-center gap-2 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg mx-1 min-h-[40px]"><span>📥</span> Bulk Lead Import</NavLink>
                     <NavLink to="/admin/reports" onClick={() => setIsAdminOpen(false)} className="flex items-center gap-2 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg mx-1 min-h-[40px]"><span>📊</span> Executive Reports</NavLink>
@@ -361,6 +384,9 @@ export default function Navbar() {
               <NavLink to="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>Dashboard</NavLink>
               <NavLink to="/leads" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>Leads List</NavLink>
               <NavLink to="/customers" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>Customers</NavLink>
+              {isAdminOrSuper && (
+                <NavLink to="/admin/users" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>👥 User Directory (+ Add User)</NavLink>
+              )}
               <NavLink to="/pipeline" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>Pipeline</NavLink>
               <NavLink to="/followups" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>Follow-ups</NavLink>
               <NavLink to="/daily-report" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>EOD Report</NavLink>
@@ -375,8 +401,8 @@ export default function Navbar() {
                   ⚙️ Admin Desk Management
                 </div>
                 <div className="grid grid-cols-1 gap-1">
+                  <NavLink to="/admin/users" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-indigo-400 font-bold hover:bg-slate-800 rounded-xl min-h-[44px]"><span>👥</span> User Directory (+ Add User)</NavLink>
                   <NavLink to="/admin/projects" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-300 hover:bg-slate-800 rounded-xl min-h-[44px]"><span>🏢</span> Projects Management</NavLink>
-                  <NavLink to="/admin/users" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-300 hover:bg-slate-800 rounded-xl min-h-[44px]"><span>👥</span> User & Employee Directory</NavLink>
                   <NavLink to="/admin/teams" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-300 hover:bg-slate-800 rounded-xl min-h-[44px]"><span>🛡️</span> Teams & Sales Pods</NavLink>
                   <NavLink to="/admin/import" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-300 hover:bg-slate-800 rounded-xl min-h-[44px]"><span>📥</span> Bulk Lead Import</NavLink>
                   <NavLink to="/admin/reports" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-300 hover:bg-slate-800 rounded-xl min-h-[44px]"><span>📊</span> Executive Reports</NavLink>
