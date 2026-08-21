@@ -1,13 +1,26 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { NavLink, useNavigate } from 'react-router-dom';
+import {
+  Users,
+  AlertTriangle,
+  Flame,
+  Calendar,
+  CheckCircle2,
+  TrendingUp,
+  Clock,
+  Kanban,
+  Bot,
+  Sparkles,
+  X,
+  ChevronRight
+} from 'lucide-react';
 
 import Navbar from '../components/Navbar';
 import useAuth from '../hooks/useAuth';
 import { getDashboardSummary } from '../api/dashboard';
 import { getMyFollowups } from '../api/followups';
 import { getOpportunities } from '../api/opportunities';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Badge, getStageBadgeVariant } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 
@@ -32,6 +45,7 @@ export default function RepDashboard() {
   const navigate = useNavigate();
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'p1' | 'p2' | 'p3'>('all');
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   // Fetch Summary Stats
   const { data: summaryData } = useQuery({
@@ -70,7 +84,7 @@ export default function RepDashboard() {
           opportunityId: oppId,
           priorityLevel: 1,
           typeLabel: '⚠️ OVERDUE ACTION',
-          badgeColor: 'bg-red-500/20 text-red-400 border-red-500/30 animate-pulse',
+          badgeColor: 'bg-red-500/20 text-red-400 border-red-500/30 font-bold',
           customerName: f.opportunity?.customer?.name || f.opportunity?.rawName || 'Lead Opportunity',
           mobile: f.opportunity?.customer?.primaryMobile || 'N/A',
           projectName: f.opportunity?.project?.name || 'Project',
@@ -90,7 +104,7 @@ export default function RepDashboard() {
           opportunityId: o._id,
           priorityLevel: 1,
           typeLabel: '🚨 SLA BREACHED',
-          badgeColor: 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse',
+          badgeColor: 'bg-amber-500/20 text-amber-400 border-amber-500/30 font-bold',
           customerName: o.customer?.name || o.rawName || 'Customer Lead',
           mobile: o.customer?.primaryMobile || 'N/A',
           projectName: o.project?.name || 'Project',
@@ -109,7 +123,7 @@ export default function RepDashboard() {
           opportunityId: o._id,
           priorityLevel: 2,
           typeLabel: '🔥 HOT DEAL',
-          badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+          badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30 font-bold',
           customerName: o.customer?.name || o.rawName || 'Hot Customer',
           mobile: o.customer?.primaryMobile || 'N/A',
           projectName: o.project?.name || 'Project',
@@ -130,7 +144,7 @@ export default function RepDashboard() {
             opportunityId: oppId,
             priorityLevel: 3,
             typeLabel: '📅 SCHEDULED TODAY',
-            badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+            badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30 font-bold',
             customerName: f.opportunity?.customer?.name || f.opportunity?.rawName || 'Scheduled Lead',
             mobile: f.opportunity?.customer?.primaryMobile || 'N/A',
             projectName: f.opportunity?.project?.name || 'Project',
@@ -174,116 +188,144 @@ export default function RepDashboard() {
   const isLoading = loadingFollowups || loadingOpps;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-8 relative overflow-hidden">
-      <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100 font-sans selection:bg-indigo-600 selection:text-white pb-16">
+      
+      {/* TOP NAVIGATION BAR */}
+      <Navbar />
 
-      <div className="max-w-6xl mx-auto relative z-10 space-y-8">
-        <Navbar />
-
-        {/* Dashboard Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold uppercase tracking-widest mb-2">
-              🎯 Sales Rep Action Queue — Section I Compliant
+      {/* MAIN CONTENT AREA */}
+      <main className="max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        
+        {/* DASHBOARD HERO HEADING SECTION */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#131c31] border border-slate-800/80 p-5 sm:p-6 rounded-2xl shadow-sm">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-bold uppercase tracking-wider">
+              <span>Sales Rep Action Workstation</span>
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">
-              Hello, {user?.name}
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              Hello, {user?.name || 'Aparna Tripathy'}
             </h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-slate-400">
               Your prioritized list of required next actions. Overdue & breached items are listed first.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <NavLink
               to="/pipeline"
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/30 flex items-center gap-1.5"
+              className="h-10 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2"
             >
-              <span>📋 Kanban Pipeline →</span>
+              <Kanban className="w-4 h-4" />
+              <span>Kanban Pipeline</span>
             </NavLink>
           </div>
         </div>
 
-        {/* Action Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <Card className="border-slate-800 bg-slate-900/80 backdrop-blur-xl">
-            <CardContent className="p-5">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Active</p>
-              <p className="text-3xl font-extrabold text-white mt-2">{stats?.totalActive ?? opps.length}</p>
-              <p className="text-[11px] text-slate-400 mt-1">Assigned leads</p>
-            </CardContent>
-          </Card>
+        {/* KPI ACTION SUMMARY CARDS ROW */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
+          <div className="p-5 rounded-2xl bg-[#131c31] border border-slate-800/80 shadow-sm relative overflow-hidden group hover:border-slate-700 transition-all">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Total Active
+              </span>
+              <div className="w-2 h-2 rounded-full bg-blue-500 shadow-sm" />
+            </div>
+            <div className="mt-3 flex items-baseline justify-between">
+              <span className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                {stats?.totalActive ?? opps.length}
+              </span>
+              <Users className="w-4 h-4 text-blue-400 opacity-60" />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">Assigned leads</p>
+          </div>
 
-          <Card className="border-slate-800 bg-slate-900/80 backdrop-blur-xl">
-            <CardContent className="p-5">
-              <p className="text-xs font-bold text-red-400 uppercase tracking-wider">P1: Urgent Action</p>
-              <p className="text-3xl font-extrabold text-red-400 mt-2">
+          <div className="p-5 rounded-2xl bg-[#131c31] border border-slate-800/80 shadow-sm relative overflow-hidden group hover:border-slate-700 transition-all">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-red-400">
+                P1: Urgent Action
+              </span>
+              <div className="w-2 h-2 rounded-full bg-red-500 shadow-sm" />
+            </div>
+            <div className="mt-3 flex items-baseline justify-between">
+              <span className="text-2xl sm:text-3xl font-black text-red-400 tracking-tight">
                 {priorityQueue.filter((i) => i.priorityLevel === 1).length}
-              </p>
-              <p className="text-[11px] text-slate-400 mt-1">Overdue & SLA Breached</p>
-            </CardContent>
-          </Card>
+              </span>
+              <AlertTriangle className="w-4 h-4 text-red-400 opacity-60" />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">Overdue & SLA Breached</p>
+          </div>
 
-          <Card className="border-slate-800 bg-slate-900/80 backdrop-blur-xl">
-            <CardContent className="p-5">
-              <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider">P2: Hot Deals</p>
-              <p className="text-3xl font-extrabold text-indigo-300 mt-2">
+          <div className="p-5 rounded-2xl bg-[#131c31] border border-slate-800/80 shadow-sm relative overflow-hidden group hover:border-slate-700 transition-all">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">
+                P2: Hot Deals
+              </span>
+              <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-sm" />
+            </div>
+            <div className="mt-3 flex items-baseline justify-between">
+              <span className="text-2xl sm:text-3xl font-black text-indigo-300 tracking-tight">
                 {priorityQueue.filter((i) => i.priorityLevel === 2).length}
-              </p>
-              <p className="text-[11px] text-slate-400 mt-1">Site Visit & Negotiation</p>
-            </CardContent>
-          </Card>
+              </span>
+              <Flame className="w-4 h-4 text-indigo-400 opacity-60" />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">Site Visit & Negotiation</p>
+          </div>
 
-          <Card className="border-slate-800 bg-slate-900/80 backdrop-blur-xl">
-            <CardContent className="p-5">
-              <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">P3: Scheduled</p>
-              <p className="text-3xl font-extrabold text-emerald-400 mt-2">
+          <div className="p-5 rounded-2xl bg-[#131c31] border border-slate-800/80 shadow-sm relative overflow-hidden group hover:border-slate-700 transition-all">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+                P3: Scheduled
+              </span>
+              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm" />
+            </div>
+            <div className="mt-3 flex items-baseline justify-between">
+              <span className="text-2xl sm:text-3xl font-black text-emerald-400 tracking-tight">
                 {priorityQueue.filter((i) => i.priorityLevel === 3).length}
-              </p>
-              <p className="text-[11px] text-slate-400 mt-1">Pending follow-ups</p>
-            </CardContent>
-          </Card>
+              </span>
+              <Calendar className="w-4 h-4 text-emerald-400 opacity-60" />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">Pending follow-ups</p>
+          </div>
         </div>
 
-        {/* My Performance & Conversion Statistics */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 rounded-2xl bg-indigo-950/40 border border-indigo-500/20 backdrop-blur-xl">
+        {/* PERSONAL PERFORMANCE BANNER */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 rounded-2xl bg-[#131c31] border border-slate-800/80 shadow-sm">
           <div className="space-y-1">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-400">My Conversion Rate</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">My Conversion Rate</p>
             <p className="text-2xl font-black text-white">{perfMetrics.conversionRate}%</p>
-            <p className="text-[11px] text-indigo-300/80">{perfMetrics.wonDeals} deals closed won</p>
+            <p className="text-[11px] text-slate-400">{perfMetrics.wonDeals} deals closed won</p>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400">Site Visits Driven</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Site Visits Driven</p>
             <p className="text-2xl font-black text-emerald-300">{perfMetrics.siteVisits}</p>
             <p className="text-[11px] text-slate-400">Total qualified visits</p>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-cyan-400">Completed Calls</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Completed Calls</p>
             <p className="text-2xl font-black text-cyan-300">{perfMetrics.completedFollowups}</p>
             <p className="text-[11px] text-slate-400">Logged touchpoints</p>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-amber-400">Assigned Pipeline</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Assigned Pipeline</p>
             <p className="text-2xl font-black text-amber-300">{perfMetrics.totalDeals}</p>
             <p className="text-[11px] text-slate-400">Active assigned leads</p>
           </div>
         </div>
 
-        {/* Priority Work Queue Table / List */}
-        <Card className="border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur-xl">
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+        {/* PRIORITY ACTION QUEUE TABLE */}
+        <div className="bg-[#131c31] border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/60 pb-4">
             <div>
-              <CardTitle className="text-lg font-extrabold flex items-center gap-2">
+              <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
                 <span>⚡ Daily Priority Action Queue</span>
-              </CardTitle>
+              </h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 Focus on high-priority items at the top to maintain SLA compliance and pipeline momentum.
               </p>
             </div>
 
             {/* Filter Pill Tabs */}
-            <div className="flex items-center gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800">
+            <div className="flex items-center gap-1.5 p-1 bg-[#0b0f19] rounded-xl border border-slate-800">
               <button
                 onClick={() => setActiveFilter('all')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
@@ -317,19 +359,19 @@ export default function RepDashboard() {
                 P3 Scheduled ({priorityQueue.filter((i) => i.priorityLevel === 3).length})
               </button>
             </div>
-          </CardHeader>
+          </div>
 
-          <CardContent className="p-4 sm:p-6 space-y-3">
+          <div className="space-y-3">
             {isLoading ? (
               <div className="space-y-3 py-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-20 bg-slate-800/40 rounded-xl animate-pulse" />
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-20 bg-slate-900/60 rounded-xl animate-pulse" />
                 ))}
               </div>
             ) : filteredQueue.length === 0 ? (
               <div className="py-12 text-center space-y-2">
-                <div className="text-4xl">🎉</div>
-                <h3 className="text-base font-bold text-slate-200">No Priority Actions Pending</h3>
+                <div className="text-3xl">🎉</div>
+                <h4 className="text-sm font-bold text-slate-200">No Priority Actions Pending</h4>
                 <p className="text-xs text-slate-400 max-w-sm mx-auto">
                   You have completed all urgent follow-ups and SLA touchpoints. Check the Pipeline Kanban board to move deals forward!
                 </p>
@@ -338,34 +380,28 @@ export default function RepDashboard() {
               filteredQueue.map((item) => (
                 <div
                   key={item.id}
-                  className={`p-4 rounded-xl border transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                  className={`p-4 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
                     item.priorityLevel === 1
                       ? 'border-red-500/30 bg-red-500/5 hover:border-red-500/50'
                       : item.priorityLevel === 2
                       ? 'border-indigo-500/20 bg-indigo-500/5 hover:border-indigo-500/40'
-                      : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                      : 'border-slate-800 bg-[#0b0f19]/60 hover:border-slate-700'
                   }`}
                 >
-                  {/* Left Info Column */}
                   <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ${item.badgeColor}`}>
+                      <span className={`px-2 py-0.5 rounded text-[10px] uppercase border ${item.badgeColor}`}>
                         {item.typeLabel}
                       </span>
-
                       <Badge variant={getStageBadgeVariant(item.stage)}>
                         {item.stage ? item.stage.replace('_', ' ') : 'new'}
                       </Badge>
                     </div>
 
-                    <h4 className="text-base font-bold text-slate-100 hover:text-indigo-300 transition-colors truncate">
+                    <h4 className="text-sm font-bold text-slate-100 hover:text-indigo-300 transition-colors truncate">
                       {item.customerName}
                     </h4>
-
-                    <p className="text-xs text-slate-400">
-                      {item.actionText}
-                    </p>
-
+                    <p className="text-xs text-slate-400">{item.actionText}</p>
                     <div className="flex items-center gap-4 text-[11px] text-slate-500 font-mono pt-1">
                       <span>🏙️ {item.projectName}</span>
                       <span>📱 {item.mobile}</span>
@@ -373,14 +409,13 @@ export default function RepDashboard() {
                     </div>
                   </div>
 
-                  {/* Right Action Button */}
                   <div className="shrink-0 flex items-center gap-2">
                     <Button
                       onClick={() => navigate(`/leads/${item.opportunityId}`)}
-                      className={`text-xs h-10 px-4 font-bold shadow-md ${
+                      className={`text-xs h-9 px-4 font-bold shadow-sm ${
                         item.priorityLevel === 1
-                          ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/20'
-                          : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20'
+                          ? 'bg-red-600 hover:bg-red-500 text-white'
+                          : 'bg-indigo-600 hover:bg-indigo-500 text-white'
                       }`}
                     >
                       Take Action →
@@ -389,9 +424,61 @@ export default function RepDashboard() {
                 </div>
               ))
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+
+      </main>
+
+      {/* ── INTEGRATED OMVIK SALES ASSISTANT FLOATING WIDGET ─────────────────────── */}
+      <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end">
+        {isAssistantOpen && (
+          <div className="mb-3 w-80 sm:w-96 rounded-2xl bg-[#0d1322] border border-slate-800 shadow-2xl backdrop-blur-2xl p-4 text-xs space-y-3 animate-in fade-in slide-in-from-bottom-5 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white">OMVIK SALES ASSISTANT</h4>
+                  <p className="text-[10px] text-emerald-400 font-semibold">● Active Nudge Engine</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAssistantOpen(false)}
+                className="text-slate-400 hover:text-white p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[#131c31] border border-slate-800 space-y-1.5 text-slate-300">
+              <div className="flex items-center gap-1.5 text-amber-400 font-bold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Daily Action Summary</span>
+              </div>
+              <p className="text-[11px] leading-relaxed">
+                Fantastic job! Your daily action inbox is clean today. No immediate SLA escalations required.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
+              <span>SLA Health: <strong className="text-emerald-400">Optimal</strong></span>
+              <NavLink to="/followups" className="text-indigo-400 hover:underline font-bold">
+                View Tasks →
+              </NavLink>
+            </div>
+          </div>
+        )}
+
+        <button
+          onClick={() => setIsAssistantOpen(!isAssistantOpen)}
+          className="h-12 px-4 rounded-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-xs shadow-xl shadow-indigo-600/30 flex items-center gap-2 border border-white/20 transition-all transform hover:scale-105 active:scale-95"
+        >
+          <Bot className="w-5 h-5 text-amber-300" />
+          <span className="hidden sm:inline">OMVIK ASSISTANT</span>
+        </button>
       </div>
+
     </div>
   );
 }
