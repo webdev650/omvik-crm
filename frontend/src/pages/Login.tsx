@@ -71,6 +71,9 @@ export default function Login() {
         if (response.data.token) {
           localStorage.setItem('omvik_token', response.data.token);
         }
+        if (response.data.greeting && response.data.user.nudgesEnabled !== false) {
+          sessionStorage.setItem('omvik_mascot_greeting', response.data.greeting);
+        }
         login(response.data.user);
         navigate('/dashboard');
       }

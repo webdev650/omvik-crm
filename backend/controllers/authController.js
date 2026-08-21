@@ -2,6 +2,8 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { getOrCreateSettings } = require('../models/Settings');
+const { getRandomMascotMessage } = require('../utils/mascotMessages');
 const sendEmail = require('../utils/sendEmail');
 const sendAdminAlert = require('../utils/sendAdminAlert');
 
@@ -22,6 +24,36 @@ const generateTokenAndSetCookie = (req, res, userId) => {
   });
 
   return token;
+};
+
+// Helper: Determine Login Time Category
+const parseHHMM = (str, defaultMins) => {
+  if (!str || typeof str !== 'string' || !str.includes(':')) return defaultMins;
+  const [h, m] = str.split(':').map(Number);
+  return h * 60 + m;
+};
+
+const determineLoginCategory = (settings) => {
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const workStartMins = parseHHMM(settings.workStartTime, 10 * 60);
+  const graceMins = Number(settings.workStartGraceMinutes) || 30;
+  const workCutoffMins = workStartMins + graceMins;
+
+  const lunchStartMins = parseHHMM(settings.lunchWindowStart, 13 * 60);
+  const lunchEndMins = parseHHMM(settings.lunchWindowEnd, 14 * 60);
+
+  if (currentMinutes < 7 * 60 || currentMinutes >= 20 * 60) {
+    return 'lateNightLogin';
+  }
+  if (currentMinutes >= lunchStartMins && currentMinutes <= lunchEndMins) {
+    return 'lunchLogin';
+  }
+  if (currentMinutes <= workCutoffMins) {
+    return 'onTimeLogin';
+  }
+  return 'lateLogin';
 };
 
 // @desc    Register a new user
@@ -87,10 +119,19 @@ const login = async (req, res, next) => {
     const userObj = user.toObject();
     delete userObj.password;
 
+    // Mascot Greeting Category Determination
+    let greeting = null;
+    if (user.nudgesEnabled !== false) {
+      const settings = await getOrCreateSettings();
+      const category = determineLoginCategory(settings);
+      greeting = getRandomMascotMessage(category, user.name);
+    }
+
     res.json({
       success: true,
       user: userObj,
-      token
+      token,
+      greeting
     });
   } catch (error) {
     next(error);
@@ -114,13 +155,24 @@ const logout = async (req, res) => {
   const host = req?.headers?.host || '';
   const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
   const isProd = process.env.NODE_ENV === 'production' || !isLocal;
+
+  let farewell = null;
+  if (req.user && req.user.nudgesEnabled !== false) {
+    farewell = getRandomMascotMessage('logout', req.user.name);
+  }
+
   res.cookie('token', '', {
     httpOnly: true,
     sameSite: isProd ? 'none' : 'lax',
     secure: isProd,
     expires: new Date(0)
   });
-  res.json({ success: true, message: 'Logged out successfully' });
+
+  res.json({
+    success: true,
+    message: 'Logged out successfully',
+    farewell
+  });
 };
 
 // @desc    Change password for logged-in user (clears mustChangePassword)
@@ -207,7 +259,7 @@ const forgotPassword = async (req, res, next) => {
         html: htmlMessage
       });
 
-      // Informational admin alert (DOES NOT contain OTP code for security)
+      // Informational admin alert
       sendAdminAlert({
         subject: `Password Reset Requested for ${user.name}`,
         message: `${user.name} (${user.email}) requested a password reset at ${new Date().toLocaleTimeString()}.`

@@ -36,14 +36,24 @@ export function useAuth() {
     setUser(userData);
   };
 
-  const logoutUser = async () => {
+  const logoutUser = async (onComplete?: () => void) => {
     try {
-      await api.post('/auth/logout');
+      const res = await api.post('/auth/logout');
+      if (res.data?.farewell && user?.nudgesEnabled !== false) {
+        window.dispatchEvent(
+          new CustomEvent('omvik_mascot_nudge', {
+            detail: { message: res.data.farewell, isFarewell: true }
+          })
+        );
+        // Brief ~2s delay so user reads the mascot farewell message
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
     } catch (e) {
       console.error('Logout error:', e);
     } finally {
       queryClient.setQueryData(['authUser'], null);
       storeLogout();
+      if (onComplete) onComplete();
     }
   };
 

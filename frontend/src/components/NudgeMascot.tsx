@@ -21,12 +21,22 @@ export default function NudgeMascot() {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     setIsReducedMotion(mediaQuery.matches);
 
-    // Check if user disabled nudges or dismissed today
+    // Check if user disabled nudges
     if (!user || user.nudgesEnabled === false) {
       setIsVisible(false);
       return;
     }
 
+    // 1. Immediate Login Greeting check from sessionStorage
+    const pendingGreeting = sessionStorage.getItem('omvik_mascot_greeting');
+    if (pendingGreeting) {
+      setMessage(pendingGreeting);
+      setIsVisible(true);
+      sessionStorage.removeItem('omvik_mascot_greeting');
+      return;
+    }
+
+    // 2. Check if user dismissed nudges today
     const todayStr = new Date().toISOString().split('T')[0];
     const dismissedToday = localStorage.getItem('omvik_nudge_dismissed_today');
     if (dismissedToday === todayStr) {
@@ -34,7 +44,7 @@ export default function NudgeMascot() {
       return;
     }
 
-    // Set timer to trigger mascot nudge popup after 8 seconds on turn/load
+    // 3. Set timer to trigger mascot nudge popup after 8 seconds on turn/load
     const timer = setTimeout(() => {
       const perf = data?.performance || {};
       const overdue = perf.followupsOverdue || 0;
@@ -53,6 +63,19 @@ export default function NudgeMascot() {
 
     return () => clearTimeout(timer);
   }, [user, data]);
+
+  // Listen for dynamic Mascot Nudge Events (e.g. Login greeting / Logout farewell)
+  useEffect(() => {
+    const handleMascotEvent = (e: any) => {
+      if (e.detail?.message && user?.nudgesEnabled !== false) {
+        setMessage(e.detail.message);
+        setIsVisible(true);
+      }
+    };
+
+    window.addEventListener('omvik_mascot_nudge', handleMascotEvent);
+    return () => window.removeEventListener('omvik_mascot_nudge', handleMascotEvent);
+  }, [user]);
 
   const handleDismiss = () => {
     setIsVisible(false);
@@ -81,10 +104,10 @@ export default function NudgeMascot() {
         </button>
 
         <div className="flex items-center gap-2 text-xs font-bold text-indigo-400 uppercase tracking-widest">
-          <span>🤖 Omvik Sales Assistant</span>
+          <span>🤖 Omvik Assistant</span>
         </div>
 
-        <p className="text-xs text-slate-200 leading-relaxed pr-4">
+        <p className="text-xs text-slate-200 leading-relaxed pr-4 font-medium">
           {message}
         </p>
 
