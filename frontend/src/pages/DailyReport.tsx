@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { FileText, AlertTriangle, Send } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { submitDailyReport, getTodayReport } from '../api/dailyReports';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
@@ -61,57 +62,55 @@ export default function DailyReportPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-8 relative overflow-hidden font-sans">
-      {/* Background Accent Orbs */}
-      <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100 font-sans pb-16">
+      <Navbar />
 
-      <div className="max-w-3xl mx-auto relative z-10 space-y-8">
-        <Navbar />
-
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold uppercase tracking-widest mb-2">
-              📝 End-of-Day (EOD) Submissions
+      <main className="max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Page Hero Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#131c31] border border-slate-800/80 p-5 sm:p-6 rounded-2xl shadow-sm max-w-4xl mx-auto">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[11px] font-bold uppercase tracking-wider">
+              <FileText className="w-3.5 h-3.5" />
+              <span>End-of-Day (EOD) Submission</span>
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
               Daily Activity Report
             </h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-slate-400">
               Submit your daily sales accomplishments. Figures are automatically cross-referenced with your logged activities.
             </p>
           </div>
         </div>
 
-        {/* Discrepancy Notice Alert Banner */}
-        {discrepancyNotice && (
-          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 space-y-2">
-            <div className="flex items-center gap-2 font-bold text-sm">
-              <span>⚠️ System Activity Cross-Check Note</span>
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Discrepancy Notice Alert Banner */}
+          {discrepancyNotice && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 space-y-1.5">
+              <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-amber-400">
+                <AlertTriangle className="w-4 h-4" />
+                <span>System Activity Cross-Check Note</span>
+              </div>
+              <p className="text-xs text-amber-200/90 leading-relaxed">
+                Your reported numbers differ from what's logged in the system ({discrepancyNotice}). Your report has been saved, and your administrator has been notified to review any additional notes provided.
+              </p>
             </div>
-            <p className="text-xs text-amber-200/90 leading-relaxed">
-              Your reported numbers differ from what's logged in the system ({discrepancyNotice}). Your report has been saved, and your administrator has been notified to review any additional notes provided.
-            </p>
-          </div>
-        )}
+          )}
 
-        {/* Main Submission Card */}
-        <Card className="border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur-xl">
-          <CardHeader>
-            <CardTitle>Today's Accomplishments Summary</CardTitle>
-            <CardDescription>
-              Enter the total calls, follow-ups, and site visits completed today.
-            </CardDescription>
-          </CardHeader>
+          {/* Main Submission Card */}
+          <div className="bg-[#131c31] border border-slate-800/80 rounded-2xl p-6 shadow-sm space-y-6">
+            <div className="border-b border-slate-800/60 pb-4">
+              <h3 className="text-lg font-bold text-white">Today's Accomplishments Summary</h3>
+              <p className="text-xs text-slate-400">
+                Enter the total calls, follow-ups, and site visits completed today.
+              </p>
+            </div>
 
-          <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                 
                 {/* Calls Input */}
                 <div className="space-y-2">
-                  <Label htmlFor="calls" className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <Label htmlFor="calls" className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                     📞 Total Calls Made
                   </Label>
                   <Input
@@ -121,13 +120,13 @@ export default function DailyReportPage() {
                     value={calls}
                     onChange={(e) => setCalls(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="0"
-                    className="bg-slate-950 border-slate-800 text-slate-100 font-mono text-lg font-bold text-center h-12"
+                    className="bg-[#0b0f19] border-slate-800 text-slate-100 font-mono text-xl font-black text-center h-12 rounded-xl focus:border-indigo-600"
                   />
                 </div>
 
                 {/* Followups Input */}
                 <div className="space-y-2">
-                  <Label htmlFor="followups" className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <Label htmlFor="followups" className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                     ⏰ Follow-ups Completed
                   </Label>
                   <Input
@@ -137,13 +136,13 @@ export default function DailyReportPage() {
                     value={followups}
                     onChange={(e) => setFollowups(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="0"
-                    className="bg-slate-950 border-slate-800 text-slate-100 font-mono text-lg font-bold text-center h-12"
+                    className="bg-[#0b0f19] border-slate-800 text-slate-100 font-mono text-xl font-black text-center h-12 rounded-xl focus:border-indigo-600"
                   />
                 </div>
 
                 {/* Site Visits Input */}
                 <div className="space-y-2">
-                  <Label htmlFor="siteVisits" className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <Label htmlFor="siteVisits" className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                     🚗 Site Visits Conducted
                   </Label>
                   <Input
@@ -153,7 +152,7 @@ export default function DailyReportPage() {
                     value={siteVisits}
                     onChange={(e) => setSiteVisits(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="0"
-                    className="bg-slate-950 border-slate-800 text-slate-100 font-mono text-lg font-bold text-center h-12"
+                    className="bg-[#0b0f19] border-slate-800 text-slate-100 font-mono text-xl font-black text-center h-12 rounded-xl focus:border-indigo-600"
                   />
                 </div>
 
@@ -161,7 +160,7 @@ export default function DailyReportPage() {
 
               {/* Notes Field */}
               <div className="space-y-2">
-                <Label htmlFor="notes" className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <Label htmlFor="notes" className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                   💬 Daily Summary & Notes (Optional)
                 </Label>
                 <textarea
@@ -170,21 +169,22 @@ export default function DailyReportPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Mention key outcomes, client feedback, or explanations if calls were made via personal phone..."
-                  className="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-indigo-500"
+                  className="w-full p-3.5 rounded-xl bg-[#0b0f19] border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-indigo-600"
                 />
               </div>
 
               <Button
                 type="submit"
                 disabled={mutation.isPending}
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-12 text-sm"
+                className="w-full h-12 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2"
               >
-                {mutation.isPending ? 'Submitting Report...' : 'Submit End-of-Day Report'}
+                <Send className="w-4 h-4" />
+                <span>{mutation.isPending ? 'Submitting Report...' : 'Submit End-of-Day Report'}</span>
               </Button>
             </form>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

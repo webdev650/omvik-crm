@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-
+import { Home, Calendar, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { getMySiteVisits, updateSiteVisit } from '../api/siteVisits';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
-import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
@@ -29,12 +28,12 @@ function SiteVisitRow({ visit, onComplete }: { visit: any; onComplete: (visit: a
 
   return (
     <div
-      className={`flex flex-col sm:flex-row sm:items-start justify-between gap-4 p-4 rounded-2xl border transition-all duration-200 ${
+      className={`flex flex-col sm:flex-row sm:items-start justify-between gap-4 p-4 rounded-xl border transition-all ${
         isCompleted
           ? 'border-emerald-500/20 bg-emerald-500/5'
           : visit.status === 'no_show' || visit.status === 'cancelled'
           ? 'border-red-500/20 bg-red-500/5'
-          : 'border-slate-800 bg-slate-900/60 hover:border-indigo-500/30'
+          : 'border-slate-800 bg-[#0b0f19]/60 hover:border-indigo-500/30'
       }`}
     >
       {/* Icon & Content */}
@@ -51,7 +50,7 @@ function SiteVisitRow({ visit, onComplete }: { visit: any; onComplete: (visit: a
           <div className="flex items-center gap-2 flex-wrap">
             <Link
               to={`/leads/${oppId}`}
-              className="text-base font-bold text-slate-100 hover:text-indigo-300 transition-colors truncate"
+              className="text-sm font-bold text-slate-100 hover:text-indigo-300 transition-colors truncate"
             >
               {visit.opportunity?.customer?.name || visit.opportunity?.rawName || 'Lead Opportunity'}
             </Link>
@@ -77,7 +76,7 @@ function SiteVisitRow({ visit, onComplete }: { visit: any; onComplete: (visit: a
           </p>
 
           {visit.feedback?.notes && (
-            <p className="text-xs text-slate-300 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 mt-1">
+            <p className="text-xs text-slate-300 bg-[#0b0f19]/80 p-2.5 rounded-xl border border-slate-800/80 mt-1">
               {visit.feedback.notes}
             </p>
           )}
@@ -105,7 +104,7 @@ function SiteVisitRow({ visit, onComplete }: { visit: any; onComplete: (visit: a
       {(visit.status === 'planned' || visit.status === 'confirmed') && (
         <Button
           onClick={() => onComplete(visit)}
-          className="shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-9 px-4 font-bold shadow-md shadow-emerald-600/20"
+          className="shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-9 px-4 font-bold rounded-xl shadow-md shadow-emerald-600/20"
         >
           ✓ Complete Visit
         </Button>
@@ -124,8 +123,8 @@ function EmptyState({ status }: { status: string }) {
   const { icon, text } = map[status] ?? { icon: '📂', text: 'Nothing here.' };
   return (
     <div className="py-12 text-center space-y-2">
-      <div className="text-4xl">{icon}</div>
-      <p className="text-sm text-slate-400 font-medium">{text}</p>
+      <div className="text-3xl">{icon}</div>
+      <p className="text-xs font-semibold text-slate-400">{text}</p>
     </div>
   );
 }
@@ -194,34 +193,36 @@ export default function MySiteVisits() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-8 relative overflow-hidden">
-      <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100 font-sans pb-16">
+      <Navbar />
 
-      <div className="max-w-4xl mx-auto relative z-10 space-y-6">
-        <Navbar />
-
-        {/* Page Header */}
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-white flex items-center gap-2">
-            <span>🏡 My Site Visits</span>
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Planned tours and completed feedback for all your assigned leads.
-          </p>
-        </div>
-
-        {/* Summary Pills */}
-        {!isLoading && !isError && (
-          <div className="flex flex-wrap gap-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/10 border border-indigo-500/30 text-indigo-400">
-              📅 {planned.length} Planned / Confirmed
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-              ✓ {completed.length} Completed
-            </span>
+      <main className="max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Page Hero Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#131c31] border border-slate-800/80 p-5 sm:p-6 rounded-2xl shadow-sm">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[11px] font-bold uppercase tracking-wider">
+              <Home className="w-3.5 h-3.5" />
+              <span>Site Tour Management</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              My Site Visits
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-400">
+              Planned tours and completed feedback for all your assigned leads.
+            </p>
           </div>
-        )}
+
+          {!isLoading && !isError && (
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/10 border border-indigo-500/30 text-indigo-400">
+                📅 {planned.length} Planned / Confirmed
+              </span>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                ✓ {completed.length} Completed
+              </span>
+            </div>
+          )}
+        </div>
 
         {errorBanner && (
           <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold flex items-center justify-between">
@@ -234,96 +235,90 @@ export default function MySiteVisits() {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 w-full bg-slate-800/40 rounded-2xl animate-pulse" />
+              <div key={i} className="h-24 w-full bg-[#131c31] border border-slate-800/80 rounded-2xl animate-pulse" />
             ))}
           </div>
         ) : isError ? (
-          <div className="p-6 rounded-2xl border border-red-500/20 bg-red-500/5 text-red-400 text-sm">
+          <div className="p-6 rounded-2xl border border-red-500/20 bg-red-500/5 text-red-400 text-xs font-semibold">
             Failed to load site visits. Please refresh the page.
           </div>
         ) : (
-          <Tabs defaultValue={planned.length > 0 ? 'planned' : 'completed'}>
-            <TabsList>
-              <TabsTrigger value="planned">
-                Planned
-                {planned.length > 0 && (
-                  <span className="ml-2 px-1.5 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold leading-none">
-                    {planned.length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="completed">
-                Completed
-                {completed.length > 0 && (
-                  <span className="ml-2 px-1.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold leading-none">
-                    {completed.length}
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
-
-            {/* ── Planned Tab ── */}
-            <TabsContent value="planned">
-              <Card className="border-slate-800 bg-slate-900/60 backdrop-blur-xl">
-                <CardContent className="p-4 space-y-3">
-                  {planned.length === 0 ? (
-                    <EmptyState status="planned" />
-                  ) : (
-                    planned.map((visit) => (
-                      <SiteVisitRow
-                        key={visit._id}
-                        visit={visit}
-                        onComplete={(v) => {
-                          setErrorBanner(null);
-                          setCompleteVisit(v);
-                          setNextActionInput(v.nextAction || '');
-                        }}
-                      />
-                    ))
+          <div className="bg-[#131c31] border border-slate-800/80 rounded-2xl p-5 shadow-sm space-y-4">
+            <Tabs defaultValue={planned.length > 0 ? 'planned' : 'completed'}>
+              <TabsList className="bg-[#0b0f19] p-1 border border-slate-800 rounded-xl">
+                <TabsTrigger value="planned" className="text-xs font-bold">
+                  Planned
+                  {planned.length > 0 && (
+                    <span className="ml-2 px-1.5 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold">
+                      {planned.length}
+                    </span>
                   )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* ── Completed Tab ── */}
-            <TabsContent value="completed">
-              <Card className="border-slate-800 bg-slate-900/60 backdrop-blur-xl">
-                <CardContent className="p-4 space-y-3">
-                  {completed.length === 0 ? (
-                    <EmptyState status="completed" />
-                  ) : (
-                    completed.map((visit) => (
-                      <SiteVisitRow
-                        key={visit._id}
-                        visit={visit}
-                        onComplete={() => {}}
-                      />
-                    ))
+                </TabsTrigger>
+                <TabsTrigger value="completed" className="text-xs font-bold">
+                  Completed
+                  {completed.length > 0 && (
+                    <span className="ml-2 px-1.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold">
+                      {completed.length}
+                    </span>
                   )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Planned Tab */}
+              <TabsContent value="planned" className="pt-3 space-y-3">
+                {planned.length === 0 ? (
+                  <EmptyState status="planned" />
+                ) : (
+                  planned.map((visit) => (
+                    <SiteVisitRow
+                      key={visit._id}
+                      visit={visit}
+                      onComplete={(v) => {
+                        setErrorBanner(null);
+                        setCompleteVisit(v);
+                        setNextActionInput(v.nextAction || '');
+                      }}
+                    />
+                  ))
+                )}
+              </TabsContent>
+
+              {/* Completed Tab */}
+              <TabsContent value="completed" className="pt-3 space-y-3">
+                {completed.length === 0 ? (
+                  <EmptyState status="completed" />
+                ) : (
+                  completed.map((visit) => (
+                    <SiteVisitRow
+                      key={visit._id}
+                      visit={visit}
+                      onComplete={() => {}}
+                    />
+                  ))
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
         )}
 
-        {/* ── Mandatory Completion Feedback Modal ── */}
+        {/* Completion Feedback Modal */}
         {completeVisit && (
           <Dialog open={!!completeVisit} onOpenChange={() => setCompleteVisit(null)}>
-            <DialogContent>
+            <DialogContent className="bg-[#0d1322] border-slate-800 text-slate-100 rounded-2xl">
               <DialogHeader>
-                <DialogTitle>📝 Complete Site Visit Feedback (Section AE)</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-base font-bold text-white">📝 Complete Site Visit Feedback</DialogTitle>
+                <DialogDescription className="text-xs text-slate-400">
                   Record client reaction, interest level, and mandatory next action.
                 </DialogDescription>
               </DialogHeader>
 
-              <form onSubmit={handleCompleteSubmit} className="space-y-5 pt-2">
+              <form onSubmit={handleCompleteSubmit} className="space-y-4 pt-2">
                 {/* Radio Group 1: Overall Response */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-slate-300">
                     Overall Response <span className="text-red-400">*</span>
                   </Label>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-3 gap-2.5">
                     {[
                       { id: 'liked', label: '👍 Liked', color: 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400' },
                       { id: 'neutral', label: '😐 Neutral', color: 'border-amber-500/50 bg-amber-500/10 text-amber-400' },
@@ -333,10 +328,10 @@ export default function MySiteVisits() {
                         key={item.id}
                         type="button"
                         onClick={() => setFeedbackResponse(item.id as any)}
-                        className={`p-3 rounded-xl border text-xs font-bold transition-all text-center ${
+                        className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-center ${
                           feedbackResponse === item.id
                             ? `${item.color} ring-2 ring-indigo-500/40 shadow-lg`
-                            : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200'
+                            : 'border-slate-800 bg-[#0b0f19] text-slate-400 hover:text-slate-200'
                         }`}
                       >
                         {item.label}
@@ -346,11 +341,11 @@ export default function MySiteVisits() {
                 </div>
 
                 {/* Radio Group 2: Interest Level */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-slate-300">
                     Interest Level <span className="text-red-400">*</span>
                   </Label>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-3 gap-2.5">
                     {[
                       { id: 'high', label: '🔥 High', color: 'border-indigo-500/50 bg-indigo-500/10 text-indigo-300' },
                       { id: 'medium', label: '⚡ Medium', color: 'border-cyan-500/50 bg-cyan-500/10 text-cyan-300' },
@@ -360,10 +355,10 @@ export default function MySiteVisits() {
                         key={item.id}
                         type="button"
                         onClick={() => setFeedbackInterest(item.id as any)}
-                        className={`p-3 rounded-xl border text-xs font-bold transition-all text-center ${
+                        className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-center ${
                           feedbackInterest === item.id
                             ? `${item.color} ring-2 ring-indigo-500/40 shadow-lg`
-                            : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:text-slate-200'
+                            : 'border-slate-800 bg-[#0b0f19] text-slate-400 hover:text-slate-200'
                         }`}
                       >
                         {item.label}
@@ -373,13 +368,15 @@ export default function MySiteVisits() {
                 </div>
 
                 {/* Select: Primary Objection */}
-                <div className="space-y-2">
-                  <Label htmlFor="objection">Primary Objection <span className="text-slate-500 font-normal text-xs">(optional)</span></Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="objection" className="text-xs font-bold text-slate-300">
+                    Primary Objection <span className="text-slate-500 font-normal text-xs">(optional)</span>
+                  </Label>
                   <select
                     id="objection"
                     value={feedbackObjection}
                     onChange={(e) => setFeedbackObjection(e.target.value)}
-                    className="flex h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none"
+                    className="flex h-10 w-full rounded-xl border border-slate-800 bg-[#0b0f19] px-3 text-xs text-slate-100 focus:border-indigo-600 focus:outline-none"
                   >
                     <option value="price">Price / Budget</option>
                     <option value="location">Location / Accessibility</option>
@@ -395,35 +392,40 @@ export default function MySiteVisits() {
                 </div>
 
                 {/* Text Input: Next Action (Required) */}
-                <div className="space-y-2">
-                  <Label htmlFor="nextAction">Mandatory Next Action <span className="text-red-400">*</span></Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="nextAction" className="text-xs font-bold text-slate-300">
+                    Mandatory Next Action <span className="text-red-400">*</span>
+                  </Label>
                   <input
                     id="nextAction"
                     type="text"
                     placeholder="e.g. Send revised pricing sheet with floor rise discount"
                     value={nextActionInput}
                     onChange={(e) => setNextActionInput(e.target.value)}
-                    className="flex h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-4 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none"
+                    className="flex h-10 w-full rounded-xl border border-slate-800 bg-[#0b0f19] px-3.5 text-xs text-slate-100 focus:border-indigo-600 focus:outline-none"
                     required
                   />
                 </div>
 
                 {/* Textarea: Notes */}
-                <div className="space-y-2">
-                  <Label htmlFor="feedbackNotes">Visit Notes <span className="text-slate-500 font-normal text-xs">(optional)</span></Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="feedbackNotes" className="text-xs font-bold text-slate-300">
+                    Visit Notes <span className="text-slate-500 font-normal text-xs">(optional)</span>
+                  </Label>
                   <Textarea
                     id="feedbackNotes"
                     placeholder="Key observations during tour..."
                     value={feedbackNotes}
                     onChange={(e) => setFeedbackNotes(e.target.value)}
+                    className="bg-[#0b0f19] border-slate-800 text-xs rounded-xl focus:border-indigo-600"
                   />
                 </div>
 
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setCompleteVisit(null)} className="text-xs h-9">
+                <DialogFooter className="pt-2">
+                  <Button type="button" variant="outline" onClick={() => setCompleteVisit(null)} className="text-xs h-9 rounded-xl">
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={completeMutation.isPending} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-9 px-4 font-bold">
+                  <Button type="submit" disabled={completeMutation.isPending} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-9 px-4 font-bold rounded-xl">
                     {completeMutation.isPending ? 'Saving...' : 'Complete & Save Feedback'}
                   </Button>
                 </DialogFooter>
@@ -431,7 +433,7 @@ export default function MySiteVisits() {
             </DialogContent>
           </Dialog>
         )}
-      </div>
+      </main>
     </div>
   );
 }
