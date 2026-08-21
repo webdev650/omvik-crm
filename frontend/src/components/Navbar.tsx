@@ -1,7 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Home,
+  User,
+  BarChart3,
+  Calendar,
+  FileText,
+  Palmtree,
+  Settings,
+  KeyRound,
+  LogOut,
+  Flame,
+  ShieldCheck,
+  ChevronRight,
+  Sparkles,
+  Users,
+  Building2,
+  Inbox,
+  CheckSquare
+} from 'lucide-react';
 import useAuth from '../hooks/useAuth';
-import { Button } from './ui/button';
 import NotificationBell from './NotificationBell';
 import { searchGlobal } from '../api/search';
 
@@ -42,6 +61,7 @@ export default function Navbar() {
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -312,7 +332,7 @@ export default function Navbar() {
         </nav>
       </div>
 
-      {/* User Profile Dropdown Menu & Notifications (Available to EVERY role) */}
+      {/* USER PROFILE FLYOUT DRAWER (MATCHING PINTEREST SLEEK GLASS REFERENCE DESIGN) */}
       <div className="flex items-center gap-3">
         <NotificationBell />
 
@@ -320,9 +340,9 @@ export default function Navbar() {
           <button
             type="button"
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="flex items-center gap-2.5 p-1.5 px-2.5 rounded-xl border border-slate-800 bg-slate-900/80 hover:bg-slate-800/80 transition-all cursor-pointer shadow-md"
+            className="flex items-center gap-2.5 p-1.5 px-3 rounded-2xl border border-slate-800/80 bg-slate-900/90 hover:bg-slate-800/80 transition-all cursor-pointer shadow-lg hover:border-indigo-500/40 group"
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-blue-600 flex items-center justify-center font-bold text-white text-xs shadow-md shadow-indigo-600/20">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-600 flex items-center justify-center font-bold text-white text-xs shadow-md shadow-indigo-600/30 group-hover:scale-105 transition-transform">
               {user?.name?.charAt(0).toUpperCase() || 'U'}
             </div>
             <div className="hidden md:flex flex-col text-left pr-1">
@@ -331,54 +351,210 @@ export default function Navbar() {
                 {user?.employeeId || user?.role?.toUpperCase()}
               </span>
             </div>
-            <span className="text-[10px] text-slate-400">▼</span>
+            <span className="text-[10px] text-slate-400 group-hover:text-slate-200 transition-colors">▼</span>
           </button>
 
-          {isUserMenuOpen && (
-            <div className="absolute right-0 mt-2 w-52 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl backdrop-blur-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100 space-y-1">
-              <div className="px-3 py-1.5 border-b border-slate-800/60 mb-1">
-                <p className="text-xs font-bold text-slate-100 truncate">{user?.name}</p>
-                <div className="flex items-center justify-between mt-0.5">
-                  <span className="text-[10px] font-mono text-indigo-400 font-bold">{user?.employeeId || '—'}</span>
-                  <span className="text-[9px] uppercase font-bold text-slate-400">{user?.role?.replace('_', ' ')}</span>
+          {/* SLEEK PINTEREST-STYLE GLASS PROFILE DRAWER */}
+          <AnimatePresence>
+            {isUserMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="absolute right-0 mt-3 w-80 rounded-[28px] bg-[#090d19]/95 border border-slate-800/90 shadow-[0_15px_50px_rgba(0,0,0,0.8)] backdrop-blur-3xl p-4 z-50 space-y-3"
+              >
+                {/* 1. PROFILE HEADER CARD */}
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-900/90 via-slate-900/50 to-indigo-950/40 border border-slate-800/80 flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-blue-500 p-0.5 shadow-lg shadow-indigo-600/30 flex-shrink-0">
+                    <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center font-black text-white text-base">
+                      {user?.name?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-xs font-bold text-white truncate">{user?.name}</h4>
+                    <p className="text-[11px] text-slate-400 truncate">{user?.email}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-mono">
+                        {user?.employeeId || 'SYS'}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-800 text-slate-300 uppercase tracking-wider">
+                        {user?.role?.replace('_', ' ')}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <NavLink
-                to="/profile"
-                onClick={() => setIsUserMenuOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg mx-1 transition-colors ${
-                    isActive ? 'bg-indigo-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }`
-                }
-              >
-                <span>👤</span> My Profile & ID
-              </NavLink>
+                {/* 2. PILL-SHAPED NAVIGATION MENU ITEMS (MATCHING PINTEREST UI) */}
+                <div className="space-y-1.5 pt-1">
+                  
+                  {/* Home / Dashboard */}
+                  <NavLink
+                    to="/dashboard"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center justify-between p-2.5 px-3.5 rounded-2xl text-xs font-semibold transition-all duration-200 shadow-sm ${
+                        isActive
+                          ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-blue-600 text-white font-bold shadow-lg shadow-indigo-600/30 border border-white/20'
+                          : 'bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800/80 hover:text-white hover:border-slate-700'
+                      }`
+                    }
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-xl bg-slate-800/80 text-indigo-400">
+                        <Home className="w-4 h-4" />
+                      </div>
+                      <span>Home Dashboard</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                  </NavLink>
 
-              <NavLink
-                to="/performance"
-                onClick={() => setIsUserMenuOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg mx-1 transition-colors ${
-                    isActive ? 'bg-indigo-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }`
-                }
-              >
-                <span>📊</span> My Performance
-              </NavLink>
+                  {/* Profile */}
+                  <NavLink
+                    to="/profile"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center justify-between p-2.5 px-3.5 rounded-2xl text-xs font-semibold transition-all duration-200 shadow-sm ${
+                        isActive
+                          ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-blue-600 text-white font-bold shadow-lg shadow-indigo-600/30 border border-white/20'
+                          : 'bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800/80 hover:text-white hover:border-slate-700'
+                      }`
+                    }
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-xl bg-slate-800/80 text-indigo-400">
+                        <User className="w-4 h-4" />
+                      </div>
+                      <span>Your Profile & ID</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                  </NavLink>
 
-              <button
-                onClick={() => {
-                  setIsUserMenuOpen(false);
-                  handleLogout();
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-lg mx-1 text-left transition-colors cursor-pointer"
-              >
-                <span>🚪</span> Sign Out
-              </button>
-            </div>
-          )}
+                  {/* Performance */}
+                  <NavLink
+                    to="/performance"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center justify-between p-2.5 px-3.5 rounded-2xl text-xs font-semibold transition-all duration-200 shadow-sm ${
+                        isActive
+                          ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-blue-600 text-white font-bold shadow-lg shadow-indigo-600/30 border border-white/20'
+                          : 'bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800/80 hover:text-white hover:border-slate-700'
+                      }`
+                    }
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-xl bg-slate-800/80 text-indigo-400">
+                        <BarChart3 className="w-4 h-4" />
+                      </div>
+                      <span>My Performance</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                  </NavLink>
+
+                  {/* Followups */}
+                  <NavLink
+                    to="/followups"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center justify-between p-2.5 px-3.5 rounded-2xl text-xs font-semibold transition-all duration-200 shadow-sm ${
+                        isActive
+                          ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-blue-600 text-white font-bold shadow-lg shadow-indigo-600/30 border border-white/20'
+                          : 'bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800/80 hover:text-white hover:border-slate-700'
+                      }`
+                    }
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-xl bg-slate-800/80 text-indigo-400">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <span>My Scheduled Follow-ups</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                  </NavLink>
+
+                  {/* Daily EOD Report */}
+                  <NavLink
+                    to="/daily-report"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center justify-between p-2.5 px-3.5 rounded-2xl text-xs font-semibold transition-all duration-200 shadow-sm ${
+                        isActive
+                          ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-blue-600 text-white font-bold shadow-lg shadow-indigo-600/30 border border-white/20'
+                          : 'bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800/80 hover:text-white hover:border-slate-700'
+                      }`
+                    }
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-xl bg-slate-800/80 text-indigo-400">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <span>My Daily EOD Report</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                  </NavLink>
+
+                  {/* Leave & SLA */}
+                  <NavLink
+                    to="/leave"
+                    onClick={() => setIsUserMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center justify-between p-2.5 px-3.5 rounded-2xl text-xs font-semibold transition-all duration-200 shadow-sm ${
+                        isActive
+                          ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-blue-600 text-white font-bold shadow-lg shadow-indigo-600/30 border border-white/20'
+                          : 'bg-slate-900/60 border border-slate-800/60 text-slate-300 hover:bg-slate-800/80 hover:text-white hover:border-slate-700'
+                      }`
+                    }
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-xl bg-slate-800/80 text-indigo-400">
+                        <Palmtree className="w-4 h-4" />
+                      </div>
+                      <span>Apply Leave & SLA</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                  </NavLink>
+
+                  {/* Sign Out Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className="w-full flex items-center justify-between p-2.5 px-3.5 rounded-2xl text-xs font-semibold bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all duration-200 shadow-sm cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 rounded-xl bg-red-500/20 text-red-400">
+                        <LogOut className="w-4 h-4" />
+                      </div>
+                      <span className="font-bold">Sign Out Account</span>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                  </button>
+                </div>
+
+                {/* 3. BOTTOM GLOWING MASCOT / CRM ACTION STATUS CARD (MATCHING PINTEREST ORANGE CARD) */}
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-amber-600/15 border border-amber-500/30 shadow-lg relative overflow-hidden">
+                  <div className="flex items-center gap-2 text-[11px] font-bold text-amber-400 mb-1">
+                    <Flame className="w-4 h-4 text-amber-400 fill-amber-400 animate-pulse" />
+                    <span>OMVIK ASSISTANT • Live Status</span>
+                  </div>
+                  <div className="space-y-0.5 text-[10px] text-slate-300">
+                    <p className="flex items-center gap-1.5">
+                      <span className="text-amber-400 font-bold">⚡</span>
+                      <span>SLA Protection Active (36h Sweep)</span>
+                    </p>
+                    <p className="flex items-center gap-1.5">
+                      <span className="text-emerald-400 font-bold">☑</span>
+                      <span>Daily EOD Cross-Check Active</span>
+                    </p>
+                  </div>
+                </div>
+
+              </motion.div>
+            )}
+          </AnimatePresence>
+
         </div>
       </div>
     </header>
