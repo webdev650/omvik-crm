@@ -1,47 +1,19 @@
-const { Resend } = require('resend');
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const sendEmail = async (options) => {
   const fromName = process.env.FROM_NAME || 'OMVIK CRM';
-  const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
-  const fromHeader = `${fromName} <${fromEmail}>`;
+  const smtpUser = process.env.SMTP_USER || 'omvikrealcon@gmail.com';
+  const fromHeader = `"${fromName}" <${smtpUser}>`;
 
-  // 1. Primary Email Transport: Resend API
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const resend = new Resend(process.env.RESEND_API_KEY);
-      const { data, error } = await resend.emails.send({
-        from: fromHeader,
-        to: options.email,
-        subject: options.subject,
-        text: options.message,
-        html: options.html
-      });
-
-      if (error) {
-        console.error('[Resend Error]', error);
-        throw new Error(error.message || 'Failed to send email via Resend API');
-      }
-
-      console.log(`[Resend Email Sent] ID: ${data?.id} to ${options.email}`);
-      return data;
-    } catch (resendErr) {
-      console.error('[Resend API Delivery Failed]', resendErr.message);
-      if (process.env.NODE_ENV === 'production') {
-        throw resendErr;
-      }
-    }
-  }
-
-  // 2. Secondary Email Transport: Nodemailer SMTP
-  if (process.env.SMTP_HOST && process.env.SMTP_USER) {
+  // 1. Primary Email Transport: Gmail Direct SMTP (Delivers directly to real inbox omvikrealcon@gmail.com)
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
     try {
       const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT) || 587,
+        service: 'gmail',
         auth: {
           user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS
+          pass: process.env.SMTP_PASS.replace(/\s+/g, '')
         }
       });
 
@@ -53,20 +25,38 @@ const sendEmail = async (options) => {
         html: options.html
       });
 
-      console.log(`[SMTP Email Sent] ID: ${info.messageId} to ${options.email}`);
+      console.log(`[Gmail SMTP Delivered Successfully] ID: ${info.messageId} -> ${options.email}`);
       return info;
-    } catch (smtpErr) {
-      console.error('[SMTP Delivery Failed]', smtpErr.message);
-      if (process.env.NODE_ENV === 'production') {
-        throw smtpErr;
+    } catch (gmailErr) {
+      console.error('[Gmail Direct SMTP Failed]', gmailErr.message);
+    }
+  }
+
+  // 2. Secondary Email Transport: Resend API
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const { data, error } = await resend.emails.send({
+        from: 'OMVIK CRM <onboarding@resend.dev>',
+        to: options.email,
+        subject: options.subject,
+        text: options.message,
+        html: options.html
+      });
+
+      if (!error) {
+        console.log(`[Resend API Delivered] ID: ${data?.id} -> ${options.email}`);
+        return data;
       }
+      console.error('[Resend API Error]', error);
+    } catch (resendErr) {
+      console.error('[Resend API Failed]', resendErr.message);
     }
   }
 
   // 3. Fallback Development Logger
   console.log('----------------------------------------------------');
-  console.log(`[DEV EMAIL SIMULATION] To: ${options.email}`);
-  console.log(`From: ${fromHeader}`);
+  console.log(`[DEV EMAIL LOG] To: ${options.email}`);
   console.log(`Subject: ${options.subject}`);
   console.log(`Message: ${options.message}`);
   console.log('----------------------------------------------------');

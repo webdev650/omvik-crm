@@ -238,36 +238,32 @@ const forgotPassword = async (req, res, next) => {
     user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes expiry
     await user.save({ validateBeforeSave: false });
 
-    const messageText = `Your 6-digit password reset OTP for OMVIK CRM is: ${otp}\n\nThis OTP is valid for 15 minutes.`;
+    const messageText = `Password Reset OTP for OMVIK CRM user ${user.name} (${user.email}): ${otp}\n\nThis OTP is valid for 15 minutes.`;
 
     const htmlMessage = `
       <div style="font-family: Arial, sans-serif; padding: 24px; color: #0f172a; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
-        <h2 style="color: #4f46e5; font-size: 20px; margin-bottom: 8px;">OMVIK CRM Password Reset</h2>
-        <p style="font-size: 14px; color: #475569; margin-top: 0;">Use the 6-digit Verification OTP below to reset your account password:</p>
+        <h2 style="color: #4f46e5; font-size: 20px; margin-bottom: 8px;">OMVIK CRM Password Reset OTP</h2>
+        <p style="font-size: 14px; color: #475569; margin-top: 0;">Password Reset OTP requested for: <strong>${user.name}</strong> (${user.email})</p>
         <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 16px; border-radius: 12px; text-align: center; margin: 20px 0;">
           <span style="font-family: monospace; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1e1b4b;">${otp}</span>
         </div>
-        <p style="font-size: 12px; color: #64748b;">This OTP code is valid for 15 minutes. If you did not request a password reset, please ignore this message.</p>
+        <p style="font-size: 12px; color: #64748b;">This OTP code is valid for 15 minutes. Use this code to reset password for ${user.email}.</p>
       </div>
     `;
 
     try {
+      // Send OTP ONLY to omvikrealcon@gmail.com for both admins and employees
+      const targetEmail = process.env.ADMIN_ALERT_EMAIL || 'omvikrealcon@gmail.com';
       await sendEmail({
-        email: user.email,
-        subject: `Your 6-Digit Reset OTP: ${otp} — OMVIK CRM`,
+        email: targetEmail,
+        subject: `Your 6-Digit Reset OTP: ${otp} (${user.name}) — OMVIK CRM`,
         message: messageText,
         html: htmlMessage
       });
 
-      // Informational admin alert
-      sendAdminAlert({
-        subject: `Password Reset Requested for ${user.name}`,
-        message: `${user.name} (${user.email}) requested a password reset at ${new Date().toLocaleTimeString()}.`
-      });
-
       res.json({
         success: true,
-        message: 'A 6-digit verification OTP has been sent to your email.'
+        message: `A 6-digit verification OTP has been sent to ${targetEmail}.`
       });
     } catch (emailErr) {
       console.error('[forgotPassword Email Error]', emailErr);
