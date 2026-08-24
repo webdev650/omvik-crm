@@ -155,32 +155,23 @@ export default function App() {
         path="/admin/users"
         element={
           <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director', 'team_lead']}>
-            <div className="min-h-screen bg-[#0b0f19] text-slate-100 p-4 sm:p-6 font-sans">
-              <Navbar />
-              <UsersPage />
-            </div>
+            <UsersPage />
           </ProtectedRoute>
         }
       />
       <Route
         path="/admin/projects"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
-            <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 font-sans">
-              <Navbar />
-              <ProjectsPage />
-            </div>
+          <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director']}>
+            <ProjectsPage />
           </ProtectedRoute>
         }
       />
       <Route
         path="/admin/teams"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
-            <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 font-sans">
-              <Navbar />
-              <TeamsPage />
-            </div>
+          <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director']}>
+            <TeamsPage />
           </ProtectedRoute>
         }
       />
@@ -188,10 +179,7 @@ export default function App() {
         path="/admin/import"
         element={
           <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director', 'team_lead']}>
-            <div className="min-h-screen bg-[#0b0f19] text-slate-100 p-4 sm:p-6 font-sans">
-              <Navbar />
-              <ImportLeadsPage />
-            </div>
+            <ImportLeadsPage />
           </ProtectedRoute>
         }
       />
@@ -199,10 +187,7 @@ export default function App() {
         path="/admin/reports"
         element={
           <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director', 'team_lead']}>
-            <div className="min-h-screen bg-[#0b0f19] text-slate-100 p-4 sm:p-6 font-sans">
-              <Navbar />
-              <ReportsPage />
-            </div>
+            <ReportsPage />
           </ProtectedRoute>
         }
       />

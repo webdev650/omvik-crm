@@ -165,28 +165,34 @@ export default function UsersPage() {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-            User & Employee Directory
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Manage organization employees, role permissions, team assignments, and offboarding.
-          </p>
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100 font-sans pb-16">
+      <Navbar />
+
+      <main className="max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Page Hero Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#131c31] border border-slate-800/80 p-5 sm:p-6 rounded-2xl shadow-sm">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[11px] font-bold uppercase tracking-wider">
+              <span>👥 User Directory</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+              User & Employee Directory
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-400">
+              Manage organization employees, role permissions, team assignments, and offboarding.
+            </p>
+          </div>
+
+          <Button
+            onClick={() => setIsAddOpen(true)}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs h-11 px-5 rounded-xl shadow-md shadow-indigo-600/20 min-h-[44px]"
+          >
+            <span>+ Add User</span>
+          </Button>
         </div>
 
-        <Button
-          onClick={() => setIsAddOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs h-11 min-h-[44px] shadow-lg shadow-indigo-600/20 rounded-xl"
-        >
-          <span>+ Add User</span>
-        </Button>
-      </div>
-
-      {/* Users Container */}
-      <div className="rounded-2xl border border-slate-800/80 bg-[#131c31] shadow-sm overflow-hidden">
+        {/* Users Container */}
+        <div className="rounded-2xl border border-slate-800/80 bg-[#131c31] shadow-sm overflow-hidden">
         {isLoadingUsers ? (
           <div className="p-8 text-center text-xs text-slate-400">
             Loading user directory...
@@ -531,6 +537,7 @@ export default function UsersPage() {
           </DialogContent>
         </Dialog>
       )}
+      </main>
     </div>
   );
 }

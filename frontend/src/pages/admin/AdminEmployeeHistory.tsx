@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
+import { History, Calendar, UserCheck, PhoneCall, CheckCircle2, AlertTriangle, ArrowRight, User } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import { getUsers } from '../../api/users';
 import { getEmployeeHistory } from '../../api/reports';
@@ -84,117 +85,114 @@ export default function AdminEmployeeHistory() {
     summary.dealsWon === 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-8 relative overflow-hidden font-sans">
-      <div className="max-w-6xl mx-auto relative z-10 space-y-8">
-        <Navbar />
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100 font-sans pb-16">
+      <Navbar />
 
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold uppercase tracking-widest mb-2">
-              📊 Individual Performance Drilldown
+      <main className="max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Page Hero Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#131c31] border border-slate-800/80 p-5 sm:p-6 rounded-2xl shadow-sm">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[11px] font-bold uppercase tracking-wider">
+              <History className="w-3.5 h-3.5" />
+              <span>Individual Performance Drilldown</span>
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
               Employee Activity & History Audit
             </h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-slate-400">
               Filter any team member's performance metrics, activities, and daily reports for any custom date window.
             </p>
           </div>
         </div>
 
         {/* Controls Card: Employee Picker + Preset Buttons + Custom Date Inputs */}
-        <Card className="border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur-xl">
-          <CardContent className="p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-              
-              {/* Employee Picker */}
+        <div className="bg-[#131c31] border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-sm space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+            {/* Employee Picker */}
+            <div className="space-y-2">
+              <Label htmlFor="empPicker" className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                👤 Select Employee / Sales Rep
+              </Label>
+              <select
+                id="empPicker"
+                value={selectedUserId}
+                onChange={(e) => handleUserChange(e.target.value)}
+                className="w-full h-11 px-3 rounded-xl bg-[#0b0f19] border border-slate-800 text-slate-100 text-sm font-semibold focus:outline-none focus:border-indigo-500"
+              >
+                {usersList.map((u: any) => (
+                  <option key={u._id} value={u._id}>
+                    {u.name} ({u.employeeId || 'ID'}) — {u.role?.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Custom Date Inputs */}
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="empPicker" className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  👤 Select Employee / Sales Rep
+                <Label htmlFor="fromDate" className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  From Date
                 </Label>
-                <select
-                  id="empPicker"
-                  value={selectedUserId}
-                  onChange={(e) => handleUserChange(e.target.value)}
-                  className="w-full h-11 px-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-sm font-semibold focus:outline-none focus:border-indigo-500"
-                >
-                  {usersList.map((u: any) => (
-                    <option key={u._id} value={u._id}>
-                      {u.name} ({u.employeeId || 'ID'}) — {u.role?.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
+                <Input
+                  id="fromDate"
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="bg-[#0b0f19] border-slate-800 text-slate-100 font-mono text-xs h-11"
+                />
               </div>
-
-              {/* Custom Date Inputs */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="fromDate" className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    From Date
-                  </Label>
-                  <Input
-                    id="fromDate"
-                    type="date"
-                    value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
-                    className="bg-slate-950 border-slate-800 text-slate-100 font-mono text-xs h-11"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="toDate" className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    To Date
-                  </Label>
-                  <Input
-                    id="toDate"
-                    type="date"
-                    value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
-                    className="bg-slate-950 border-slate-800 text-slate-100 font-mono text-xs h-11"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="toDate" className="block text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  To Date
+                </Label>
+                <Input
+                  id="toDate"
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="bg-[#0b0f19] border-slate-800 text-slate-100 font-mono text-xs h-11"
+                />
               </div>
-
             </div>
+          </div>
 
-            {/* Quick Preset Buttons */}
-            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/80">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 mr-2">Quick Presets:</span>
-              <Button
-                type="button"
-                onClick={() => applyPreset(10)}
-                variant="outline"
-                className="h-8 text-xs border-slate-800 text-slate-300 hover:bg-indigo-600 hover:text-white"
-              >
-                Last 10 Days
-              </Button>
-              <Button
-                type="button"
-                onClick={() => applyPreset(30)}
-                variant="outline"
-                className="h-8 text-xs border-slate-800 text-slate-300 hover:bg-indigo-600 hover:text-white"
-              >
-                Last 30 Days
-              </Button>
-              <Button
-                type="button"
-                onClick={() => applyPreset(90)}
-                variant="outline"
-                className="h-8 text-xs border-slate-800 text-slate-300 hover:bg-indigo-600 hover:text-white"
-              >
-                Last 90 Days
-              </Button>
-              <Button
-                type="button"
-                onClick={applyThisYear}
-                variant="outline"
-                className="h-8 text-xs border-slate-800 text-slate-300 hover:bg-indigo-600 hover:text-white"
-              >
-                This Year
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Quick Preset Buttons */}
+          <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-800/80">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 mr-2">Quick Presets:</span>
+            <Button
+              type="button"
+              onClick={() => applyPreset(10)}
+              variant="outline"
+              className="h-8 text-xs border-slate-800 bg-[#0b0f19] text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors"
+            >
+              Last 10 Days
+            </Button>
+            <Button
+              type="button"
+              onClick={() => applyPreset(30)}
+              variant="outline"
+              className="h-8 text-xs border-slate-800 bg-[#0b0f19] text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors"
+            >
+              Last 30 Days
+            </Button>
+            <Button
+              type="button"
+              onClick={() => applyPreset(90)}
+              variant="outline"
+              className="h-8 text-xs border-slate-800 bg-[#0b0f19] text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors"
+            >
+              Last 90 Days
+            </Button>
+            <Button
+              type="button"
+              onClick={applyThisYear}
+              variant="outline"
+              className="h-8 text-xs border-slate-800 bg-[#0b0f19] text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors"
+            >
+              This Year
+            </Button>
+          </div>
+        </div>
 
         {/* Loading / Error States */}
         {isLoading ? (
@@ -203,21 +201,21 @@ export default function AdminEmployeeHistory() {
             <p className="text-xs text-slate-400">Loading performance history for date range...</p>
           </div>
         ) : isError ? (
-          <Card className="border-red-500/30 bg-red-500/10 p-6 text-center">
-            <p className="text-sm font-bold text-red-400">
+          <div className="border border-red-500/30 bg-red-500/10 p-6 rounded-2xl text-center">
+            <p className="text-xs font-bold text-red-400">
               {(error as any)?.response?.data?.message || 'Failed to fetch employee history. Access denied or invalid date range.'}
             </p>
-          </Card>
+          </div>
         ) : (
           <>
             {/* Employee Banner */}
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-[#131c31] border border-slate-800/80 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-400 font-bold flex items-center justify-center text-sm">
                   {emp?.name?.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     {emp?.name}
                     <Badge className="bg-indigo-500/10 text-indigo-300 border-indigo-500/20 font-mono text-[10px]">
                       {emp?.employeeId || 'ID'}
@@ -226,166 +224,134 @@ export default function AdminEmployeeHistory() {
                   <p className="text-xs text-slate-400 font-mono">{emp?.email} • Team: {emp?.teamName}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">Selected Window</span>
+              <div className="text-left sm:text-right">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Selected Window</span>
                 <span className="text-xs font-mono font-bold text-indigo-400">{fromDate} to {toDate}</span>
               </div>
             </div>
 
             {/* Empty State Banner */}
             {isNoActivity ? (
-              <Card className="border-slate-800 bg-slate-900/40 p-12 text-center space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 flex items-center justify-center text-2xl mx-auto">
+              <div className="border border-slate-800/80 bg-[#131c31] p-12 rounded-2xl text-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-[#0b0f19] text-slate-400 flex items-center justify-center text-2xl mx-auto">
                   📋
                 </div>
-                <h3 className="text-base font-bold text-slate-200">No Activity Recorded in Selected Window</h3>
+                <h3 className="text-sm font-bold text-slate-200">No Activity Recorded in Selected Window</h3>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
                   {emp?.name} has 0 new leads, 0 logged activities, and 0 site visits between <span className="font-mono text-indigo-300">{fromDate}</span> and <span className="font-mono text-indigo-300">{toDate}</span>.
                 </p>
-              </Card>
+              </div>
             ) : (
               <>
                 {/* Aggregate Stat Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                  <Card className="border-indigo-500/20 bg-slate-900/80 backdrop-blur-xl">
-                    <CardHeader className="pb-1">
-                      <CardTitle className="text-xs font-bold text-indigo-400 uppercase tracking-wider">
-                        New Leads in Window
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-extrabold text-white font-mono">{summary?.newLeadsInPeriod || 0}</div>
-                      <p className="text-[11px] text-slate-400 mt-1">Total active: {summary?.totalOwnedInPeriod || 0}</p>
-                    </CardContent>
-                  </Card>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-2xl border border-slate-800/80 bg-[#131c31]">
+                    <p className="text-xs text-indigo-400 uppercase tracking-wider font-semibold">New Leads in Window</p>
+                    <div className="text-2xl font-black text-white font-mono mt-1">{summary?.newLeadsInPeriod || 0}</div>
+                    <p className="text-[11px] text-slate-400 mt-1">Total active: {summary?.totalOwnedInPeriod || 0}</p>
+                  </div>
 
-                  <Card className="border-blue-500/20 bg-slate-900/80 backdrop-blur-xl">
-                    <CardHeader className="pb-1">
-                      <CardTitle className="text-xs font-bold text-blue-400 uppercase tracking-wider">
-                        Activities Logged
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-extrabold text-white font-mono">{summary?.activitiesCount || 0}</div>
-                      <p className="text-[11px] text-slate-400 mt-1">Calls & interactions</p>
-                    </CardContent>
-                  </Card>
+                  <div className="p-4 rounded-2xl border border-slate-800/80 bg-[#131c31]">
+                    <p className="text-xs text-blue-400 uppercase tracking-wider font-semibold">Activities Logged</p>
+                    <div className="text-2xl font-black text-white font-mono mt-1">{summary?.activitiesCount || 0}</div>
+                    <p className="text-[11px] text-slate-400 mt-1">Calls & interactions</p>
+                  </div>
 
-                  <Card className="border-emerald-500/20 bg-slate-900/80 backdrop-blur-xl">
-                    <CardHeader className="pb-1">
-                      <CardTitle className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
-                        Deals Won / Lost
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-extrabold text-emerald-400 font-mono">
-                        {summary?.dealsWon || 0} <span className="text-slate-500 text-sm font-normal">/ {summary?.dealsLost || 0} lost</span>
-                      </div>
-                      <p className="text-[11px] text-slate-400 mt-1">Conversions in period</p>
-                    </CardContent>
-                  </Card>
+                  <div className="p-4 rounded-2xl border border-slate-800/80 bg-[#131c31]">
+                    <p className="text-xs text-emerald-400 uppercase tracking-wider font-semibold">Deals Won / Lost</p>
+                    <div className="text-2xl font-black text-emerald-400 font-mono mt-1">
+                      {summary?.dealsWon || 0} <span className="text-slate-500 text-xs font-normal">/ {summary?.dealsLost || 0} lost</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">Conversions in period</p>
+                  </div>
 
-                  <Card className="border-amber-500/20 bg-slate-900/80 backdrop-blur-xl">
-                    <CardHeader className="pb-1">
-                      <CardTitle className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                        Site Visits & SLA
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-3xl font-extrabold text-white font-mono">{summary?.siteVisitsCompleted || 0}</div>
-                      <p className="text-[11px] text-slate-400 mt-1">Visits completed • {summary?.slaBreaches || 0} SLA breaches</p>
-                    </CardContent>
-                  </Card>
+                  <div className="p-4 rounded-2xl border border-slate-800/80 bg-[#131c31]">
+                    <p className="text-xs text-amber-400 uppercase tracking-wider font-semibold">Site Visits & SLA</p>
+                    <div className="text-2xl font-black text-white font-mono mt-1">{summary?.siteVisitsCompleted || 0}</div>
+                    <p className="text-[11px] text-slate-400 mt-1">Visits completed • {summary?.slaBreaches || 0} SLA breaches</p>
+                  </div>
                 </div>
 
                 {/* Call Outcome Breakdown */}
                 {summary?.activityOutcomeBreakdown && (
-                  <Card className="border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur-xl">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-bold text-white">📞 Activity Outcome Breakdown</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        {Object.entries(summary.activityOutcomeBreakdown).map(([outcome, count]) => (
-                          <div key={outcome} className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-center">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                              {outcome.replace('_', ' ')}
-                            </span>
-                            <span className="text-lg font-bold font-mono text-indigo-300 mt-1 block">
-                              {count as number}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div className="rounded-2xl border border-slate-800/80 bg-[#131c31] p-5 space-y-3">
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">📞 Activity Outcome Breakdown</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {Object.entries(summary.activityOutcomeBreakdown).map(([outcome, count]) => (
+                        <div key={outcome} className="p-3 rounded-xl bg-[#0b0f19] border border-slate-800/80 text-center">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                            {outcome.replace('_', ' ')}
+                          </span>
+                          <span className="text-base font-bold font-mono text-indigo-300 mt-1 block">
+                            {count as number}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 {/* Daily Reports Log Table */}
-                <Card className="border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur-xl">
-                  <CardHeader className="border-b border-slate-800 pb-4">
-                    <CardTitle className="text-base font-bold text-white flex items-center justify-between">
-                      <span>📝 Daily EOD Report Log ({dailyReports.length})</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    {dailyReports.length === 0 ? (
-                      <div className="p-8 text-center text-slate-400 text-xs">
-                        No Daily EOD Reports submitted by {emp?.name} within this date window.
-                      </div>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead className="text-right">Claimed Calls vs Actual</TableHead>
-                            <TableHead className="text-right">Claimed Follow-ups</TableHead>
-                            <TableHead className="text-right">Claimed Visits</TableHead>
-                            <TableHead>Notes & Discrepancy Status</TableHead>
+                <div className="rounded-2xl border border-slate-800/80 bg-[#131c31] overflow-hidden shadow-sm">
+                  <div className="p-4 border-b border-slate-800 bg-[#0b0f19]">
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">📝 Daily EOD Report Log ({dailyReports.length})</h4>
+                  </div>
+                  {dailyReports.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 text-xs">
+                      No Daily EOD Reports submitted by {emp?.name} within this date window.
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader className="bg-[#0b0f19]">
+                        <TableRow className="border-b border-slate-800">
+                          <TableHead className="text-slate-400 font-semibold text-xs">Date</TableHead>
+                          <TableHead className="text-slate-400 font-semibold text-xs text-right">Claimed Calls vs Actual</TableHead>
+                          <TableHead className="text-slate-400 font-semibold text-xs text-right">Claimed Follow-ups</TableHead>
+                          <TableHead className="text-slate-400 font-semibold text-xs text-right">Claimed Visits</TableHead>
+                          <TableHead className="text-slate-400 font-semibold text-xs">Notes & Discrepancy Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dailyReports.map((r: any) => (
+                          <TableRow key={r._id} className="border-b border-slate-800/40 hover:bg-slate-800/40">
+                            <TableCell className="font-mono text-slate-200 text-xs font-bold">{r.date}</TableCell>
+                            <TableCell className="text-right font-mono text-xs">
+                              <span className={r.discrepancyFlag ? 'text-amber-400 font-bold' : 'text-slate-200'}>{r.claimedCalls}</span>
+                              <span className="text-slate-500"> / {r.systemActivityCount} logged</span>
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-xs">
+                              <span className={r.discrepancyFlag ? 'text-amber-400 font-bold' : 'text-slate-200'}>{r.claimedFollowups}</span>
+                              <span className="text-slate-500"> / {r.systemFollowupCount} logged</span>
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-xs">
+                              <span className={r.discrepancyFlag ? 'text-amber-400 font-bold' : 'text-slate-200'}>{r.claimedSiteVisits}</span>
+                              <span className="text-slate-500"> / {r.systemSiteVisitCount} logged</span>
+                            </TableCell>
+                            <TableCell className="text-xs text-slate-300">
+                              <div className="flex items-center gap-2">
+                                {r.discrepancyFlag ? (
+                                  <Badge variant="destructive" className="text-[10px]">
+                                    ⚠️ FLAGGED
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="success" className="text-[10px]">
+                                    ✓ VERIFIED
+                                  </Badge>
+                                )}
+                                <span className="text-slate-400 truncate max-w-xs">{r.notes || '—'}</span>
+                              </div>
+                            </TableCell>
                           </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {dailyReports.map((r: any) => (
-                            <TableRow key={r._id} className="hover:bg-slate-800/50">
-                              <TableCell className="font-mono text-slate-200 text-xs font-bold">{r.date}</TableCell>
-                              <TableCell className="text-right font-mono text-xs">
-                                <span className={r.discrepancyFlag ? 'text-amber-400 font-bold' : 'text-slate-200'}>{r.claimedCalls}</span>
-                                <span className="text-slate-500"> / {r.systemActivityCount} logged</span>
-                              </TableCell>
-                              <TableCell className="text-right font-mono text-xs">
-                                <span className={r.discrepancyFlag ? 'text-amber-400 font-bold' : 'text-slate-200'}>{r.claimedFollowups}</span>
-                                <span className="text-slate-500"> / {r.systemFollowupCount} logged</span>
-                              </TableCell>
-                              <TableCell className="text-right font-mono text-xs">
-                                <span className={r.discrepancyFlag ? 'text-amber-400 font-bold' : 'text-slate-200'}>{r.claimedSiteVisits}</span>
-                                <span className="text-slate-500"> / {r.systemSiteVisitCount} logged</span>
-                              </TableCell>
-                              <TableCell className="text-xs text-slate-300">
-                                <div className="flex items-center gap-2">
-                                  {r.discrepancyFlag ? (
-                                    <Badge variant="destructive" className="text-[10px]">
-                                      ⚠️ FLAGGED
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="success" className="text-[10px]">
-                                      ✓ VERIFIED
-                                    </Badge>
-                                  )}
-                                  <span className="text-slate-400 truncate max-w-xs">{r.notes || '—'}</span>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </CardContent>
-                </Card>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
               </>
             )}
           </>
         )}
-      </div>
+      </main>
     </div>
   );
 }
