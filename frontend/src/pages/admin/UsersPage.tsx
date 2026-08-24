@@ -213,6 +213,7 @@ export default function UsersPage() {
                     <TableHead className="text-slate-400 text-xs font-bold uppercase">Email Address</TableHead>
                     <TableHead className="text-slate-400 text-xs font-bold uppercase">Role</TableHead>
                     <TableHead className="text-slate-400 text-xs font-bold uppercase">Assigned Team</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-bold uppercase">Last Login</TableHead>
                     <TableHead className="text-slate-400 text-xs font-bold uppercase">Status & Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -238,6 +239,16 @@ export default function UsersPage() {
                       </TableCell>
                       <TableCell className="text-xs text-slate-300">
                         {u.teamId?.name || <span className="text-slate-500 italic">Unassigned</span>}
+                      </TableCell>
+                      <TableCell className="text-xs font-mono">
+                        {u.lastLogin ? (
+                          <span className="text-indigo-300 font-semibold" title={new Date(u.lastLogin).toLocaleString()}>
+                            ⏰ {new Date(u.lastLogin).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}{' '}
+                            {new Date(u.lastLogin).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 italic">Never</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">

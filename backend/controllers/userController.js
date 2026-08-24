@@ -6,9 +6,10 @@ const AssignmentHistory = require('../models/AssignmentHistory');
 const Followup = require('../models/Followup');
 const Notification = require('../models/Notification');
 const AuditLog = require('../models/AuditLog');
+const LoginLog = require('../models/LoginLog');
 const sendAdminAlert = require('../utils/sendAdminAlert');
 
-// @desc    Get all users (Admin view with populated team)
+// @desc    Get all users (Admin view with populated team & last login timestamp)
 // @route   GET /api/users
 // @access  Private (super_admin, admin, director)
 const getUsers = async (req, res, next) => {
@@ -16,12 +17,36 @@ const getUsers = async (req, res, next) => {
     const users = await User.find({})
       .select('-password')
       .populate('teamId', 'name description')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Aggregation to find latest login date per user
+    const lastLogins = await LoginLog.aggregate([
+      { $sort: { loginAt: -1 } },
+      {
+        $group: {
+          _id: '$user',
+          lastLogin: { $first: '$loginAt' }
+        }
+      }
+    ]);
+
+    const lastLoginMap = new Map();
+    lastLogins.forEach(item => {
+      if (item._id) {
+        lastLoginMap.set(item._id.toString(), item.lastLogin);
+      }
+    });
+
+    const usersWithLastLogin = users.map(u => ({
+      ...u,
+      lastLogin: lastLoginMap.get(u._id.toString()) || null
+    }));
 
     res.json({
       success: true,
-      count: users.length,
-      users
+      count: usersWithLastLogin.length,
+      users: usersWithLastLogin
     });
   } catch (error) {
     next(error);

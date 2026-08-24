@@ -26,7 +26,8 @@ import {
   History,
   TrendingUp,
   Layers,
-  FileWarning
+  FileWarning,
+  KeyRound
 } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 import NotificationBell from './NotificationBell';
@@ -178,7 +179,7 @@ export default function Navbar() {
           <NavLink to="/leads" className={({ isActive }) => primaryNavLinkClass({ isActive: isActive && !location.pathname.startsWith('/leads/') })}>Leads List</NavLink>
           <NavLink to="/customers" className={({ isActive }) => primaryNavLinkClass({ isActive: isActive && !location.pathname.startsWith('/customers/') })}>Customers</NavLink>
           
-          {/* DIRECT USERS, REPORTS, & EMPLOYEE HISTORY LINKS ON MAIN TOP BAR */}
+          {/* DIRECT USERS, REPORTS, EMPLOYEE HISTORY & LOGIN ACTIVITY LINKS */}
           {isAdminOrSuper && (
             <>
               <NavLink to="/admin/users" className={primaryNavLinkClass}>
@@ -189,6 +190,9 @@ export default function Navbar() {
               </NavLink>
               <NavLink to="/admin/employee-history" className={primaryNavLinkClass}>
                 Employee History
+              </NavLink>
+              <NavLink to="/admin/login-activity" className={primaryNavLinkClass}>
+                Login Activity
               </NavLink>
             </>
           )}
@@ -270,6 +274,18 @@ export default function Navbar() {
                         <div className="flex items-center gap-2.5">
                           <Users className="w-4 h-4 text-indigo-400" />
                           <span className="font-bold">👥 User Directory (+ Add User)</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 opacity-50" />
+                      </NavLink>
+
+                      <NavLink
+                        to="/admin/login-activity"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center justify-between p-2.5 px-3 rounded-xl text-xs font-semibold bg-[#131c31] border border-indigo-500/30 text-indigo-300 hover:bg-indigo-600 hover:text-white min-h-[44px]"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <KeyRound className="w-4 h-4 text-indigo-400" />
+                          <span className="font-bold">🔑 Login Activity Log</span>
                         </div>
                         <ChevronRight className="w-4 h-4 opacity-50" />
                       </NavLink>
@@ -456,6 +472,18 @@ export default function Navbar() {
                 >
                   <span>📈 Employee History</span>
                 </NavLink>
+                <NavLink
+                  to="/admin/login-activity"
+                  className={({ isActive }) =>
+                    `px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 min-h-[36px] ${
+                      isActive
+                        ? 'bg-slate-800 text-indigo-300 font-bold border border-indigo-500/30'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                    }`
+                  }
+                >
+                  <span>🔑 Login Activity</span>
+                </NavLink>
               </>
             )}
 
@@ -476,11 +504,12 @@ export default function Navbar() {
                 </button>
 
                 {isAdminOpen && (
-                  <div className="absolute left-0 mt-1 w-56 rounded-xl bg-[#0d1322] border border-slate-800 shadow-2xl backdrop-blur-2xl py-2 z-50 space-y-1">
+                  <div className="absolute left-0 mt-1 w-60 rounded-xl bg-[#0d1322] border border-slate-800 shadow-2xl backdrop-blur-2xl py-2 z-50 space-y-1">
                     <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-500 border-b border-slate-800/60 mb-1">
                       Admin Control Desk
                     </div>
                     <NavLink to="/admin/users" onClick={() => setIsAdminOpen(false)} className="flex items-center gap-2 px-3 py-2 text-xs text-[#6366f1] font-bold hover:bg-slate-800 rounded-lg mx-1 min-h-[40px]"><span>👥</span> User Directory (+ Add User)</NavLink>
+                    <NavLink to="/admin/login-activity" onClick={() => setIsAdminOpen(false)} className="flex items-center gap-2 px-3 py-2 text-xs text-indigo-300 font-bold hover:bg-slate-800 rounded-lg mx-1 min-h-[40px]"><span>🔑</span> Login Activity Log</NavLink>
                     <NavLink to="/admin/projects" onClick={() => setIsAdminOpen(false)} className="flex items-center gap-2 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg mx-1 min-h-[40px]"><span>🏢</span> Real-Estate Projects</NavLink>
                     <NavLink to="/admin/teams" onClick={() => setIsAdminOpen(false)} className="flex items-center gap-2 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg mx-1 min-h-[40px]"><span>🛡️</span> Teams & Sales Pods</NavLink>
                     <NavLink to="/admin/import" onClick={() => setIsAdminOpen(false)} className="flex items-center gap-2 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg mx-1 min-h-[40px]"><span>📥</span> Bulk Lead Import</NavLink>
@@ -522,6 +551,7 @@ export default function Navbar() {
               {isAdminOrSuper && (
                 <>
                   <NavLink to="/admin/users" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>👥 User Directory (+ Add User)</NavLink>
+                  <NavLink to="/admin/login-activity" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>🔑 Login Activity Log</NavLink>
                   <NavLink to="/admin/reports" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>📊 Executive Reports</NavLink>
                   <NavLink to="/admin/employee-history" onClick={() => setIsMobileMenuOpen(false)} className={primaryNavLinkClass}>📈 Employee History</NavLink>
                 </>
@@ -541,6 +571,7 @@ export default function Navbar() {
                 </div>
                 <div className="grid grid-cols-1 gap-1">
                   <NavLink to="/admin/users" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-indigo-400 font-bold hover:bg-slate-800 rounded-xl min-h-[44px]"><span>👥</span> User Directory (+ Add User)</NavLink>
+                  <NavLink to="/admin/login-activity" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-indigo-300 font-bold hover:bg-slate-800 rounded-xl min-h-[44px]"><span>🔑</span> Login Activity Log</NavLink>
                   <NavLink to="/admin/projects" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-300 hover:bg-slate-800 rounded-xl min-h-[44px]"><span>🏢</span> Projects Management</NavLink>
                   <NavLink to="/admin/teams" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-300 hover:bg-slate-800 rounded-xl min-h-[44px]"><span>🛡️</span> Teams & Sales Pods</NavLink>
                   <NavLink to="/admin/import" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-slate-300 hover:bg-slate-800 rounded-xl min-h-[44px]"><span>📥</span> Bulk Lead Import</NavLink>

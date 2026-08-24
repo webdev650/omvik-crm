@@ -9,3 +9,8 @@ export async function getDuplicateMonitorMetrics() {
   const response = await api.get('/admin/duplicate-monitor');
   return response.data;
 }
+
+export async function getLoginActivity(params?: { userId?: string; from?: string; to?: string }) {
+  const response = await api.get('/admin/login-activity', { params });
+  return response.data;
+}

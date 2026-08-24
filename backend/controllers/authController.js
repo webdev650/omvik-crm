@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const LoginLog = require('../models/LoginLog');
 const { getOrCreateSettings } = require('../models/Settings');
 const { getRandomMascotMessage } = require('../utils/mascotMessages');
 const sendEmail = require('../utils/sendEmail');
@@ -115,6 +116,24 @@ const login = async (req, res, next) => {
     }
 
     const token = generateTokenAndSetCookie(req, res, user._id);
+
+    // Non-blocking LoginLog record creation
+    try {
+      const rawIp = req.headers['x-forwarded-for']
+        ? req.headers['x-forwarded-for'].split(',')[0].trim()
+        : req.ip || req.connection?.remoteAddress || 'Unknown';
+
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+
+      await LoginLog.create({
+        user: user._id,
+        loginAt: new Date(),
+        ipAddress: rawIp,
+        userAgent
+      });
+    } catch (logErr) {
+      console.error('Failed to record LoginLog:', logErr.message);
+    }
 
     const userObj = user.toObject();
     delete userObj.password;

@@ -3,6 +3,8 @@ const Customer = require('../models/Customer');
 const Followup = require('../models/Followup');
 const AuditLog = require('../models/AuditLog');
 const DuplicateAttemptLog = require('../models/DuplicateAttemptLog');
+const LoginLog = require('../models/LoginLog');
+const User = require('../models/User');
 
 // @desc    Get Data Quality metrics (Unowned, Invalid Mobile, Missing Next Action, Stale 14+ Days)
 // @route   GET /api/admin/data-quality
@@ -84,7 +86,70 @@ const getDuplicateMonitorMetrics = async (req, res, next) => {
   }
 };
 
+// @desc    Get user login activity audit log
+// @route   GET /api/admin/login-activity
+// @access  Private (admin, super_admin, director, team_lead)
+const getLoginActivity = async (req, res, next) => {
+  try {
+    const { userId, from, to } = req.query;
+
+    const query = {};
+
+    // Team lead scoping: restrict to own team members
+    if (req.user.role === 'team_lead') {
+      const teamMembers = await User.find({
+        $or: [{ teamId: req.user.teamId }, { _id: req.user._id }]
+      }).select('_id');
+      const teamMemberIds = teamMembers.map(m => m._id);
+      query.user = { $in: teamMemberIds };
+    }
+
+    // Specific user filter
+    if (userId) {
+      if (query.user) {
+        // Ensure requested userId is within team_lead scope
+        if (query.user.$in.some(id => id.toString() === userId.toString())) {
+          query.user = userId;
+        }
+      } else {
+        query.user = userId;
+      }
+    }
+
+    // Date range filter
+    if (from || to) {
+      query.loginAt = {};
+      if (from) {
+        query.loginAt.$gte = new Date(from);
+      }
+      if (to) {
+        const toDate = new Date(to);
+        if (to.length <= 10) {
+          toDate.setHours(23, 59, 59, 999);
+        }
+        query.loginAt.$lte = toDate;
+      }
+    }
+
+    const logs = await LoginLog.find(query)
+      .sort({ loginAt: -1 })
+      .limit(300)
+      .populate('user', 'name email employeeId role teamId')
+      .lean();
+
+    res.json({
+      success: true,
+      count: logs.length,
+      logs
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDataQualityMetrics,
-  getDuplicateMonitorMetrics
+  getDuplicateMonitorMetrics,
+  getLoginActivity
 };
+
