@@ -216,14 +216,14 @@ export default function Navbar() {
               className="flex items-center gap-2 p-1 px-2.5 rounded-xl border border-slate-800 bg-[#131c31] hover:bg-slate-800 transition-all cursor-pointer shadow-sm hover:border-slate-700 group min-h-[44px]"
             >
               <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-blue-600 flex items-center justify-center font-bold text-white text-xs shadow-sm group-hover:scale-105 transition-transform">
-                {user?.name?.charAt(0).toUpperCase() || 'A'}
+                {user?.name ? user.name.trim().charAt(0).toUpperCase() : 'U'}
               </div>
               <div className="hidden sm:flex flex-col text-left pr-0.5">
                 <span className="text-xs font-bold text-slate-100 leading-tight whitespace-nowrap">
-                  {user?.name || 'Aparna Tripathy'}
+                  {user?.name || 'User Account'}
                 </span>
                 <span className="text-[10px] font-mono text-indigo-400 font-semibold leading-tight">
-                  {user?.employeeId || 'ADM-005'}
+                  {user?.employeeId || (user?.role ? user.role.toUpperCase() : 'EMP')}
                 </span>
               </div>
               <span className="text-[10px] text-slate-400 group-hover:text-slate-200 transition-colors">▼</span>
@@ -242,18 +242,18 @@ export default function Navbar() {
                   <div className="p-3 rounded-xl bg-[#131c31] border border-slate-800/80 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-blue-500 p-0.5 shadow-md flex-shrink-0">
                       <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center font-black text-white text-sm">
-                        {user?.name?.charAt(0).toUpperCase() || 'A'}
+                        {user?.name ? user.name.trim().charAt(0).toUpperCase() : 'U'}
                       </div>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h4 className="text-xs font-bold text-white truncate">{user?.name || 'Aparna Tripathy'}</h4>
-                      <p className="text-[11px] text-slate-400 truncate">{user?.email || 'aparna@omvikrealcon.com'}</p>
+                      <h4 className="text-xs font-bold text-white truncate">{user?.name || 'User Account'}</h4>
+                      <p className="text-[11px] text-slate-400 truncate">{user?.email || ''}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-mono">
-                          {user?.employeeId || 'ADM-005'}
+                          {user?.employeeId || (user?.role ? user.role.toUpperCase() : 'EMP')}
                         </span>
                         <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-slate-800 text-slate-300 uppercase tracking-wider">
-                          {user?.role?.replace('_', ' ') || 'Super Admin'}
+                          {user?.role ? user.role.replace('_', ' ') : 'User'}
                         </span>
                       </div>
                     </div>
