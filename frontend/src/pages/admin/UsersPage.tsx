@@ -205,43 +205,43 @@ export default function UsersPage() {
         ) : (
           <>
             {/* Desktop Table */}
-            <div className="hidden md:block">
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-slate-800 bg-[#0b0f19]">
-                    <TableHead className="text-slate-400 text-xs font-bold uppercase">ID</TableHead>
-                    <TableHead className="text-slate-400 text-xs font-bold uppercase">Employee Name</TableHead>
-                    <TableHead className="text-slate-400 text-xs font-bold uppercase">Email Address</TableHead>
-                    <TableHead className="text-slate-400 text-xs font-bold uppercase">Role</TableHead>
-                    <TableHead className="text-slate-400 text-xs font-bold uppercase">Assigned Team</TableHead>
-                    <TableHead className="text-slate-400 text-xs font-bold uppercase">Last Login</TableHead>
-                    <TableHead className="text-slate-400 text-xs font-bold uppercase">Status & Actions</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-bold uppercase whitespace-nowrap">ID</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-bold uppercase whitespace-nowrap">Employee Name</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-bold uppercase whitespace-nowrap">Email Address</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-bold uppercase whitespace-nowrap">Role</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-bold uppercase whitespace-nowrap">Assigned Team</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-bold uppercase whitespace-nowrap">Last Login</TableHead>
+                    <TableHead className="text-slate-400 text-xs font-bold uppercase whitespace-nowrap">Status & Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {users.map((u: any) => (
                     <TableRow key={u._id} className="hover:bg-slate-800/40 border-b border-slate-800/40 transition-colors">
-                      <TableCell className="font-mono text-xs text-indigo-400 font-bold">
+                      <TableCell className="font-mono text-xs text-indigo-400 font-bold whitespace-nowrap">
                         {u.employeeId || 'SYS'}
                       </TableCell>
-                      <TableCell className="font-bold text-white">
+                      <TableCell className="font-bold text-white text-xs whitespace-nowrap">
                         {u.name}
                         {u._id === currentUser?._id && (
                           <span className="ml-2 text-[10px] text-indigo-400 font-normal">(You)</span>
                         )}
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-slate-300">
+                      <TableCell className="font-mono text-xs text-slate-300 whitespace-nowrap">
                         {u.email}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
                         <Badge variant={getRoleBadgeVariant(u.role)} className="text-[10px] uppercase font-bold">
                           {u.role}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-xs text-slate-300">
+                      <TableCell className="text-xs text-slate-300 whitespace-nowrap">
                         {u.teamId?.name || <span className="text-slate-500 italic">Unassigned</span>}
                       </TableCell>
-                      <TableCell className="text-xs font-mono">
+                      <TableCell className="text-xs font-mono whitespace-nowrap">
                         {u.lastLogin ? (
                           <span className="text-indigo-300 font-semibold" title={new Date(u.lastLogin).toLocaleString()}>
                             ⏰ {new Date(u.lastLogin).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}{' '}
@@ -251,7 +251,7 @@ export default function UsersPage() {
                           <span className="text-slate-500 italic">Never</span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <div className="flex items-center gap-2">
                             <span className={`text-[10px] font-semibold ${u.isActive ? 'text-emerald-400' : 'text-slate-500'}`}>
