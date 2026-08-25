@@ -21,28 +21,24 @@ export default function ForceChangePassword() {
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!currentPassword) {
-      setErrorMsg('Please enter your temporary password.');
-      return;
-    }
     if (newPassword.length < 6) {
-      setErrorMsg('New password must be at least 6 characters.');
+      setErrorMsg('New password must be at least 6 characters long.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      setErrorMsg('New passwords do not match.');
+      setErrorMsg('New passwords do not match. Please re-enter.');
       return;
     }
 
     setIsSubmitting(true);
     try {
       const response = await api.patch('/auth/change-password', {
-        currentPassword,
+        currentPassword: currentPassword || undefined,
         newPassword
       });
 
       if (response.data?.success) {
-        toast.success('Password updated successfully! Redirecting to your dashboard...');
+        toast.success('Password updated successfully! Welcome to OMVIK CRM.');
         const updatedUser = response.data?.user || {
           ...user,
           mustChangePassword: false
@@ -51,7 +47,7 @@ export default function ForceChangePassword() {
         navigate('/dashboard', { replace: true });
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to update password. Please check your credentials.';
+      const msg = err.response?.data?.message || 'Failed to update password. Please try again.';
       setErrorMsg(msg);
     } finally {
       setIsSubmitting(false);
@@ -81,7 +77,7 @@ export default function ForceChangePassword() {
           <CardHeader className="text-center pb-3">
             <CardTitle className="text-lg text-white font-bold">First Login Security Gate</CardTitle>
             <CardDescription className="text-xs text-slate-400">
-              Navigation is restricted until you update your temporary password
+              Create your new password to unlock your CRM workspace
             </CardDescription>
           </CardHeader>
 
@@ -94,25 +90,13 @@ export default function ForceChangePassword() {
               )}
 
               <div className="space-y-1.5">
-                <Label htmlFor="currentPassword">Temporary Password</Label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter temporary password"
-                  className="bg-slate-950 border-slate-800 text-slate-100"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="newPassword">New Password (min 6 characters)</Label>
+                <Label htmlFor="newPassword">New Private Password (min 6 characters)</Label>
                 <Input
                   id="newPassword"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new private password"
+                  placeholder="Enter your new password"
                   className="bg-slate-950 border-slate-800 text-slate-100"
                 />
               </div>
@@ -124,7 +108,7 @@ export default function ForceChangePassword() {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter new private password"
+                  placeholder="Re-enter your new password"
                   className="bg-slate-950 border-slate-800 text-slate-100"
                 />
               </div>
@@ -132,9 +116,9 @@ export default function ForceChangePassword() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold h-10 mt-2"
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-11 mt-2 rounded-xl shadow-md shadow-indigo-600/20"
               >
-                {isSubmitting ? 'Updating Password...' : 'Save Password & Unlock CRM'}
+                {isSubmitting ? 'Updating Password...' : 'Set New Password & Continue'}
               </Button>
             </form>
           </CardContent>

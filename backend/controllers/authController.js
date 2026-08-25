@@ -201,9 +201,9 @@ const changePassword = async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
-    if (!currentPassword || !newPassword || newPassword.length < 6) {
+    if (!newPassword || newPassword.length < 6) {
       return res.status(400).json({
-        message: 'Please provide current password and a new password with at least 6 characters.'
+        message: 'New password must be at least 6 characters long.'
       });
     }
 
@@ -212,9 +212,15 @@ const changePassword = async (req, res, next) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Current password is incorrect' });
+    // Require current password check ONLY if user is not on first-login force change gate
+    if (!user.mustChangePassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: 'Current password is required' });
+      }
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) {
+        return res.status(401).json({ message: 'Current password is incorrect' });
+      }
     }
 
     user.password = await bcrypt.hash(newPassword, 12);
