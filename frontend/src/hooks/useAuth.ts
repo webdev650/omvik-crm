@@ -36,6 +36,11 @@ export function useAuth() {
     setUser(userData);
   };
 
+  const updateUser = (userData: any) => {
+    queryClient.setQueryData(['authUser'], userData);
+    setUser(userData);
+  };
+
   const logoutUser = async (onComplete?: () => void) => {
     try {
       const res = await api.post('/auth/logout');
@@ -62,6 +67,7 @@ export function useAuth() {
     isLoading: query.isPending,
     isFetching: query.isFetching,
     login: loginUser,
+    updateUser,
     logout: logoutUser,
     refetch: query.refetch
   };

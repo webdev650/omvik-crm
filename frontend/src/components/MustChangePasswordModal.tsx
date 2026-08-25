@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import api from '../api/axios';
-import useAuthStore from '../store/authStore';
+import useAuth from '../hooks/useAuth';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 
 export default function MustChangePasswordModal() {
-  const { user, setUser } = useAuthStore();
+  const { user, updateUser } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -45,10 +45,11 @@ export default function MustChangePasswordModal() {
 
       if (response.data?.success) {
         toast.success('Password updated successfully! Welcome to OMVIK CRM.');
-        setUser({
+        const updatedUser = response.data?.user || {
           ...user,
           mustChangePassword: false
-        });
+        };
+        updateUser(updatedUser);
       }
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Failed to update password. Please check your credentials.';

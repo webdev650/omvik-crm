@@ -221,9 +221,13 @@ const changePassword = async (req, res, next) => {
     user.mustChangePassword = false;
     await user.save();
 
+    const userObj = user.toObject();
+    delete userObj.password;
+
     res.json({
       success: true,
-      message: 'Password changed successfully'
+      message: 'Password changed successfully',
+      user: userObj
     });
   } catch (error) {
     next(error);

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import api from '../api/axios';
-import useAuthStore from '../store/authStore';
+import useAuth from '../hooks/useAuth';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label';
 
 export default function ForceChangePassword() {
   const navigate = useNavigate();
-  const { user, setUser } = useAuthStore();
+  const { user, updateUser } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -43,12 +43,11 @@ export default function ForceChangePassword() {
 
       if (response.data?.success) {
         toast.success('Password updated successfully! Redirecting to your dashboard...');
-        if (user) {
-          setUser({
-            ...user,
-            mustChangePassword: false
-          });
-        }
+        const updatedUser = response.data?.user || {
+          ...user,
+          mustChangePassword: false
+        };
+        updateUser(updatedUser);
         navigate('/dashboard', { replace: true });
       }
     } catch (err: any) {
