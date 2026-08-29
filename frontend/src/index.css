@@ -1,10 +1,58 @@
 @import "tailwindcss";
 
+@theme {
+  /* Exact User Color Palette Definitions */
+  --color-orange-dark: #FF0000;
+  --color-orange-light: #FFFF00;
+
+  --color-blue-deep: #0131B9;
+  --color-blue-electric: #15B0F8;
+
+  --color-yellow-amber: #FBB040;
+  --color-yellow-bright: #FFFF00;
+
+  --color-white-muted: #BCBEC0;
+  --color-white-bright: #F1F2F2;
+
+  /* Overriding Tailwind Palette Defaults to User-Specified Hex Codes */
+  --color-indigo-600: #0131B9;
+  --color-indigo-500: #15B0F8;
+  --color-indigo-400: #15B0F8;
+  --color-indigo-700: #0131B9;
+
+  --color-blue-600: #0131B9;
+  --color-blue-500: #15B0F8;
+
+  --color-amber-500: #FBB040;
+  --color-amber-400: #FBB040;
+
+  --color-yellow-500: #FFFF00;
+  --color-yellow-400: #FFFF00;
+
+  --color-red-500: #FF0000;
+  --color-red-600: #FF0000;
+
+  --color-slate-100: #F1F2F2;
+  --color-slate-200: #F1F2F2;
+  --color-slate-300: #BCBEC0;
+  --color-slate-400: #BCBEC0;
+}
+
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color-scheme: dark;
+
+  /* Exact User Palette CSS Custom Properties */
+  --color-orange-dark: #FF0000;
+  --color-orange-light: #FFFF00;
+  --color-blue-deep: #0131B9;
+  --color-blue-electric: #15B0F8;
+  --color-yellow-amber: #FBB040;
+  --color-yellow-bright: #FFFF00;
+  --color-white-muted: #BCBEC0;
+  --color-white-bright: #F1F2F2;
 }
 
 html, body, #root {
@@ -14,9 +62,38 @@ html, body, #root {
   max-width: 100vw;
   min-height: 100vh;
   background-color: #090d16;
-  color: #f1f5f9;
+  color: #F1F2F2;
   overflow-x: hidden;
 }
+
+/* Custom Color Utilities */
+.bg-blue-deep { background-color: #0131B9 !important; }
+.bg-blue-electric { background-color: #15B0F8 !important; }
+.bg-orange-accent { background-color: #FF0000 !important; }
+.bg-yellow-amber { background-color: #FBB040 !important; }
+.bg-yellow-bright { background-color: #FFFF00 !important; }
+
+.text-white-bright { color: #F1F2F2 !important; }
+.text-white-muted { color: #BCBEC0 !important; }
+.text-blue-electric { color: #15B0F8 !important; }
+.text-yellow-bright { color: #FFFF00 !important; }
+.text-orange-accent { color: #FF0000 !important; }
+
+.gradient-blue {
+  background: linear-gradient(135deg, #0131B9 0%, #15B0F8 100%) !important;
+}
+
+.gradient-orange {
+  background: linear-gradient(135deg, #FF0000 0%, #FFFF00 100%) !important;
+}
+
+.gradient-yellow {
+  background: linear-gradient(135deg, #FBB040 0%, #FFFF00 100%) !important;
+}
+
+.border-blue-deep { border-color: #0131B9 !important; }
+.border-blue-electric { border-color: #15B0F8 !important; }
+.border-white-muted { border-color: #BCBEC0 !important; }
 
 /* Custom scrollbar styling for internal table overflow */
 .no-scrollbar::-webkit-scrollbar {
