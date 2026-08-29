@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Building2, Plus, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Building2, Plus, CheckCircle2, ShieldCheck, CornerDownRight } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import { getProjects, createProject } from '../../api/projects';
 import { getTeams } from '../../api/teams';
@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Badge } from '../../components/ui/badge';
+import { formatProjectName } from '../../utils/formatProjectName';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ import {
 const createProjectSchema = z.object({
   name: z.string().min(2, 'Project name must be at least 2 characters'),
   code: z.string().min(2, 'Code must be at least 2 characters'),
+  parentProject: z.string().optional(),
   builder: z.string().optional(),
   location: z.string().min(1, 'Please select or enter a location'),
   propertyType: z.string().min(1, 'Please select a property type'),
@@ -45,10 +47,16 @@ export default function ProjectsPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Fetch Projects
+  // Fetch Projects Hierarchy
   const { data: projectsData, isLoading: isLoadingProjects } = useQuery({
-    queryKey: ['projects'],
-    queryFn: getProjects
+    queryKey: ['projects', 'nested'],
+    queryFn: () => getProjects()
+  });
+
+  // Fetch Flat Projects list for Parent Project Selector
+  const { data: flatProjectsData } = useQuery({
+    queryKey: ['projects', 'flat'],
+    queryFn: () => getProjects({ flat: true })
   });
 
   // Fetch Teams to display assigned teams for each project
@@ -58,6 +66,7 @@ export default function ProjectsPage() {
   });
 
   const projects = projectsData?.projects || [];
+  const flatProjects = flatProjectsData?.projects || [];
   const teams = teamsData?.teams || [];
 
   const {
@@ -70,6 +79,7 @@ export default function ProjectsPage() {
     defaultValues: {
       name: '',
       code: '',
+      parentProject: '',
       builder: 'Omvik Realcon',
       location: 'Bhubaneswar',
       propertyType: 'Apartment',
@@ -80,7 +90,11 @@ export default function ProjectsPage() {
 
   // Create Project Mutation
   const createMutation = useMutation({
-    mutationFn: createProject,
+    mutationFn: (values: CreateProjectFormValues) =>
+      createProject({
+        ...values,
+        parentProject: values.parentProject || null
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       setIsAddOpen(false);
@@ -130,13 +144,13 @@ export default function ProjectsPage() {
           <div className="space-y-1">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[11px] font-bold uppercase tracking-wider">
               <Building2 className="w-3.5 h-3.5" />
-              <span>Real-Estate Project Catalog</span>
+              <span>Real-Estate Project Hierarchy Catalog</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-              Real Estate Projects Catalog
+              Real Estate Projects & Sub-Projects Catalog
             </h1>
             <p className="text-xs sm:text-sm text-slate-400">
-              Manage residential & commercial project developments, status, location, and sales team assignments.
+              Manage parent developments and sub-projects (towers/phases), location, and sales team assignments.
             </p>
           </div>
 
@@ -148,7 +162,7 @@ export default function ProjectsPage() {
             className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs gap-1.5 h-11 px-5 rounded-xl shadow-md shadow-indigo-600/20 min-h-[44px]"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Project</span>
+            <span>Add Project / Sub-Project</span>
           </Button>
         </div>
 
@@ -157,7 +171,7 @@ export default function ProjectsPage() {
           <Table>
             <TableHeader className="bg-[#0b0f19]">
               <TableRow className="border-b border-slate-800">
-                <TableHead className="text-slate-400 font-semibold text-xs">Project Name & Code</TableHead>
+                <TableHead className="text-slate-400 font-semibold text-xs">Project Hierarchy & Code</TableHead>
                 <TableHead className="text-slate-400 font-semibold text-xs">Builder / Developer</TableHead>
                 <TableHead className="text-slate-400 font-semibold text-xs">Location & Type</TableHead>
                 <TableHead className="text-slate-400 font-semibold text-xs">Status</TableHead>
@@ -199,51 +213,121 @@ export default function ProjectsPage() {
               ) : (
                 projects.map((p: any) => {
                   const assignedTeams = getAssignedTeams(p._id);
+                  const subProjects = p.subProjects || [];
                   return (
-                    <TableRow key={p._id} className="border-b border-slate-800/40 hover:bg-slate-800/40">
-                      <TableCell className="font-semibold text-slate-200">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center font-bold text-indigo-400 text-xs">
-                            {p.code || 'PRJ'}
+                    <React.Fragment key={p._id}>
+                      {/* Top-Level Parent Project Row */}
+                      <TableRow className="border-b border-slate-800/40 hover:bg-slate-800/40">
+                        <TableCell className="font-semibold text-slate-200">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center font-bold text-indigo-400 text-xs">
+                              {p.code || 'PRJ'}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs font-bold text-slate-100">{p.name}</p>
+                                {subProjects.length > 0 && (
+                                  <span className="px-1.5 py-0.2 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[10px] font-mono font-bold">
+                                    {subProjects.length} SUB-PROJECTS
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-slate-400 font-mono">CODE: {p.code} | Top-Level Project</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs font-bold text-slate-100">{p.name}</p>
-                            <p className="text-[10px] text-slate-400 font-mono">CODE: {p.code}</p>
+                        </TableCell>
+
+                        <TableCell className="text-slate-300 text-xs font-medium">
+                          {p.builder || 'Omvik Realcon'}
+                        </TableCell>
+
+                        <TableCell className="text-slate-300 text-xs">
+                          <div className="space-y-0.5">
+                            <p className="font-medium text-slate-200">{p.location || 'Bhubaneswar'}</p>
+                            <p className="text-[10px] text-slate-400">{p.propertyType || 'Apartment'}</p>
                           </div>
-                        </div>
-                      </TableCell>
+                        </TableCell>
 
-                      <TableCell className="text-slate-300 text-xs font-medium">
-                        {p.builder || 'Omvik Realcon'}
-                      </TableCell>
+                        <TableCell>
+                          <Badge className={`text-[10px] px-2.5 py-0.5 font-bold uppercase tracking-wider border ${getStatusBadgeVariant(p.status || 'active')}`}>
+                            {(p.status || 'active').replace('_', ' ')}
+                          </Badge>
+                        </TableCell>
 
-                      <TableCell className="text-slate-300 text-xs">
-                        <div className="space-y-0.5">
-                          <p className="font-medium text-slate-200">{p.location || 'Bhubaneswar'}</p>
-                          <p className="text-[10px] text-slate-400">{p.propertyType || 'Apartment'}</p>
-                        </div>
-                      </TableCell>
+                        <TableCell className="text-right">
+                          {assignedTeams.length > 0 ? (
+                            <div className="flex flex-wrap items-center justify-end gap-1.5">
+                              {assignedTeams.map((t: any) => (
+                                <span key={t._id} className="px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300 text-xs font-semibold">
+                                  👥 {t.name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 italic text-xs">No Team Assigned</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
 
-                      <TableCell>
-                        <Badge className={`text-[10px] px-2.5 py-0.5 font-bold uppercase tracking-wider border ${getStatusBadgeVariant(p.status || 'active')}`}>
-                          {(p.status || 'active').replace('_', ' ')}
-                        </Badge>
-                      </TableCell>
+                      {/* Nested Sub-Projects Rows (Indented under Parent) */}
+                      {subProjects.map((sub: any) => {
+                        const subAssignedTeams = getAssignedTeams(sub._id);
+                        return (
+                          <TableRow key={sub._id} className="bg-slate-900/50 border-b border-slate-800/40 hover:bg-slate-800/50">
+                            <TableCell className="font-semibold text-slate-200 pl-10">
+                              <div className="flex items-center gap-3">
+                                <CornerDownRight className="w-4 h-4 text-purple-400 shrink-0" />
+                                <div className="w-8 h-8 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center font-bold text-purple-400 text-[10px]">
+                                  {sub.code || 'SUB'}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-xs font-bold text-slate-100">{sub.name}</p>
+                                    <span className="px-1.5 py-0.2 rounded bg-purple-500/10 border border-purple-500/20 text-purple-300 text-[9px] font-mono font-bold">
+                                      SUB-PROJECT
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 font-mono">
+                                    CODE: {sub.code} | Parent: {p.name}
+                                  </p>
+                                </div>
+                              </div>
+                            </TableCell>
 
-                      <TableCell className="text-right">
-                        {assignedTeams.length > 0 ? (
-                          <div className="flex flex-wrap items-center justify-end gap-1.5">
-                            {assignedTeams.map((t: any) => (
-                              <span key={t._id} className="px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300 text-xs font-semibold">
-                                👥 {t.name}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-slate-500 italic text-xs">No Team Assigned</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                            <TableCell className="text-slate-300 text-xs font-medium">
+                              {sub.builder || p.builder || 'Omvik Realcon'}
+                            </TableCell>
+
+                            <TableCell className="text-slate-300 text-xs">
+                              <div className="space-y-0.5">
+                                <p className="font-medium text-slate-200">{sub.location || p.location || 'Bhubaneswar'}</p>
+                                <p className="text-[10px] text-slate-400">{sub.propertyType || 'Apartment'}</p>
+                              </div>
+                            </TableCell>
+
+                            <TableCell>
+                              <Badge className={`text-[10px] px-2.5 py-0.5 font-bold uppercase tracking-wider border ${getStatusBadgeVariant(sub.status || 'active')}`}>
+                                {(sub.status || 'active').replace('_', ' ')}
+                              </Badge>
+                            </TableCell>
+
+                            <TableCell className="text-right">
+                              {subAssignedTeams.length > 0 ? (
+                                <div className="flex flex-wrap items-center justify-end gap-1.5">
+                                  {subAssignedTeams.map((t: any) => (
+                                    <span key={t._id} className="px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-300 text-xs font-semibold">
+                                      👥 {t.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-slate-500 italic text-xs">No Team Assigned</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </React.Fragment>
                   );
                 })
               )}
@@ -255,9 +339,9 @@ export default function ProjectsPage() {
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Add New Real-Estate Project</DialogTitle>
+              <DialogTitle>Add Real-Estate Project / Sub-Project</DialogTitle>
               <DialogDescription>
-                Add a property project development to enable lead routing, site visits, and inventory mapping.
+                Create a top-level property development or nest a sub-project (tower/phase) under an existing parent project.
               </DialogDescription>
             </DialogHeader>
 
@@ -268,12 +352,32 @@ export default function ProjectsPage() {
                 </div>
               )}
 
+              {/* Parent Project Dropdown */}
+              <div className="space-y-1.5">
+                <Label htmlFor="parentProject">Parent Project (Optional Sub-Project Mapping)</Label>
+                <select
+                  id="parentProject"
+                  {...register('parentProject')}
+                  className="flex h-10 w-full rounded-xl border border-slate-800 bg-[#0b0f19] px-3 py-2 text-xs text-slate-100 focus:border-indigo-500 focus:outline-none"
+                >
+                  <option value="">None (Top-Level Independent Project)</option>
+                  {flatProjects.map((p: any) => (
+                    <option key={p._id} value={p._id}>
+                      {formatProjectName(p)}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-500">
+                  Select a parent project if this is a sub-project, tower, or phase development.
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="name">Project Name</Label>
+                  <Label htmlFor="name">Project / Sub-Project Name</Label>
                   <Input
                     id="name"
-                    placeholder="e.g. Omvik Grand Residency"
+                    placeholder="e.g. Tower A / Phase 1"
                     {...register('name')}
                   />
                   {errors.name && (
@@ -285,7 +389,7 @@ export default function ProjectsPage() {
                   <Label htmlFor="code">Unique Code</Label>
                   <Input
                     id="code"
-                    placeholder="e.g. OGR"
+                    placeholder="e.g. OGR-TWA"
                     {...register('code')}
                   />
                   {errors.code && (

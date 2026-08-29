@@ -1,7 +1,7 @@
 import api from './axios.js';
 
-export async function getProjects() {
-  const response = await api.get('/projects');
+export async function getProjects(params?: { flat?: boolean }) {
+  const response = await api.get('/projects', { params });
   return response.data;
 }
 
@@ -19,6 +19,7 @@ export async function createProject(data: {
   status?: string;
   description?: string;
   managerId?: string;
+  parentProject?: string | null;
 }) {
   const response = await api.post('/projects', data);
   return response.data;

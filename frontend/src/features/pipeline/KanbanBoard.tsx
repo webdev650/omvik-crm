@@ -23,6 +23,7 @@ import { ArrowRight, MoveRight, Layers, Phone, Building2, User, ChevronRight } f
 import Navbar from '../../components/Navbar';
 import { getOpportunities, updateOpportunityStage } from '../../api/opportunities';
 import { getProjects } from '../../api/projects';
+import { formatProjectName } from '../../utils/formatProjectName';
 import { Card } from '../../components/ui/card';
 import { Badge, getStageBadgeVariant } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -180,10 +181,10 @@ export default function KanbanBoard() {
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
   );
 
-  // Fetch Projects for Filter Dropdown
+  // Fetch Projects for Filter Dropdown (flat list with hierarchy labels)
   const { data: projectsData } = useQuery({
-    queryKey: ['projects'],
-    queryFn: getProjects
+    queryKey: ['projects', 'flat'],
+    queryFn: () => getProjects({ flat: true })
   });
   const projects = projectsData?.projects || [];
 
@@ -341,7 +342,7 @@ export default function KanbanBoard() {
               <option value="">All Projects</option>
               {projects.map((p: any) => (
                 <option key={p._id} value={p._id}>
-                  {p.name}
+                  {formatProjectName(p)}
                 </option>
               ))}
             </select>

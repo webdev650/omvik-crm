@@ -8,6 +8,7 @@ import Navbar from '../../components/Navbar';
 import { getTeams, createTeam, updateTeam } from '../../api/teams';
 import { getUsers } from '../../api/users';
 import { getProjects } from '../../api/projects';
+import { formatProjectName } from '../../utils/formatProjectName';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -56,10 +57,10 @@ export default function TeamsPage() {
     queryFn: getUsers
   });
 
-  // Fetch Projects for project assignment dropdown
+  // Fetch Projects for project assignment dropdown (flat list with hierarchy labels)
   const { data: projectsData } = useQuery({
-    queryKey: ['projects'],
-    queryFn: getProjects
+    queryKey: ['projects', 'flat'],
+    queryFn: () => getProjects({ flat: true })
   });
 
   const teams = teamsData?.teams || [];
@@ -292,7 +293,7 @@ export default function TeamsPage() {
                     <option value="">All Projects / Unassigned</option>
                     {projects.map((p: any) => (
                       <option key={p._id} value={p._id}>
-                        {p.name} ({p.code})
+                        {formatProjectName(p)} ({p.code})
                       </option>
                     ))}
                   </select>

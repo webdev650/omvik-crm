@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { submitLead, overrideDuplicateLead } from '../../api/opportunities';
 import { getProjects } from '../../api/projects';
+import { formatProjectName } from '../../utils/formatProjectName';
 import useAuthStore from '../../store/authStore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -41,10 +42,10 @@ export default function NewLeadForm() {
   const [overrideError, setOverrideError] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  // Fetch Projects for Dropdown Selection
+  // Fetch Projects for Dropdown Selection (flat list with hierarchy labels)
   const { data: projectsData, isLoading: isLoadingProjects } = useQuery({
-    queryKey: ['projects'],
-    queryFn: getProjects
+    queryKey: ['projects', 'flat'],
+    queryFn: () => getProjects({ flat: true })
   });
 
   const projects = projectsData?.projects || [];
@@ -261,7 +262,7 @@ export default function NewLeadForm() {
               <option value="">Select a Project...</option>
               {projects.map((proj: any) => (
                 <option key={proj._id} value={proj._id}>
-                  {proj.name} ({proj.code})
+                  {formatProjectName(proj)} ({proj.code})
                 </option>
               ))}
             </select>

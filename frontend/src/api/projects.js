@@ -1,7 +1,7 @@
-import api from './axios';
+import api from './axios.js';
 
-export async function getProjects() {
-  const response = await api.get('/projects');
+export async function getProjects(params) {
+  const response = await api.get('/projects', { params });
   return response.data;
 }
 

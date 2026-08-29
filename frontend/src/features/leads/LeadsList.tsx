@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { getOpportunities, exportLeads } from '../../api/opportunities';
 import { getProjects } from '../../api/projects';
+import { formatProjectName } from '../../utils/formatProjectName';
 import useAuthStore from '../../store/authStore';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/table';
 import { Badge, getStageBadgeVariant } from '../../components/ui/badge';
@@ -19,10 +20,10 @@ export default function LeadsList() {
 
   const canExport = !!currentUser;
 
-  // Fetch Projects for Filter Dropdown
+  // Fetch Projects for Filter Dropdown (flat list with hierarchy labels)
   const { data: projectsData } = useQuery({
-    queryKey: ['projects'],
-    queryFn: getProjects
+    queryKey: ['projects', 'flat'],
+    queryFn: () => getProjects({ flat: true })
   });
 
   const projects = projectsData?.projects || [];
@@ -92,7 +93,7 @@ export default function LeadsList() {
             <option value="">All Projects</option>
             {projects.map((proj: any) => (
               <option key={proj._id} value={proj._id}>
-                {proj.name}
+                {formatProjectName(proj)}
               </option>
             ))}
           </select>

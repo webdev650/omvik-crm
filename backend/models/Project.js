@@ -46,6 +46,11 @@ const projectSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null
+    },
+    parentProject: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Project',
+      default: null
     }
   },
   {
