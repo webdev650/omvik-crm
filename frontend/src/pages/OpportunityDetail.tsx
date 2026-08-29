@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar';
 import { getOpportunityById } from '../api/opportunities';
 import { Badge, getStageBadgeVariant } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import ActivityTimeline from '../features/activities/ActivityTimeline';
 import LogActivityForm from '../features/activities/LogActivityForm';
