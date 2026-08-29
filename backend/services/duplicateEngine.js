@@ -18,7 +18,11 @@ async function processIncomingLead(leadInput, submittingUser) {
 
   // 1. Find or create Customer
   let customer = await Customer.findOne({
-    $or: [{ primaryMobile: cleanMobile }, { alternateMobile: cleanMobile }]
+    $or: [
+      { primaryMobile: cleanMobile },
+      { alternateMobile: cleanMobile },
+      { whatsapp: cleanMobile }
+    ]
   });
 
   if (!customer) {
