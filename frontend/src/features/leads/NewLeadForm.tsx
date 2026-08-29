@@ -82,18 +82,17 @@ export default function NewLeadForm() {
       setSuccessMessage(null);
       if (error.response?.status === 409) {
         const detail = error.response.data;
-        const ownerName =
-          detail.owner?.name ||
-          detail.existingOpportunity?.owner?.name ||
-          'another team member';
-        const stage =
-          detail.stage || detail.existingOpportunity?.stage || 'active';
-        const customerId = detail.customer?._id || detail.existingOpportunity?.customer;
-        const projectId = detail.existingOpportunity?.project;
+        const customerName = detail.customerName || detail.customer?.name || 'This lead';
+        const projectName = detail.projectName || detail.existingOpportunity?.project?.name || 'this project';
+        const ownerName = detail.existingOwner || detail.existingOpportunity?.owner?.name || detail.owner?.name || 'another team member';
+        const stage = detail.existingStage || detail.existingOpportunity?.stage || detail.stage || 'active';
 
-        setErrorMessage(
-          `Already owned by ${ownerName} — stage: ${stage}`
-        );
+        const customerId = detail.customer?._id || detail.existingOpportunity?.customer;
+        const projectId = detail.existingOpportunity?.project?._id || detail.existingOpportunity?.project;
+
+        const dupMessage = detail.message || `This lead is already assigned — ${customerName} for ${projectName} is currently owned by ${ownerName} (Stage: ${stage}).`;
+
+        setErrorMessage(dupMessage);
 
         if (customerId && projectId) {
           setDuplicateData({ customerId, projectId, ownerName, stage });

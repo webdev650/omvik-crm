@@ -114,6 +114,11 @@ const previewImport = async (req, res, next) => {
         }).populate('owner', 'name email role');
 
         if (activeOpp) {
+          const customerName = customer.name || rawName.trim();
+          const projectName = targetProject.name;
+          const ownerName = activeOpp.owner ? activeOpp.owner.name : 'Unassigned';
+          const stageName = activeOpp.stage || 'new';
+
           duplicates.push({
             rowNumber: rowNum,
             rawName: rawName.trim(),
@@ -121,6 +126,11 @@ const previewImport = async (req, res, next) => {
             project: targetProject.name,
             projectId: targetProject._id,
             source: rawSource,
+            reason: `This lead is already assigned — ${customerName} for ${projectName} is currently owned by ${ownerName} (Stage: ${stageName}).`,
+            customerName,
+            projectName,
+            existingOwner: ownerName,
+            existingStage: stageName,
             existingCustomer: { _id: customer._id, name: customer.name },
             existingOpportunity: {
               _id: activeOpp._id,

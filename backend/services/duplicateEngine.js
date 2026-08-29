@@ -66,7 +66,59 @@ async function processIncomingLead(leadInput, submittingUser) {
   // 3. Ensure Mongoose unique index build is finished
   await Opportunity.init();
 
-  // 4. Attempt direct Opportunity creation (Atomic DB constraint enforcement)
+  // 4. Pre-check for existing active opportunity for this customer & project
+  const existingActive = await Opportunity.findOne({
+    customer: customer._id,
+    project: leadInput.project,
+    isActive: true
+  })
+    .populate('owner', 'name email role')
+    .populate('project', 'name code');
+
+  if (existingActive) {
+    const customerName = customer.name || leadInput.rawName || 'Prospect';
+    const projectName = existingActive.project?.name || 'Selected Project';
+    const existingOwner = existingActive.owner?.name || 'Unassigned';
+    const existingStage = existingActive.stage || 'new';
+
+    const lead = await Lead.create({
+      rawName: leadInput.rawName,
+      rawMobile: leadInput.rawMobile,
+      project: leadInput.project,
+      source: leadInput.source,
+      campaign: leadInput.campaign,
+      duplicateStatus: 'blocked',
+      matchedCustomer: customer._id,
+      resultingOpportunity: existingActive._id
+    });
+
+    try {
+      const DuplicateAttemptLog = require('../models/DuplicateAttemptLog');
+      await DuplicateAttemptLog.create({
+        rawName: leadInput.rawName,
+        rawMobile: leadInput.rawMobile,
+        project: leadInput.project,
+        source: leadInput.source,
+        matchedCustomer: customer._id,
+        existingOpportunity: existingActive._id
+      });
+    } catch (logErr) {
+      console.error('Error logging duplicate attempt:', logErr);
+    }
+
+    return {
+      isDuplicate: true,
+      customerName,
+      projectName,
+      existingOwner,
+      existingStage,
+      existingOpportunity: existingActive,
+      customer,
+      lead
+    };
+  }
+
+  // 5. Attempt direct Opportunity creation (Atomic DB constraint enforcement)
   try {
     let opportunity = await Opportunity.create({
       customer: customer._id,
@@ -85,6 +137,7 @@ async function processIncomingLead(leadInput, submittingUser) {
     }
 
     await opportunity.populate('owner', 'name email role');
+    await opportunity.populate('project', 'name code');
 
     // Record Lead as no_match
     const lead = await Lead.create({
@@ -105,13 +158,20 @@ async function processIncomingLead(leadInput, submittingUser) {
       lead
     };
   } catch (err) {
-    // 5. Handle Mongo Duplicate Key Error (code 11000)
+    // 6. Handle Mongo Duplicate Key Error (code 11000 fallback)
     if (err.code === 11000) {
       const existingOpportunity = await Opportunity.findOne({
         customer: customer._id,
         project: leadInput.project,
         isActive: true
-      }).populate('owner', 'name email role');
+      })
+        .populate('owner', 'name email role')
+        .populate('project', 'name code');
+
+      const customerName = customer.name || leadInput.rawName || 'Prospect';
+      const projectName = existingOpportunity?.project?.name || 'Selected Project';
+      const existingOwner = existingOpportunity?.owner?.name || 'Unassigned';
+      const existingStage = existingOpportunity?.stage || 'new';
 
       const lead = await Lead.create({
         rawName: leadInput.rawName,
@@ -141,6 +201,10 @@ async function processIncomingLead(leadInput, submittingUser) {
 
       return {
         isDuplicate: true,
+        customerName,
+        projectName,
+        existingOwner,
+        existingStage,
         existingOpportunity,
         customer,
         lead
@@ -165,94 +229,70 @@ async function overrideDuplicate(customerId, projectId, newOwnerId, reason, over
     throw new Error('Only super_admin or admin roles can override duplicate blocks');
   }
 
-  // 1. Find existing active opportunity
-  const existingOpp = await Opportunity.findOne({
+  const existingOpportunity = await Opportunity.findOne({
     customer: customerId,
     project: projectId,
     isActive: true
-  }).populate('owner', 'name email role');
+  });
 
-  if (!existingOpp) {
-    throw new Error('No active opportunity found for this customer and project to override');
+  if (!existingOpportunity) {
+    throw new Error('No active opportunity found for this customer and project');
   }
 
-  const oldOwnerId = existingOpp.owner ? (existingOpp.owner._id || existingOpp.owner) : null;
+  // 1. Create new opportunity
+  const newOpportunity = await Opportunity.create({
+    customer: customerId,
+    project: projectId,
+    owner: newOwnerId || overridingUser._id,
+    stage: 'new',
+    isActive: true,
+    supersedesOpportunity: existingOpportunity._id,
+    overrideReason: reason
+  });
 
-  // 2. Deactivate old opportunity using updateOne to satisfy partial unique index
-  await Opportunity.updateOne({ _id: existingOpp._id }, { isActive: false });
+  await newOpportunity.populate('owner', 'name email role');
+  await newOpportunity.populate('project', 'name code');
 
-  let newOpp;
-  try {
-    newOpp = await Opportunity.create({
-      customer: customerId,
-      project: projectId,
-      owner: newOwnerId || null,
-      stage: 'new',
-      isActive: true,
-      source: 'duplicate_override'
-    });
+  // 2. Deactivate previous opportunity & mark supersededBy
+  existingOpportunity.isActive = false;
+  existingOpportunity.supersededByOpportunity = newOpportunity._id;
+  await existingOpportunity.save();
 
-    // Run auto-assignment if no explicit new owner provided
-    if (!newOpp.owner) {
-      const { autoAssign } = require('./assignmentEngine');
-      newOpp = await autoAssign(newOpp);
+  // 3. Create AuditLog entry
+  const auditLog = await AuditLog.create({
+    action: 'SUPER_ADMIN_DUPLICATE_OVERRIDE',
+    actor: overridingUser._id,
+    targetModel: 'Opportunity',
+    targetId: newOpportunity._id,
+    details: {
+      customerId,
+      projectId,
+      previousOpportunityId: existingOpportunity._id,
+      previousOwnerId: existingOpportunity.owner,
+      newOwnerId: newOpportunity.owner,
+      reason
     }
+  });
 
-    await newOpp.populate('owner', 'name email role');
+  // 4. Record Lead as overridden
+  const customer = await Customer.findById(customerId);
+  const lead = await Lead.create({
+    rawName: customer ? customer.name : 'Prospect',
+    rawMobile: customer ? customer.primaryMobile : '',
+    project: projectId,
+    duplicateStatus: 'overridden',
+    matchedCustomer: customerId,
+    resultingOpportunity: newOpportunity._id,
+    overrideReason: reason,
+    overriddenBy: overridingUser._id
+  });
 
-    // Link old opportunity to new one via supersededBy
-    await Opportunity.updateOne(
-      { _id: existingOpp._id },
-      { supersededBy: newOpp._id }
-    );
-    existingOpp.isActive = false;
-    existingOpp.supersededBy = newOpp._id;
-
-    // 3. Create AuditLog entry
-    const auditLog = await AuditLog.create({
-      user: overridingUser._id,
-      action: 'duplicate_override',
-      entity: 'Opportunity',
-      entityId: newOpp._id,
-      reason: reason.trim(),
-      metadata: {
-        oldOpportunityId: existingOpp._id,
-        oldOwnerId,
-        newOwnerId: newOpp.owner ? (newOpp.owner._id || newOpp.owner) : null,
-        customerId,
-        projectId
-      }
-    });
-
-    // 4. Record Lead entry for tracking
-    const lead = await Lead.create({
-      rawName: 'Duplicate Override',
-      rawMobile: 'N/A',
-      project: projectId,
-      source: 'duplicate_override',
-      duplicateStatus: 'override_approved',
-      matchedCustomer: customerId,
-      resultingOpportunity: newOpp._id
-    });
-
-    return {
-      success: true,
-      opportunity: newOpp,
-      previousOpportunity: existingOpp,
-      auditLog,
-      lead
-    };
-  } catch (err) {
-    console.error('[overrideDuplicate internal error]:', err);
-    if (newOpp) {
-      await Opportunity.deleteOne({ _id: newOpp._id });
-    }
-    await Opportunity.updateOne(
-      { _id: existingOpp._id },
-      { isActive: true, supersededBy: null }
-    );
-    throw err;
-  }
+  return {
+    opportunity: newOpportunity,
+    previousOpportunity: existingOpportunity,
+    auditLog,
+    lead
+  };
 }
 
 module.exports = {

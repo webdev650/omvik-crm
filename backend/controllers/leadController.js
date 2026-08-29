@@ -20,10 +20,19 @@ const submitLead = async (req, res, next) => {
     );
 
     if (result.isDuplicate) {
+      const customerName = result.customerName || result.customer?.name || 'Prospect';
+      const projectName = result.projectName || result.existingOpportunity?.project?.name || 'Selected Project';
+      const existingOwner = result.existingOwner || result.existingOpportunity?.owner?.name || 'another team member';
+      const existingStage = result.existingStage || result.existingOpportunity?.stage || 'new';
+
       return res.status(409).json({
         success: false,
-        message: 'Duplicate lead detected. An active opportunity already exists for this customer and project.',
+        message: `This lead is already assigned — ${customerName} for ${projectName} is currently owned by ${existingOwner} (Stage: ${existingStage}).`,
         duplicateStatus: 'blocked',
+        customerName,
+        projectName,
+        existingOwner,
+        existingStage,
         existingOpportunity: result.existingOpportunity,
         customer: result.customer
       });
