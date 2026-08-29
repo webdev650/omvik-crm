@@ -129,9 +129,16 @@ function EmptyState({ status }: { status: string }) {
   );
 }
 
+import { usePageSEO } from '../hooks/usePageSEO';
+
 // ── Main Page Component ─────────────────────────────────────────────────────
 
 export default function MySiteVisits() {
+  usePageSEO({
+    title: 'Site Visit Management & Logistics',
+    description: 'Schedule, log feedback, and track real-estate project property site visit tours.'
+  });
+
   const queryClient = useQueryClient();
 
   const [completeVisit, setCompleteVisit] = useState<any | null>(null);
