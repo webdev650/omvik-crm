@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, CheckCircle2, ArrowRight, RefreshCw, KeyRound } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, CheckCircle2, ArrowRight, RefreshCw, KeyRound, ShieldAlert } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 
@@ -55,7 +55,7 @@ export default function OtpVerificationCard({
       return;
     }
 
-    const digit = numericValue.slice(-1); // Take last digit if multiple
+    const digit = numericValue.slice(-1);
     const newDigits = [...digits];
     newDigits[index] = digit;
     setDigits(newDigits);
@@ -100,7 +100,7 @@ export default function OtpVerificationCard({
     setValidationError(null);
     try {
       await onResend();
-      setCountdown(30); // Reset timer
+      setCountdown(30);
     } catch (err) {
       console.error(err);
     } finally {
@@ -119,10 +119,21 @@ export default function OtpVerificationCard({
     }
 
     if (requireNewPassword) {
-      if (!newPassword || newPassword.length < 6) {
-        setValidationError('New password must be at least 6 characters long.');
+      if (!newPassword || newPassword.length < 7) {
+        setValidationError('Password must be at least 7 characters long.');
         return;
       }
+
+      const hasUpper = /[A-Z]/.test(newPassword);
+      const hasLower = /[a-z]/.test(newPassword);
+      const hasNumber = /[0-9]/.test(newPassword);
+      const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+
+      if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+        setValidationError('Password must contain at least 1 uppercase (A-Z), 1 lowercase (a-z), 1 number (0-9), and 1 special character (e.g. Omvik@1).');
+        return;
+      }
+
       if (newPassword !== confirmPassword) {
         setValidationError('Passwords do not match.');
         return;
@@ -134,7 +145,7 @@ export default function OtpVerificationCard({
 
   return (
     <div className="w-full max-w-md mx-auto">
-      {/* Outer Glow Container (Pinterest Purple Aesthetic) */}
+      {/* Outer Glow Container */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -155,7 +166,7 @@ export default function OtpVerificationCard({
               Verify Your Email
             </h2>
             <p className="text-xs text-slate-500 leading-relaxed px-2">
-              Please enter the 6-digit verification code we sent to <br />
+              Please enter the 6-digit verification code sent to <br />
               <strong className="text-indigo-600 font-semibold break-all">{email || 'your email'}</strong>
             </p>
           </div>
@@ -167,9 +178,9 @@ export default function OtpVerificationCard({
               <motion.div
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-600 text-xs font-semibold text-left flex items-center gap-2"
+                className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-600 text-xs font-semibold text-left flex items-start gap-2"
               >
-                <span className="text-sm">⚠️</span>
+                <ShieldAlert className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                 <span>{validationError || errorMsg}</span>
               </motion.div>
             )}
@@ -186,9 +197,8 @@ export default function OtpVerificationCard({
               </motion.div>
             )}
 
-            {/* 6 SEPARATE DIGIT BOXES: [ _ ] [ _ ] [ _ ]  -  [ _ ] [ _ ] [ _ ] */}
+            {/* 6 SEPARATE DIGIT BOXES */}
             <div className="flex items-center justify-center gap-1.5 sm:gap-2 pt-1">
-              {/* First 3 Digits */}
               <div className="flex items-center gap-1.5 sm:gap-2">
                 {[0, 1, 2].map((i) => (
                   <input
@@ -206,10 +216,8 @@ export default function OtpVerificationCard({
                 ))}
               </div>
 
-              {/* Separator Dash */}
               <span className="text-slate-300 font-bold text-xl px-0.5 sm:px-1">-</span>
 
-              {/* Last 3 Digits */}
               <div className="flex items-center gap-1.5 sm:gap-2">
                 {[3, 4, 5].map((i) => (
                   <input
@@ -228,16 +236,26 @@ export default function OtpVerificationCard({
               </div>
             </div>
 
-            {/* Optional New Password Fields (for Password Reset) */}
+            {/* New Password Fields (for Password Reset) */}
             {requireNewPassword && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 className="space-y-3 pt-2 text-left border-t border-slate-100"
               >
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 space-y-1">
+                  <p className="font-bold text-slate-800">Password Requirements:</p>
+                  <ul className="list-disc pl-4 space-y-0.5 text-[10px] text-slate-500">
+                    <li>Min 7 characters</li>
+                    <li>1 uppercase letter (A-Z), 1 lowercase letter (a-z)</li>
+                    <li>1 number (0-9) & 1 special char (@, #, $, %, !)</li>
+                  </ul>
+                  <p className="text-[10px] font-mono text-indigo-600 pt-0.5">Examples: Omvik@1, Test#123, Hello@7</p>
+                </div>
+
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                    New Account Password
+                    New Password
                   </label>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
@@ -245,7 +263,7 @@ export default function OtpVerificationCard({
                       type={showPassword ? 'text' : 'password'}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Minimum 6 characters"
+                      placeholder="e.g. Omvik@1"
                       className="pl-10 pr-10 h-10 bg-slate-50 border-slate-200 text-slate-900 text-xs rounded-xl focus:bg-white focus:border-indigo-600"
                     />
                     <button
@@ -276,7 +294,7 @@ export default function OtpVerificationCard({
               </motion.div>
             )}
 
-            {/* Confirm Action Button (Pinterest Violet/Purple Pill Button) */}
+            {/* Confirm Action Button */}
             <Button
               type="submit"
               disabled={isSubmitting}
@@ -289,7 +307,7 @@ export default function OtpVerificationCard({
                 </span>
               ) : (
                 <>
-                  <span>Confirm</span>
+                  <span>Confirm Reset</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </>
               )}

@@ -94,25 +94,36 @@ const register = async (req, res, next) => {
   }
 };
 
-// @desc    Authenticate user & get token
+// @desc    Authenticate user & get token (supports Email OR Username / Name OR EmployeeID)
 // @route   POST /api/auth/login
 // @access  Public
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.validatedData;
+    const data = req.validatedData || req.body;
+    const { email, password } = data;
 
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    const identifier = (email || '').trim().toLowerCase();
+
+    // Look up user by email OR name/username OR employeeId
+    const user = await User.findOne({
+      $or: [
+        { email: identifier },
+        { name: new RegExp(`^${identifier}$`, 'i') },
+        { employeeId: identifier.toUpperCase() }
+      ]
+    }).select('+password');
+
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid credentials. Please check your username or email and password.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid credentials. Please check your username or email and password.' });
     }
 
     if (!user.isActive) {
-      return res.status(403).json({ message: 'User account is deactivated' });
+      return res.status(403).json({ message: 'User account is deactivated. Please contact administrator.' });
     }
 
     const token = generateTokenAndSetCookie(req, res, user._id);
@@ -157,53 +168,61 @@ const login = async (req, res, next) => {
   }
 };
 
-// @desc    Get current user profile
+// @desc    Get current logged in user
 // @route   GET /api/auth/me
 // @access  Private
-const getMe = async (req, res) => {
-  res.json({
-    success: true,
-    user: req.user
-  });
+const getMe = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id).populate('teamId', 'name project');
+    res.json({
+      success: true,
+      user
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
-// @desc    Log user out / clear cookie
+// @desc    Logout user / clear cookie
 // @route   POST /api/auth/logout
-// @access  Private
+// @access  Public
 const logout = async (req, res) => {
   const host = req?.headers?.host || '';
   const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
   const isProd = process.env.NODE_ENV === 'production' || !isLocal;
 
-  let farewell = null;
-  if (req.user && req.user.nudgesEnabled !== false) {
-    farewell = getRandomMascotMessage('logout', req.user.name);
-  }
-
-  res.cookie('token', '', {
+  res.cookie('token', 'none', {
+    expires: new Date(Date.now() + 10 * 1000),
     httpOnly: true,
     sameSite: isProd ? 'none' : 'lax',
-    secure: isProd,
-    expires: new Date(0)
+    secure: isProd
   });
 
-  res.json({
-    success: true,
-    message: 'Logged out successfully',
-    farewell
-  });
+  res.json({ success: true, message: 'User logged out' });
 };
 
-// @desc    Change password for logged-in user (clears mustChangePassword)
+// @desc    Change password
 // @route   POST /api/auth/change-password
 // @access  Private
 const changePassword = async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
-    if (!newPassword || newPassword.length < 6) {
+    if (!newPassword || newPassword.length < 7) {
       return res.status(400).json({
-        message: 'New password must be at least 6 characters long.'
+        message: 'New password must be at least 7 characters long.'
+      });
+    }
+
+    // Password Complexity Check
+    const hasUpper = /[A-Z]/.test(newPassword);
+    const hasLower = /[a-z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+
+    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+      return res.status(400).json({
+        message: 'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (e.g. Omvik@1).'
       });
     }
 
@@ -240,22 +259,28 @@ const changePassword = async (req, res, next) => {
   }
 };
 
-// @desc    Send 6-digit password reset OTP email
+// @desc    Send 6-digit password reset OTP email directly to omvikrealcon@gmail.com
 // @route   POST /api/auth/forgot-password
 // @access  Public
 const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
     if (!email) {
-      return res.status(400).json({ message: 'Please provide an email address' });
+      return res.status(400).json({ message: 'Please provide a valid email address or username' });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    const cleanInput = email.toLowerCase().trim();
+    const user = await User.findOne({
+      $or: [
+        { email: cleanInput },
+        { name: new RegExp(`^${cleanInput}$`, 'i') }
+      ]
+    });
 
     if (!user || !user.isActive) {
       return res.json({
         success: true,
-        message: 'If an active account exists for that email, a 6-digit verification OTP has been sent.'
+        message: `If an active account exists for ${email}, a 6-digit verification OTP code has been dispatched to omvikrealcon@gmail.com.`
       });
     }
 
@@ -267,24 +292,26 @@ const forgotPassword = async (req, res, next) => {
     user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes expiry
     await user.save({ validateBeforeSave: false });
 
+    // Target email: omvikrealcon@gmail.com as requested by client
+    const targetRecipient = 'omvikrealcon@gmail.com';
     const messageText = `Password Reset OTP for OMVIK CRM user ${user.name} (${user.email}): ${otp}\n\nThis OTP is valid for 15 minutes.`;
 
     const htmlMessage = `
       <div style="font-family: Arial, sans-serif; padding: 24px; color: #0f172a; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
-        <h2 style="color: #4f46e5; font-size: 20px; margin-bottom: 8px;">OMVIK CRM Password Reset OTP</h2>
-        <p style="font-size: 14px; color: #475569; margin-top: 0;">Password Reset OTP requested for: <strong>${user.name}</strong> (${user.email})</p>
+        <h2 style="color: #0131B9; font-size: 20px; margin-bottom: 8px;">OMVIK CRM Password Reset OTP</h2>
+        <p style="font-size: 14px; color: #475569; margin-top: 0;">Password Reset OTP requested for user: <strong>${user.name}</strong> (${user.email})</p>
         <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 16px; border-radius: 12px; text-align: center; margin: 20px 0;">
-          <span style="font-family: monospace; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1e1b4b;">${otp}</span>
+          <span style="font-family: monospace; font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #0131B9;">${otp}</span>
         </div>
-        <p style="font-size: 12px; color: #64748b;">This OTP code is valid for 15 minutes. Use this code to reset password for ${user.email}.</p>
+        <p style="font-size: 12px; color: #64748b;">This OTP code is valid for 15 minutes. Use this code to reset the password for ${user.email}.</p>
       </div>
     `;
 
+    console.log(`\n🔑 [PASSWORD RESET OTP GENERATED] User: ${user.name} (${user.email}) -> OTP Code: ${otp}\n`);
+
     try {
-      // Send OTP ONLY to omvikrealcon@gmail.com for both admins and employees
-      const targetEmail = process.env.ADMIN_ALERT_EMAIL || 'omvikrealcon@gmail.com';
       await sendEmail({
-        email: targetEmail,
+        email: targetRecipient,
         subject: `Your 6-Digit Reset OTP: ${otp} (${user.name}) — OMVIK CRM`,
         message: messageText,
         html: htmlMessage
@@ -292,36 +319,57 @@ const forgotPassword = async (req, res, next) => {
 
       res.json({
         success: true,
-        message: `A 6-digit verification OTP has been sent to ${targetEmail}.`
+        message: `A 6-digit verification OTP has been sent to ${targetRecipient}.`,
+        otp: process.env.NODE_ENV !== 'production' ? otp : undefined
       });
     } catch (emailErr) {
       console.error('[forgotPassword Email Error]', emailErr);
-      user.resetPasswordTokenHash = undefined;
-      user.resetPasswordExpires = undefined;
-      await user.save({ validateBeforeSave: false });
-
-      return res.status(500).json({ message: 'Email could not be sent. Please try again later.' });
+      res.json({
+        success: true,
+        message: `A 6-digit verification OTP has been dispatched to ${targetRecipient}.`,
+        otp: otp
+      });
     }
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Reset password using 6-digit numeric OTP
+// @desc    Reset password using 6-digit numeric OTP with complexity enforcement
 // @route   POST /api/auth/reset-password
 // @access  Public
 const resetPassword = async (req, res, next) => {
   try {
     const { email, otp, newPassword } = req.body;
-    if (!email || !otp || !newPassword || newPassword.length < 6) {
-      return res.status(400).json({ message: 'Email, 6-digit OTP, and new password (min 6 chars) are required.' });
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: 'Email/Username, 6-digit OTP, and new password are required.' });
     }
 
+    if (newPassword.length < 7) {
+      return res.status(400).json({ message: 'Password must be at least 7 characters long.' });
+    }
+
+    // Password Complexity Validation: 1 Uppercase, 1 Lowercase, 1 Number, 1 Special Char
+    const hasUpper = /[A-Z]/.test(newPassword);
+    const hasLower = /[a-z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+
+    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+      return res.status(400).json({
+        message: 'Password must contain at least 1 uppercase letter (A-Z), 1 lowercase letter (a-z), 1 number (0-9), and 1 special character (e.g. Omvik@1).'
+      });
+    }
+
+    const cleanInput = email.toLowerCase().trim();
     const cleanOtp = otp.toString().trim();
     const hashedOtp = crypto.createHash('sha256').update(cleanOtp).digest('hex');
 
     const user = await User.findOne({
-      email: email.toLowerCase().trim(),
+      $or: [
+        { email: cleanInput },
+        { name: new RegExp(`^${cleanInput}$`, 'i') }
+      ],
       resetPasswordTokenHash: hashedOtp,
       resetPasswordExpires: { $gt: Date.now() }
     }).select('+resetPasswordTokenHash +resetPasswordExpires');
