@@ -66,12 +66,12 @@ const SOURCE_COLORS = [
   '#10b981'  // Emerald
 ];
 
-// Vibrant colors matching the user's reference basic pie chart
+// Rich, high-contrast colors matching the reference pie chart
 const DEEP_DIVE_COLORS = [
-  '#3b82f6', // Active Leads - Blue
-  '#f59e0b', // Inactive Leads - Yellow/Gold
-  '#10b981', // Bookings (Won) - Green
-  '#ef4444'  // Site Visits - Red
+  '#3b82f6', // Active Leads - Electric Blue
+  '#f59e0b', // Inactive Leads - Golden Yellow
+  '#10b981', // Bookings (Won) - Emerald Green
+  '#ef4444'  // Site Visits - Coral Red
 ];
 
 const STAGE_LABELS: Record<string, string> = {
@@ -83,6 +83,30 @@ const STAGE_LABELS: Record<string, string> = {
   nurture: 'Nurture',
   won: 'Won 🏆',
   lost: 'Lost'
+};
+
+// Custom SVG Label renderer to render slice percentages inside the solid pie slices
+const RADIAN = Math.PI / 180;
+const renderPieSliceLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+  if (!percent || percent <= 0.03) return null;
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="#ffffff"
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontSize={13}
+      fontWeight={900}
+      style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.8))' }}
+    >
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
 };
 
 // Framer Motion Animation Variants
@@ -193,6 +217,10 @@ export default function DirectorDashboard() {
       { name: 'Site Visits', value: pd.siteVisitsCount || 0 }
     ];
   }, [stats?.projectDeepDive]);
+
+  const deepDiveTotal = useMemo(() => {
+    return deepDiveChartData.reduce((acc, item) => acc + item.value, 0);
+  }, [deepDiveChartData]);
 
   return (
     <div className="min-h-screen bg-[#0b0f19] text-slate-100 font-sans selection:bg-[#0131B9] selection:text-white pb-16">
@@ -571,28 +599,32 @@ export default function DirectorDashboard() {
               </div>
             </div>
 
-            {/* ── SECTION 3B: DEDICATED PROJECT DEEP DIVE & STAGE CONVERSION PIE CHART (SOLID PIE CHART WITH Slice % LABELS) ── */}
-            <div className="bg-[#131c31] border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-sm space-y-6">
+            {/* ── SECTION 3B: HIGH-END PROPER BASIC PIE CHART DISTRIBUTION & RATIOS ── */}
+            <div className="bg-[#131c31] border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-xl space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/60 pb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-[#0131B9]/20 text-[#15B0F8] border border-[#15B0F8]/30 flex items-center justify-center">
-                    <PieIcon className="w-4 h-4" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0131B9]/30 to-[#15B0F8]/20 text-[#15B0F8] border border-[#15B0F8]/40 flex items-center justify-center shadow-md">
+                    <PieIcon className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">Project Deep Dive & Stage Conversion Analytics</h3>
-                    <p className="text-xs text-slate-400">Filter by Project, Employee, & Date Range to analyze stage distribution and conversion ratios</p>
+                    <h3 className="text-lg font-extrabold text-white tracking-tight">Project Deep Dive & Stage Conversion Analytics</h3>
+                    <p className="text-xs text-slate-400">Filter by Project (e.g. MCO), Employee, & Date Range to analyze solid pie chart distribution</p>
                   </div>
+                </div>
+
+                <div className="px-3 py-1.5 rounded-xl bg-[#0b0f19] border border-slate-800 text-xs font-mono text-[#15B0F8]">
+                  Total Segment Leads: <strong>{deepDiveTotal}</strong>
                 </div>
               </div>
 
               {/* Filter Bar: Project Dropdown, Employee Dropdown, Date Range */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-[#0b0f19] p-4 rounded-2xl border border-slate-800">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-[#0b0f19] p-4 rounded-2xl border border-slate-800/90 shadow-inner">
                 <div>
                   <label className="text-[11px] font-bold text-slate-400 block mb-1">Filter by Project (e.g. MCO)</label>
                   <select
                     value={selectedProjectId}
                     onChange={(e) => setSelectedProjectId(e.target.value)}
-                    className="w-full bg-[#131c31] border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 font-medium focus:border-[#15B0F8]"
+                    className="w-full bg-[#131c31] border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 font-bold focus:border-[#15B0F8] transition-colors"
                   >
                     <option value="">All Real-Estate Projects</option>
                     {projectsList.map((p: any) => (
@@ -606,7 +638,7 @@ export default function DirectorDashboard() {
                   <select
                     value={selectedEmployeeId}
                     onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                    className="w-full bg-[#131c31] border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 font-medium focus:border-[#15B0F8]"
+                    className="w-full bg-[#131c31] border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 font-bold focus:border-[#15B0F8] transition-colors"
                   >
                     <option value="">All Team Members</option>
                     {usersList.map((u: any) => (
@@ -621,7 +653,7 @@ export default function DirectorDashboard() {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="bg-[#131c31] border-slate-700 text-xs text-slate-200 rounded-xl h-10"
+                    className="bg-[#131c31] border-slate-700 text-xs text-slate-200 font-bold rounded-xl h-10"
                   />
                 </div>
 
@@ -631,50 +663,56 @@ export default function DirectorDashboard() {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="bg-[#131c31] border-slate-700 text-xs text-slate-200 rounded-xl h-10"
+                    className="bg-[#131c31] border-slate-700 text-xs text-slate-200 font-bold rounded-xl h-10"
                   />
                 </div>
               </div>
 
-              {/* Deep-Dive Grid: Solid Pie Chart + Conversion Ratios */}
+              {/* Deep-Dive Grid: PROPER SOLID BASIC PIE CHART + CONVERSION RATIOS */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-                {/* Left (7 Cols): Solid Filled Basic Pie Chart with Percentage Labels */}
-                <div className="lg:col-span-7 bg-[#0b0f19] p-5 rounded-2xl border border-slate-800">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-bold text-slate-200">Basic Pie Chart Distribution</h4>
-                    <span className="text-[11px] text-slate-400 font-mono">
-                      {startDate && endDate ? `${startDate} to ${endDate}` : 'All Date Ranges'}
+                
+                {/* Left (7 Cols): Solid Basic Pie Chart with Custom In-Slice Labels */}
+                <div className="lg:col-span-7 bg-[#0b0f19] p-5 sm:p-6 rounded-2xl border border-slate-800/90 shadow-md">
+                  <div className="flex items-center justify-between mb-4 border-b border-slate-800/60 pb-3">
+                    <h4 className="text-sm font-extrabold text-white tracking-wide">Basic Pie Chart Distribution</h4>
+                    <span className="text-xs text-slate-400 font-mono">
+                      {startDate && endDate ? `${startDate} — ${endDate}` : 'Overall Date Scope'}
                     </span>
                   </div>
 
-                  <div className="h-72 w-full flex items-center justify-center">
-                    {deepDiveChartData.every((d) => d.value === 0) ? (
-                      <p className="text-xs text-slate-500 italic">No distribution metrics recorded for this project filter.</p>
+                  <div className="h-80 w-full flex items-center justify-center">
+                    {deepDiveTotal === 0 ? (
+                      <p className="text-xs text-slate-500 italic">No stage metrics recorded for the selected project filter.</p>
                     ) : (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
                             data={deepDiveChartData}
                             cx="50%"
-                            cy="50%"
-                            outerRadius={95}
-                            innerRadius={0} // Solid Pie Chart matching user's image!
+                            cy="45%"
+                            outerRadius={105}
+                            innerRadius={0} // Solid Pie Chart exactly matching user's image!
                             dataKey="value"
-                            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                            labelLine={true}
+                            label={renderPieSliceLabel}
+                            labelLine={false}
                           >
                             {deepDiveChartData.map((_entry: any, index: number) => (
-                              <Cell key={`cell-${index}`} fill={DEEP_DIVE_COLORS[index % DEEP_DIVE_COLORS.length]} />
+                              <Cell key={`cell-${index}`} fill={DEEP_DIVE_COLORS[index % DEEP_DIVE_COLORS.length]} stroke="#0b0f19" strokeWidth={2} />
                             ))}
                           </Pie>
                           <Tooltip
-                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#f8fafc', fontSize: '12px' }}
+                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '14px', color: '#f8fafc', fontSize: '12px', fontWeight: 'bold' }}
+                            formatter={(val: any, name: any) => [`${val} Leads`, name]}
                           />
                           <Legend
                             verticalAlign="bottom"
-                            height={36}
+                            height={44}
                             iconType="circle"
-                            wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }}
+                            wrapperStyle={{ fontSize: '12px', fontWeight: '700', color: '#cbd5e1' }}
+                            formatter={(value, entry: any) => {
+                              const item = deepDiveChartData.find(d => d.name === value);
+                              return `${value} (${item?.value || 0})`;
+                            }}
                           />
                         </PieChart>
                       </ResponsiveContainer>
@@ -683,39 +721,40 @@ export default function DirectorDashboard() {
                 </div>
 
                 {/* Right (5 Cols): Stage Conversion Ratios */}
-                <div className="lg:col-span-5 space-y-3">
-                  <h4 className="text-sm font-bold text-slate-200 mb-1">Stage Conversion Ratios</h4>
+                <div className="lg:col-span-5 space-y-4">
+                  <h4 className="text-sm font-extrabold text-white tracking-wide mb-1">Stage Conversion Ratios</h4>
 
-                  <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex items-center justify-between">
+                  <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex items-center justify-between hover:border-[#3b82f6]/50 transition-colors">
                     <div>
-                      <p className="text-xs font-bold text-slate-300">Contacted : Visits</p>
-                      <p className="text-[11px] text-slate-500">Contacted leads vs Completed Site Visits</p>
+                      <p className="text-xs font-bold text-slate-200">Contacted : Visits</p>
+                      <p className="text-[11px] text-slate-400">Contacted leads vs Completed Site Visits</p>
                     </div>
-                    <span className="text-xl font-black text-[#3b82f6] font-mono">
+                    <span className="text-2xl font-black text-[#3b82f6] font-mono tracking-tight">
                       {stats.projectDeepDive?.ratios?.contactedToVisits || '0:0'}
                     </span>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex items-center justify-between">
+                  <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex items-center justify-between hover:border-emerald-500/50 transition-colors">
                     <div>
-                      <p className="text-xs font-bold text-slate-300">Contacted : Bookings</p>
-                      <p className="text-[11px] text-slate-500">Contacted leads vs Won Bookings</p>
+                      <p className="text-xs font-bold text-slate-200">Contacted : Bookings</p>
+                      <p className="text-[11px] text-slate-400">Contacted leads vs Won Bookings</p>
                     </div>
-                    <span className="text-xl font-black text-emerald-400 font-mono">
+                    <span className="text-2xl font-black text-emerald-400 font-mono tracking-tight">
                       {stats.projectDeepDive?.ratios?.contactedToBookings || '0:0'}
                     </span>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex items-center justify-between">
+                  <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex items-center justify-between hover:border-[#f59e0b]/50 transition-colors">
                     <div>
-                      <p className="text-xs font-bold text-slate-300">Visits : Bookings</p>
-                      <p className="text-[11px] text-slate-500">Completed Site Visits vs Won Bookings</p>
+                      <p className="text-xs font-bold text-slate-200">Visits : Bookings</p>
+                      <p className="text-[11px] text-slate-400">Completed Site Visits vs Won Bookings</p>
                     </div>
-                    <span className="text-xl font-black text-[#f59e0b] font-mono">
+                    <span className="text-2xl font-black text-[#f59e0b] font-mono tracking-tight">
                       {stats.projectDeepDive?.ratios?.visitsToBookings || '0:0'}
                     </span>
                   </div>
                 </div>
+
               </div>
             </div>
 
