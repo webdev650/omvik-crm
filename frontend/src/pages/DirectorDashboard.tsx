@@ -829,9 +829,23 @@ export default function DirectorDashboard() {
                 </h3>
                 <p className="text-xs text-slate-400">Click any row to jump directly to lead detail</p>
               </div>
-              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white p-1">
-                <X className="w-5 h-5" />
-              </button>
+
+              <div className="flex items-center gap-2">
+                {activeModal === 'total' && (
+                  <Button
+                    size="sm"
+                    onClick={() => { setActiveModal(null); navigate('/admin/lead-batches'); }}
+                    className="bg-[#0131B9] hover:bg-[#15B0F8] text-white text-xs font-bold rounded-xl flex items-center gap-1.5"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>View Lead Batches & Sheets →</span>
+                  </Button>
+                )}
+
+                <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white p-1">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Content for Overdue Bucketed Actions */}
