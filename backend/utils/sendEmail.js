@@ -1,16 +1,12 @@
 const { Resend } = require('resend');
-const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
-  // Always enforce delivery to target recipient or omvikrealcon@gmail.com
   const targetRecipient = options.email || process.env.ADMIN_ALERT_EMAIL || 'omvikrealcon@gmail.com';
   const subject = options.subject;
   const message = options.message;
   const html = options.html;
 
-  let resendSuccess = false;
-
-  // 1. Primary Engine: Resend API
+  // Primary Engine: Resend API (Fast & Async)
   if (process.env.RESEND_API_KEY) {
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
@@ -29,7 +25,6 @@ const sendEmail = async (options) => {
         console.error('[Resend API Error]', error.message || error);
       } else if (data && data.id) {
         console.log(`✅ [Resend Email Delivered] ID: ${data.id} -> ${targetRecipient}`);
-        resendSuccess = true;
         return data;
       }
     } catch (resendErr) {
@@ -37,35 +32,7 @@ const sendEmail = async (options) => {
     }
   }
 
-  // 2. Secondary Engine: Nodemailer Gmail SMTP (Fallback if Resend fails or is restricted)
-  if (!resendSuccess && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    try {
-      console.log(`[sendEmail] Attempting Nodemailer Gmail SMTP fallback to ${targetRecipient}...`);
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS
-        }
-      });
-
-      const mailOptions = {
-        from: `OMVIK CRM <${process.env.SMTP_USER}>`,
-        to: targetRecipient,
-        subject,
-        text: message,
-        html
-      };
-
-      const info = await transporter.sendMail(mailOptions);
-      console.log(`✅ [Nodemailer SMTP Delivered] ID: ${info.messageId} -> ${targetRecipient}`);
-      return info;
-    } catch (smtpErr) {
-      console.error('[Nodemailer SMTP Error]', smtpErr.message);
-    }
-  }
-
-  // 3. Fallback: Console Logging for Development
+  // Fallback: Console Logging
   console.log(`\n======================================================`);
   console.log(`🔑 [OTP EMAIL DELIVERED TO CONSOLE]`);
   console.log(`To: ${targetRecipient}`);

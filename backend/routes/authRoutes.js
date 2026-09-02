@@ -14,11 +14,11 @@ const validate = require('../middlewares/validate');
 const { protect } = require('../middlewares/auth');
 const { registerSchema, loginSchema } = require('../validators/authValidators');
 
-// Specific Brute-Force Rate Limiter for Login & Password Recovery (10 attempts / 15 minutes window)
+// Specific Brute-Force Rate Limiter for Login & Password Recovery (100 attempts / 15 minutes window)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { message: 'Too many requests, please try again later' },
+  max: 100,
+  message: { message: 'Too many requests from this IP, please try again later' },
   standardHeaders: true,
   legacyHeaders: false
 });

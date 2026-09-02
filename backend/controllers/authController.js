@@ -276,38 +276,28 @@ const forgotPassword = async (req, res, next) => {
 
     console.log(`\n🔑 [PASSWORD RESET OTP GENERATED] User: ${user.name} (${user.email}) -> OTP Code: ${otp}\n`);
 
-    try {
-      // Send to omvikrealcon@gmail.com
-      await sendEmail({
-        email: targetRecipient,
+    // Asynchronous background email dispatch (non-blocking for ultra-fast < 150ms HTTP response)
+    sendEmail({
+      email: targetRecipient,
+      subject: `Your 6-Digit Reset OTP: ${otp} (${user.name}) — OMVIK CRM`,
+      message: messageText,
+      html: htmlMessage
+    }).catch(err => console.error('[Background Email Error]', err.message));
+
+    if (user.email && user.email.toLowerCase() !== targetRecipient) {
+      sendEmail({
+        email: user.email,
         subject: `Your 6-Digit Reset OTP: ${otp} (${user.name}) — OMVIK CRM`,
         message: messageText,
         html: htmlMessage
-      });
-
-      // Also send to user.email if it's different from omvikrealcon@gmail.com
-      if (user.email && user.email.toLowerCase() !== targetRecipient) {
-        await sendEmail({
-          email: user.email,
-          subject: `Your 6-Digit Reset OTP: ${otp} (${user.name}) — OMVIK CRM`,
-          message: messageText,
-          html: htmlMessage
-        }).catch(err => console.error('[Secondary Email Error]', err.message));
-      }
-
-      res.json({
-        success: true,
-        message: `A 6-digit verification OTP has been sent to ${targetRecipient}. (Your 6-Digit OTP Code: ${otp})`,
-        otp: otp
-      });
-    } catch (emailErr) {
-      console.error('[forgotPassword Email Error]', emailErr);
-      res.json({
-        success: true,
-        message: `A 6-digit verification OTP has been dispatched to ${targetRecipient}. (Your 6-Digit OTP Code: ${otp})`,
-        otp: otp
-      });
+      }).catch(err => console.error('[Secondary Email Error]', err.message));
     }
+
+    return res.json({
+      success: true,
+      message: `A 6-digit verification OTP has been sent to ${targetRecipient}. (Your 6-Digit OTP Code: ${otp})`,
+      otp: otp
+    });
   } catch (error) {
     next(error);
   }
