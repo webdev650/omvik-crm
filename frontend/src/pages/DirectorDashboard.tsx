@@ -266,7 +266,7 @@ export default function DirectorDashboard() {
           </div>
         )}
 
-        {/* ── SECTION 1: 8 STAT CARDS ARRANGED IN 2 ROWS OF 4 CARDS WITH ANIMATIONS ── */}
+        {/* ── SECTION 1: 8 STAT CARDS IN 2 ROWS WITH UNIFORM ALIGNMENT & ANIMATION ── */}
         {stats && (
           <div className="space-y-6">
             <motion.div
@@ -291,8 +291,7 @@ export default function DirectorDashboard() {
                   </div>
                 </div>
                 <div className="my-3 flex items-baseline justify-between">
-                  <span className="text-3xl font-black text-white tracking-tight">{stats.totalLeads}</span>
-                  <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-[#15B0F8] transition-colors" />
+                  <span className="text-3xl sm:text-4xl font-black text-white tracking-tight">{stats.totalLeads}</span>
                 </div>
                 <p className="text-xs text-[#15B0F8] font-semibold flex items-center gap-1">
                   <span>All-time cumulative total</span>
@@ -315,10 +314,9 @@ export default function DirectorDashboard() {
                   </div>
                 </div>
                 <div className="my-3 flex items-baseline justify-between">
-                  <span className="text-3xl font-black text-[#15B0F8] tracking-tight">{stats.activeLeadsCount}</span>
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#15B0F8] animate-pulse" />
+                  <span className="text-3xl sm:text-4xl font-black text-[#15B0F8] tracking-tight">{stats.activeLeadsCount}</span>
                 </div>
-                <p className="text-xs text-slate-400 font-medium">High / Medium Intent</p>
+                <p className="text-xs text-slate-400 font-semibold">High / Medium Intent</p>
               </motion.div>
 
               {/* 3. INACTIVE LEADS */}
@@ -336,9 +334,9 @@ export default function DirectorDashboard() {
                   </div>
                 </div>
                 <div className="my-3 flex items-baseline justify-between">
-                  <span className="text-3xl font-black text-slate-300 tracking-tight">{stats.inactiveLeadsCount}</span>
+                  <span className="text-3xl sm:text-4xl font-black text-slate-300 tracking-tight">{stats.inactiveLeadsCount}</span>
                 </div>
-                <p className="text-xs text-slate-400 font-medium">Low Intent / Lost Stage</p>
+                <p className="text-xs text-slate-400 font-semibold">Low Intent / Lost Stage</p>
               </motion.div>
 
               {/* 4. UNCONTACTED LEADS */}
@@ -356,9 +354,9 @@ export default function DirectorDashboard() {
                   </div>
                 </div>
                 <div className="my-3 flex items-baseline justify-between">
-                  <span className="text-3xl font-black text-[#FBB040] tracking-tight">{stats.uncontactedLeadsCount}</span>
+                  <span className="text-3xl sm:text-4xl font-black text-[#FBB040] tracking-tight">{stats.uncontactedLeadsCount}</span>
                 </div>
-                <p className="text-xs text-[#FBB040]/90 font-semibold flex items-center gap-1">
+                <p className="text-xs text-[#FBB040] font-semibold flex items-center gap-1">
                   <span>0 touchpoints recorded</span>
                   <ChevronRight className="w-3 h-3" />
                 </p>
@@ -378,9 +376,9 @@ export default function DirectorDashboard() {
                   </div>
                 </div>
                 <div className="my-3 flex items-baseline justify-between">
-                  <span className="text-3xl font-black text-emerald-400 tracking-tight">{stats.wonCount}</span>
+                  <span className="text-3xl sm:text-4xl font-black text-emerald-400 tracking-tight">{stats.wonCount}</span>
                 </div>
-                <p className="text-xs text-slate-400 font-medium">Closed successfully</p>
+                <p className="text-xs text-slate-400 font-semibold">Closed successfully</p>
               </motion.div>
 
               {/* 6. DEALS LOST */}
@@ -397,9 +395,9 @@ export default function DirectorDashboard() {
                   </div>
                 </div>
                 <div className="my-3 flex items-baseline justify-between">
-                  <span className="text-3xl font-black text-[#FF0000] tracking-tight">{stats.lostCount}</span>
+                  <span className="text-3xl sm:text-4xl font-black text-[#FF0000] tracking-tight">{stats.lostCount}</span>
                 </div>
-                <p className="text-xs text-slate-400 font-medium">Unsuccessful leads</p>
+                <p className="text-xs text-slate-400 font-semibold">Unsuccessful leads</p>
               </motion.div>
 
               {/* 7. SLA BREACHED (>48h) */}
@@ -416,7 +414,7 @@ export default function DirectorDashboard() {
                   </div>
                 </div>
                 <div className="my-3 flex items-baseline justify-between">
-                  <span className="text-3xl font-black text-[#FF0000] tracking-tight">{stats.slaBreachedCount}</span>
+                  <span className="text-3xl sm:text-4xl font-black text-[#FF0000] tracking-tight">{stats.slaBreachedCount}</span>
                 </div>
                 <p className="text-xs text-[#FF0000] font-bold">&gt;48h uncontacted threshold</p>
               </motion.div>
@@ -435,12 +433,12 @@ export default function DirectorDashboard() {
                     <Clock className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="my-2 flex items-baseline justify-between">
-                  <span className="text-3xl font-black text-[#15B0F8] tracking-tight">
+                <div className="my-3 flex items-baseline justify-between">
+                  <span className="text-3xl sm:text-4xl font-black text-[#15B0F8] tracking-tight">
                     {stats.overdueBuckets?.total || stats.overdueFollowups}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold border-t border-slate-800/80 pt-2">
+                <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold border-t border-slate-800/80 pt-1">
                   <span>Recent: <strong className="text-[#FBB040]">{stats.overdueBuckets?.dueRecent || 0}</strong></span>
                   <span>4+ Days: <strong className="text-[#FF0000]">{stats.overdueBuckets?.due4PlusDays || 0}</strong></span>
                 </div>
@@ -457,7 +455,7 @@ export default function DirectorDashboard() {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-white">Top Sales Performers & Project Leaders</h3>
-                    <p className="text-xs text-slate-400">Ranked strictly by highest count of closed won opportunities</p>
+                    <p className="text-xs text-slate-400">Ranked strictly by highest count of closed won opportunities (Excludes Admins & Directors)</p>
                   </div>
                 </div>
 
@@ -497,16 +495,16 @@ export default function DirectorDashboard() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Column 1: Best Employee */}
+                {/* Column 1: Best Employee (Excludes Admins/Directors) */}
                 <div className="p-5 rounded-2xl bg-[#0b0f19] border border-slate-800/80 flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#FBB040]/20 to-yellow-500/20 border border-[#FBB040]/30 flex items-center justify-center text-[#FBB040] font-extrabold text-lg">
                       🥇
                     </div>
                     <div>
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Best Employee</p>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Best Employee (Staff Only)</p>
                       <h4 className="text-lg font-black text-white mt-0.5">
-                        {stats.bestPerformers?.bestEmployee?.name || 'Aparna Tripathy'}
+                        {stats.bestPerformers?.bestEmployee?.name || 'No Employee Deals Yet'}
                       </h4>
                       <p className="text-xs text-emerald-400 font-semibold mt-0.5">
                         🏆 {stats.bestPerformers?.bestEmployee?.wonCount || 0} deals won
@@ -525,7 +523,7 @@ export default function DirectorDashboard() {
                     <div>
                       <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Best Project</p>
                       <h4 className="text-lg font-black text-white mt-0.5">
-                        {stats.bestPerformers?.bestProject?.name || 'Omvik Heights'}
+                        {stats.bestPerformers?.bestProject?.name || 'No Project Deals Yet'}
                       </h4>
                       <p className="text-xs text-[#15B0F8] font-semibold mt-0.5">
                         📈 {stats.bestPerformers?.bestProject?.wonCount || 0} deals won

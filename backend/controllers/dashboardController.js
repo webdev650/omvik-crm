@@ -208,12 +208,11 @@ const getDashboardStats = async (req, res, next) => {
       // 3b/3c. Project Deep Dive — Site Visits
       SiteVisit.countDocuments({ ...deepDiveScope }),
 
-      // 4a. Best Employee by Won Deals
+      // 4a. Best Employee by Won Deals (EXCLUDING Admins, Super Admins, Directors)
       Opportunity.aggregate([
         { $match: { ...scopeFilter, stage: 'won', ...bestDateQuery } },
         { $group: { _id: '$owner', wonCount: { $sum: 1 } } },
         { $sort: { wonCount: -1 } },
-        { $limit: 1 },
         {
           $lookup: {
             from: 'users',
@@ -223,6 +222,12 @@ const getDashboardStats = async (req, res, next) => {
           }
         },
         { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            'user.role': { $nin: ['super_admin', 'admin', 'director'] }
+          }
+        },
+        { $limit: 1 },
         {
           $project: {
             _id: 1,
@@ -306,8 +311,8 @@ const getDashboardStats = async (req, res, next) => {
 
     const totalOverdueActions = dueRecent + due1Day + due2To3Days + due4PlusDays;
 
-    const bestEmployee = bestEmployeeAgg.length > 0 ? bestEmployeeAgg[0] : { name: 'N/A', wonCount: 0 };
-    const bestProject = bestProjectAgg.length > 0 ? bestProjectAgg[0] : { name: 'N/A', wonCount: 0 };
+    const bestEmployee = bestEmployeeAgg.length > 0 ? bestEmployeeAgg[0] : { name: 'No Employee Deals Yet', wonCount: 0 };
+    const bestProject = bestProjectAgg.length > 0 ? bestProjectAgg[0] : { name: 'No Project Deals Yet', wonCount: 0 };
 
     res.json({
       success: true,
