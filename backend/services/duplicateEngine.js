@@ -6,7 +6,7 @@ const normalizePhone = require('../utils/normalizePhone');
 
 /**
  * Process incoming lead and ensure race-condition safe duplicate management.
- * @param {Object} leadInput - Lead payload (rawName, rawMobile, project, source, campaign, etc.)
+ * @param {Object} leadInput - Lead payload (rawName, rawMobile, project, source, campaign, importBatchId, intent, etc.)
  * @param {Object} submittingUser - Authenticated user submitting the lead
  */
 async function processIncomingLead(leadInput, submittingUser) {
@@ -14,6 +14,15 @@ async function processIncomingLead(leadInput, submittingUser) {
 
   if (!cleanMobile) {
     throw new Error('Valid primary mobile number is required');
+  }
+
+  // Normalize intent value if provided ('high' / 'medium' / 'low')
+  let cleanIntent = null;
+  if (leadInput.intent && typeof leadInput.intent === 'string') {
+    const lIntent = leadInput.intent.trim().toLowerCase();
+    if (['high', 'medium', 'low'].includes(lIntent)) {
+      cleanIntent = lIntent;
+    }
   }
 
   // 1. Find or create Customer
@@ -78,7 +87,7 @@ async function processIncomingLead(leadInput, submittingUser) {
   if (existingActive) {
     const customerName = customer.name || leadInput.rawName || 'Prospect';
     const projectName = existingActive.project?.name || 'Selected Project';
-    const existingOwner = existingActive.owner?.name || 'Unassigned';
+    const existingOwner = existingActive.owner ? existingActive.owner.name : 'Unassigned';
     const existingStage = existingActive.stage || 'new';
 
     const lead = await Lead.create({
@@ -87,6 +96,8 @@ async function processIncomingLead(leadInput, submittingUser) {
       project: leadInput.project,
       source: leadInput.source,
       campaign: leadInput.campaign,
+      importBatchId: leadInput.importBatchId || null,
+      intent: cleanIntent,
       duplicateStatus: 'blocked',
       matchedCustomer: customer._id,
       resultingOpportunity: existingActive._id
@@ -124,8 +135,10 @@ async function processIncomingLead(leadInput, submittingUser) {
       customer: customer._id,
       project: leadInput.project,
       owner: leadInput.owner || null,
-      source: leadInput.source || 'direct',
+      source: leadInput.source || 'DIRECT',
       campaign: leadInput.campaign || '',
+      importBatchId: leadInput.importBatchId || null,
+      intent: cleanIntent,
       stage: 'new',
       isActive: true
     });
@@ -146,6 +159,8 @@ async function processIncomingLead(leadInput, submittingUser) {
       project: leadInput.project,
       source: leadInput.source,
       campaign: leadInput.campaign,
+      importBatchId: leadInput.importBatchId || null,
+      intent: cleanIntent,
       duplicateStatus: 'no_match',
       matchedCustomer: customer._id,
       resultingOpportunity: opportunity._id
@@ -179,6 +194,8 @@ async function processIncomingLead(leadInput, submittingUser) {
         project: leadInput.project,
         source: leadInput.source,
         campaign: leadInput.campaign,
+        importBatchId: leadInput.importBatchId || null,
+        intent: cleanIntent,
         duplicateStatus: 'blocked',
         matchedCustomer: customer._id,
         resultingOpportunity: existingOpportunity ? existingOpportunity._id : null

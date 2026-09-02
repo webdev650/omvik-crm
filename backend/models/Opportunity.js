@@ -37,11 +37,22 @@ const opportunitySchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      default: 'direct'
+      default: 'DIRECT'
     },
     campaign: {
       type: String,
       default: ''
+    },
+    importBatchId: {
+      type: String,
+      default: null,
+      index: true
+    },
+    intent: {
+      type: String,
+      enum: ['high', 'medium', 'low', null],
+      default: null,
+      index: true
     },
     slaBreached: {
       type: Boolean,
@@ -75,6 +86,17 @@ const opportunitySchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+// Pre-save hook: Normalize source string (trim & uppercase)
+opportunitySchema.pre('save', function (next) {
+  if (this.source && typeof this.source === 'string') {
+    let s = this.source.trim().toUpperCase();
+    if (s === 'WEB' || s === 'WEBSITE') s = 'WEBSITE';
+    if (s === 'FB' || s === 'FACEBOOK' || s === 'FACEBOOK ADS' || s === 'META' || s === 'META ADS') s = 'FACEBOOK ADS';
+    this.source = s;
+  }
+  if (typeof next === 'function') next();
+});
 
 // CRITICAL UNIQUE CONSTRAINT FOR RACE-CONDITION SAFE DUPLICATE PREVENTION:
 // Enforces that a customer can have only ONE active opportunity for a specific project.

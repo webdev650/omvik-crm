@@ -1,55 +1,35 @@
-import api from './axios';
+import api from './axios.js';
 
-/**
- * Fetch opportunities list with optional filter params (?stage=, ?project=)
- * @param {Object} params - Query parameters object
- */
 export async function getOpportunities(params = {}) {
   const response = await api.get('/opportunities', { params });
   return response.data;
 }
 
-/**
- * Fetch a single opportunity by ID (scoped — 404 if caller can't access it)
- * @param {string} id - Opportunity document ID
- */
 export async function getOpportunityById(id) {
   const response = await api.get(`/opportunities/${id}`);
   return response.data;
 }
 
-/**
- * Submit a new lead payload (creates Customer & Opportunity, or blocks duplicate)
- * @param {Object} data - Lead payload (rawName, rawMobile, project, source, campaign)
- */
 export async function submitLead(data) {
   const response = await api.post('/leads', data);
   return response.data;
 }
 
-/**
- * Update stage of an opportunity (e.g. from Kanban drag)
- * @param {string} id - Opportunity ID
- * @param {Object} data - { stage, lostReason? }
- */
 export async function updateOpportunityStage(id, data) {
   const response = await api.patch(`/opportunities/${id}/stage`, data);
   return response.data;
 }
 
-/**
- * Super Admin Duplicate Override API call
- * @param {Object} data - { customerId, projectId, newOwnerId?, reason }
- */
+export async function updateOpportunityIntent(id, intent) {
+  const response = await api.patch(`/opportunities/${id}/intent`, { intent });
+  return response.data;
+}
+
 export async function overrideDuplicateLead(data) {
   const response = await api.post('/leads/override', data);
   return response.data;
 }
 
-/**
- * Bulk Lead Import Preview API call
- * @param {File} file - Excel or CSV file object
- */
 export async function previewImportLeads(file) {
   const formData = new FormData();
   formData.append('file', file);
@@ -59,19 +39,11 @@ export async function previewImportLeads(file) {
   return response.data;
 }
 
-/**
- * Bulk Lead Import Confirmation API call
- * @param {Array} leads - Array of validated lead objects
- */
-export async function confirmImportLeads(leads) {
-  const response = await api.post('/leads/import/confirm', { leads });
+export async function confirmImportLeads(leads, batchName) {
+  const response = await api.post('/leads/import/confirm', { leads, batchName });
   return response.data;
 }
 
-/**
- * Export Leads to Excel (.xlsx) Blob file download
- * @param {Object} params - Filter parameters (?stage=, ?project=)
- */
 export async function exportLeads(params = {}) {
   const response = await api.get('/leads/export', {
     params,

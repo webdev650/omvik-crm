@@ -16,11 +16,21 @@ const leadSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      default: 'web'
+      default: 'DIRECT'
     },
     campaign: {
       type: String,
       default: ''
+    },
+    importBatchId: {
+      type: String,
+      default: null,
+      index: true
+    },
+    intent: {
+      type: String,
+      enum: ['high', 'medium', 'low', null],
+      default: null
     },
     duplicateStatus: {
       type: String,

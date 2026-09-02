@@ -109,8 +109,6 @@ const getOpportunityById = async (req, res, next) => {
       .populate('owner', 'name email role');
 
     if (!opportunity) {
-      // Return 404 whether it doesn't exist OR scope excludes it —
-      // don't reveal existence of resources the caller can't access
       return res.status(404).json({ message: 'Opportunity not found' });
     }
 
@@ -199,34 +197,25 @@ const updateStage = async (req, res, next) => {
     const { stage, lostReason } = req.body;
     const scopeFilter = req.dataScope || req.scopeFilter || {};
 
-    // 1. Validate stage enum
     if (!stage || !VALID_STAGES.includes(stage)) {
       return res.status(400).json({
         message: `Invalid stage. Must be one of: ${VALID_STAGES.join(', ')}`
       });
     }
 
-    // 2. 'lost' requires a lostReason
     if (stage === 'lost' && (!lostReason || !lostReason.trim())) {
       return res.status(400).json({
         message: "A lostReason is required when moving an opportunity to 'lost'"
       });
     }
 
-    // 3. Find opportunity within caller's scope
     const opportunity = await Opportunity.findOne({ _id: req.params.id, ...scopeFilter });
     if (!opportunity) {
-      // 404 whether it doesn't exist OR scope excludes it — don't reveal existence
       return res.status(404).json({ message: 'Opportunity not found' });
     }
 
-    // 4. Apply stage update
     opportunity.stage = stage;
 
-    // 5. Close the opportunity on terminal stages:
-    //    - isActive: false frees the unique(customer, project, isActive) constraint
-    //      so a future legitimate lead on the same customer+project is allowed
-    //    - closedAt stamps the exact moment of closure for reporting
     if (CLOSED_STAGES.includes(stage)) {
       opportunity.isActive = false;
       opportunity.closedAt = new Date();
@@ -248,11 +237,41 @@ const updateStage = async (req, res, next) => {
   }
 };
 
+// @desc    Update intent of a single opportunity ('high', 'medium', 'low')
+// @route   PATCH /api/opportunities/:id/intent
+// @access  Private
+const updateIntent = async (req, res, next) => {
+  try {
+    const { intent } = req.body;
+    const scopeFilter = req.dataScope || req.scopeFilter || {};
+
+    if (!['high', 'medium', 'low'].includes(intent)) {
+      return res.status(400).json({ message: 'Invalid intent level. Must be high, medium, or low.' });
+    }
+
+    const opportunity = await Opportunity.findOne({ _id: req.params.id, ...scopeFilter });
+    if (!opportunity) {
+      return res.status(404).json({ message: 'Opportunity not found' });
+    }
+
+    opportunity.intent = intent;
+    await opportunity.save();
+
+    res.json({
+      success: true,
+      message: `Intent level updated to ${intent}`,
+      opportunity
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   assignOne,
   bulkAssign,
   getOpportunities,
   getOpportunityById,
-  updateStage
+  updateStage,
+  updateIntent
 };
-

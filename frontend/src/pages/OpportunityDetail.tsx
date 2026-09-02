@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Navbar from '../components/Navbar';
-import { getOpportunityById } from '../api/opportunities';
+import { getOpportunityById, updateOpportunityIntent } from '../api/opportunities';
 import { Badge, getStageBadgeVariant } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -10,16 +10,30 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs'
 import ActivityTimeline from '../features/activities/ActivityTimeline';
 import LogActivityForm from '../features/activities/LogActivityForm';
 import OpportunitySiteVisits from '../features/siteVisits/OpportunitySiteVisits';
+import { toast } from 'sonner';
 
 export default function OpportunityDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['opportunity', id],
     queryFn: () => getOpportunityById(id!),
     enabled: !!id,
     retry: 1
+  });
+
+  const intentMutation = useMutation({
+    mutationFn: (newIntent: 'high' | 'medium' | 'low') => updateOpportunityIntent(id!, newIntent),
+    onSuccess: (res) => {
+      toast.success(res.message || 'Intent updated');
+      queryClient.invalidateQueries({ queryKey: ['opportunity', id] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to update intent.');
+    }
   });
 
   const opp = data?.opportunity;
@@ -129,11 +143,28 @@ export default function OpportunityDetail() {
                           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                             Source
                           </p>
-                          <p className="text-sm text-slate-300 capitalize">
+                          <p className="text-sm text-slate-300 font-bold uppercase">
                             {opp.source.replace('_', ' ')}
                           </p>
                         </div>
                       )}
+
+                      {/* Intent Level Dropdown */}
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                          Lead Intent
+                        </p>
+                        <select
+                          value={opp.intent || 'medium'}
+                          onChange={(e) => intentMutation.mutate(e.target.value as any)}
+                          disabled={intentMutation.isPending}
+                          className="bg-slate-950 border border-slate-700 text-xs rounded-lg px-2.5 py-1 text-slate-200 font-bold focus:border-indigo-500"
+                        >
+                          <option value="high">🟢 High Intent (Active)</option>
+                          <option value="medium">🟡 Medium Intent (Active)</option>
+                          <option value="low">🔴 Low Intent (Inactive)</option>
+                        </select>
+                      </div>
 
                       <div>
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
@@ -161,11 +192,11 @@ export default function OpportunityDetail() {
 
                     <div className="space-y-1">
                       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        SLA
+                        SLA Status (48h Threshold)
                       </p>
                       {opp.slaBreached ? (
                         <Badge variant="destructive" className="animate-pulse text-sm px-3 py-1">
-                          ⚠️ SLA BREACHED
+                          ⚠️ SLA BREACHED (&gt;48h)
                         </Badge>
                       ) : (
                         <Badge variant="success" className="text-sm px-3 py-1">
@@ -191,7 +222,7 @@ export default function OpportunityDetail() {
               </CardContent>
             </Card>
 
-            {/* Tabs Shell — Activities & Follow-ups tabs (content built next) */}
+            {/* Tabs Shell */}
             <Tabs defaultValue="activities">
               <TabsList>
                 <TabsTrigger value="activities">Activity Timeline</TabsTrigger>
@@ -240,7 +271,7 @@ export default function OpportunityDetail() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-slate-500 italic">
-                      Follow-up list coming next.
+                      Scheduled follow-ups and touchpoints for this lead.
                     </p>
                   </CardContent>
                 </Card>

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { FileSpreadsheet, Upload, CheckCircle2, AlertTriangle, ArrowRight, Database } from 'lucide-react';
+import { FileSpreadsheet, Upload, CheckCircle2, ArrowRight, Database, Tag } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import { previewImportLeads, confirmImportLeads } from '../../api/opportunities';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 import {
   Table,
   TableBody,
@@ -20,6 +22,7 @@ export default function ImportLeadsPage() {
   const navigate = useNavigate();
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [batchName, setBatchName] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'valid' | 'duplicates' | 'invalid'>('valid');
   const [previewResult, setPreviewResult] = useState<any>(null);
   const [importSummary, setImportSummary] = useState<any>(null);
@@ -48,11 +51,12 @@ export default function ImportLeadsPage() {
 
   // Confirm Mutation
   const confirmMutation = useMutation({
-    mutationFn: (validLeads: any[]) => confirmImportLeads(validLeads),
+    mutationFn: ({ validLeads, name }: { validLeads: any[]; name?: string }) => confirmImportLeads(validLeads, name),
     onSuccess: (data) => {
       setImportSummary(data);
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['leadBatches'] });
     },
     onError: (err: any) => {
       const msg = err.response?.data?.message || 'Failed to confirm bulk lead import.';
@@ -62,7 +66,13 @@ export default function ImportLeadsPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      if (!batchName) {
+        // Auto-fill batch name based on filename without extension
+        const baseName = file.name.replace(/\.[^/.]+$/, "");
+        setBatchName(baseName || `Sheet-${Date.now()}`);
+      }
       setPreviewResult(null);
       setImportSummary(null);
       setErrorMessage(null);
@@ -76,7 +86,12 @@ export default function ImportLeadsPage() {
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setSelectedFile(e.dataTransfer.files[0]);
+      const file = e.dataTransfer.files[0];
+      setSelectedFile(file);
+      if (!batchName) {
+        const baseName = file.name.replace(/\.[^/.]+$/, "");
+        setBatchName(baseName || `Sheet-${Date.now()}`);
+      }
       setPreviewResult(null);
       setImportSummary(null);
       setErrorMessage(null);
@@ -93,7 +108,10 @@ export default function ImportLeadsPage() {
   const handleConfirmImport = () => {
     if (!previewResult || !previewResult.valid || previewResult.valid.length === 0) return;
     setErrorMessage(null);
-    confirmMutation.mutate(previewResult.valid);
+    confirmMutation.mutate({
+      validLeads: previewResult.valid,
+      name: batchName.trim() || `Sheet-${Date.now()}`
+    });
   };
 
   const summary = previewResult?.summary;
@@ -114,9 +132,18 @@ export default function ImportLeadsPage() {
               Import Leads & Data
             </h1>
             <p className="text-xs sm:text-sm text-slate-400">
-              Upload Excel (.xlsx, .xls) or CSV spreadsheet files to preview, verify duplicates, and bulk import leads into Omvik CRM.
+              Upload Excel (.xlsx, .xls) or CSV spreadsheet files to preview, verify duplicates, tag batch names, and bulk import leads into Omvik CRM.
             </p>
           </div>
+
+          <Button
+            size="sm"
+            onClick={() => navigate('/admin/lead-batches')}
+            className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl flex items-center gap-2 border border-slate-700/60"
+          >
+            <Tag className="w-4 h-4 text-indigo-400" />
+            <span>View All Lead Batches →</span>
+          </Button>
         </div>
 
         {/* Global Error Banner */}
@@ -133,15 +160,24 @@ export default function ImportLeadsPage() {
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-emerald-400 flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                <span>Bulk Import Complete</span>
+                <span>Bulk Import Complete — Batch Tagged: "{importSummary.importBatchId}"</span>
               </h3>
-              <Button
-                size="sm"
-                onClick={() => navigate('/pipeline')}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl"
-              >
-                View Pipeline Dashboard →
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button
+                  size="sm"
+                  onClick={() => navigate('/admin/lead-batches')}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl"
+                >
+                  Lead Batches
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => navigate('/pipeline')}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl"
+                >
+                  View Pipeline Dashboard →
+                </Button>
+              </div>
             </div>
             <p className="text-xs text-slate-300">
               Successfully created and auto-assigned <strong className="text-emerald-400">{importSummary.imported}</strong> new leads to sales pod members. (Skipped: {importSummary.skipped})
@@ -150,7 +186,24 @@ export default function ImportLeadsPage() {
         )}
 
         {/* Step 1: Upload Zone */}
-        <div className="rounded-2xl border border-slate-800/80 bg-[#131c31] shadow-sm p-6">
+        <div className="rounded-2xl border border-slate-800/80 bg-[#131c31] shadow-sm p-6 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-2 border-b border-slate-800/60">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Batch Name / Source Tag</span>
+              </Label>
+              <Input
+                type="text"
+                placeholder="e.g. Sheet 1, Sheet 2, Facebook Leads July"
+                value={batchName}
+                onChange={(e) => setBatchName(e.target.value)}
+                className="bg-[#0b0f19] border-slate-700 text-slate-200 text-xs rounded-xl focus:border-indigo-500"
+              />
+              <p className="text-[11px] text-slate-400">Custom label to identify this bulk import run in dashboard analytics.</p>
+            </div>
+          </div>
+
           <form onSubmit={handlePreviewSubmit} className="space-y-4">
             <div
               onDragOver={handleDragOver}
@@ -164,7 +217,7 @@ export default function ImportLeadsPage() {
                 {selectedFile ? selectedFile.name : 'Drag & Drop your Excel (.xlsx, .xls) or CSV file here'}
               </p>
               <p className="text-xs text-slate-500 mt-1">
-                {selectedFile ? `${(selectedFile.size / 1024).toFixed(1)} KB` : 'Supported columns: Name, Mobile, Project, Source'}
+                {selectedFile ? `${(selectedFile.size / 1024).toFixed(1)} KB` : 'Supported columns: Name, Mobile, Project, Source, Intent (High/Medium/Low)'}
               </p>
               <input
                 type="file"
@@ -254,7 +307,7 @@ export default function ImportLeadsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-slate-800/80 bg-[#131c31]">
               <div>
                 <p className="text-sm font-bold text-slate-200">
-                  Ready to Process {summary?.validCount || 0} Valid Leads
+                  Ready to Process {summary?.validCount || 0} Valid Leads into Batch: <span className="text-indigo-400 font-mono">"{batchName || 'Default Batch'}"</span>
                 </p>
                 <p className="text-xs text-slate-400">
                   Duplicate conflicts ({summary?.duplicateCount}) and invalid rows ({summary?.invalidCount}) will be safely skipped.
@@ -320,6 +373,7 @@ export default function ImportLeadsPage() {
                     <TableHead className="text-slate-400 font-semibold text-xs">Customer Name</TableHead>
                     <TableHead className="text-slate-400 font-semibold text-xs">Mobile</TableHead>
                     <TableHead className="text-slate-400 font-semibold text-xs">Target Project</TableHead>
+                    <TableHead className="text-slate-400 font-semibold text-xs">Intent</TableHead>
                     {activeTab === 'duplicates' ? (
                       <>
                         <TableHead className="text-slate-400 font-semibold text-xs">Existing Owner</TableHead>
@@ -336,7 +390,7 @@ export default function ImportLeadsPage() {
                   {activeTab === 'valid' && (
                     previewResult.valid?.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-6 text-slate-500 text-xs">
+                        <TableCell colSpan={6} className="text-center py-6 text-slate-500 text-xs">
                           No valid leads found in spreadsheet.
                         </TableCell>
                       </TableRow>
@@ -347,6 +401,11 @@ export default function ImportLeadsPage() {
                           <TableCell className="font-semibold text-slate-200 text-xs">{item.rawName}</TableCell>
                           <TableCell className="text-slate-300 font-mono text-xs">{item.mobile}</TableCell>
                           <TableCell className="text-indigo-400 text-xs font-medium">{item.project}</TableCell>
+                          <TableCell className="text-xs capitalize font-semibold">
+                            <span className={item.intent === 'high' ? 'text-emerald-400' : item.intent === 'low' ? 'text-red-400' : 'text-amber-400'}>
+                              {item.intent || 'Medium'}
+                            </span>
+                          </TableCell>
                           <TableCell>
                             <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/40 text-[10px]">
                               {item.isExistingCustomer ? 'Existing Customer' : 'New Customer'}
@@ -360,7 +419,7 @@ export default function ImportLeadsPage() {
                   {activeTab === 'duplicates' && (
                     previewResult.duplicates?.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-6 text-slate-500 text-xs">
+                        <TableCell colSpan={7} className="text-center py-6 text-slate-500 text-xs">
                           Zero duplicate conflicts detected!
                         </TableCell>
                       </TableRow>
@@ -371,6 +430,11 @@ export default function ImportLeadsPage() {
                           <TableCell className="font-semibold text-slate-200 text-xs">{item.rawName}</TableCell>
                           <TableCell className="text-slate-300 font-mono text-xs">{item.mobile}</TableCell>
                           <TableCell className="text-indigo-400 text-xs font-medium">{item.project}</TableCell>
+                          <TableCell className="text-xs capitalize font-semibold">
+                            <span className={item.intent === 'high' ? 'text-emerald-400' : item.intent === 'low' ? 'text-red-400' : 'text-amber-400'}>
+                              {item.intent || 'Medium'}
+                            </span>
+                          </TableCell>
                           <TableCell className="text-amber-400 text-xs font-semibold">
                             🛡️ {item.existingOpportunity?.owner?.name || 'Assigned Rep'}
                           </TableCell>
@@ -387,7 +451,7 @@ export default function ImportLeadsPage() {
                   {activeTab === 'invalid' && (
                     previewResult.invalid?.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-6 text-slate-500 text-xs">
+                        <TableCell colSpan={6} className="text-center py-6 text-slate-500 text-xs">
                           Zero invalid rows!
                         </TableCell>
                       </TableRow>
@@ -404,6 +468,7 @@ export default function ImportLeadsPage() {
                           <TableCell className="text-slate-400 text-xs">
                             {item.rawRow?.project || item.rawRow?.Project || '—'}
                           </TableCell>
+                          <TableCell className="text-slate-500 text-xs">—</TableCell>
                           <TableCell className="text-red-400 text-xs font-semibold">
                             ⚠️ {item.reason}
                           </TableCell>

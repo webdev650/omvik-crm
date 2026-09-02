@@ -64,7 +64,14 @@ const previewImport = async (req, res, next) => {
       const rawName = getRowValue(row, ['name', 'full_name', 'fullname', 'customer_name', 'client_name', 'Name']);
       const rawMobile = getRowValue(row, ['mobile', 'phone', 'primary_mobile', 'contact', 'Mobile', 'Phone', 'Contact']);
       const rawProject = getRowValue(row, ['project', 'project_name', 'code', 'Project', 'ProjectCode']);
-      const rawSource = getRowValue(row, ['source', 'lead_source', 'channel', 'Source']) || 'bulk_import';
+      const rawSource = getRowValue(row, ['source', 'lead_source', 'channel', 'Source']) || 'BULK_IMPORT';
+      const rawIntent = getRowValue(row, ['intent', 'lead_intent', 'Intent', 'Priority', 'priority']) || '';
+
+      let cleanIntent = null;
+      if (rawIntent) {
+        const l = rawIntent.toLowerCase();
+        if (['high', 'medium', 'low'].includes(l)) cleanIntent = l;
+      }
 
       const cleanMobile = normalizePhone(rawMobile);
 
@@ -126,6 +133,7 @@ const previewImport = async (req, res, next) => {
             project: targetProject.name,
             projectId: targetProject._id,
             source: rawSource,
+            intent: cleanIntent,
             reason: `This lead is already assigned — ${customerName} for ${projectName} is currently owned by ${ownerName} (Stage: ${stageName}).`,
             customerName,
             projectName,
@@ -148,6 +156,7 @@ const previewImport = async (req, res, next) => {
             project: targetProject.name,
             projectId: targetProject._id,
             source: rawSource,
+            intent: cleanIntent,
             existingCustomer: { _id: customer._id, name: customer.name },
             isExistingCustomer: true
           });
@@ -160,6 +169,7 @@ const previewImport = async (req, res, next) => {
           project: targetProject.name,
           projectId: targetProject._id,
           source: rawSource,
+          intent: cleanIntent,
           isExistingCustomer: false
         });
       }
@@ -190,11 +200,13 @@ const previewImport = async (req, res, next) => {
  */
 const confirmImport = async (req, res, next) => {
   try {
-    const { leads } = req.body;
+    const { leads, batchName } = req.body;
 
     if (!Array.isArray(leads) || leads.length === 0) {
       return res.status(400).json({ message: 'No valid leads array provided for confirmation' });
     }
+
+    const assignedBatchId = (batchName && String(batchName).trim()) || `Sheet-${Date.now()}`;
 
     let importedCount = 0;
     let skippedCount = 0;
@@ -205,7 +217,8 @@ const confirmImport = async (req, res, next) => {
       const rawName = item.rawName || item.name;
       const rawMobile = item.rawMobile || item.mobile;
       const project = item.projectId || item.project;
-      const source = item.source || 'bulk_import';
+      const source = item.source || 'BULK_IMPORT';
+      const intent = item.intent || null;
 
       if (!rawName || !rawMobile || !project) {
         skippedCount++;
@@ -224,6 +237,8 @@ const confirmImport = async (req, res, next) => {
             rawMobile,
             project,
             source,
+            intent,
+            importBatchId: assignedBatchId,
             allowDuplicate: item.allowDuplicate || false,
             reason: item.reason || 'Bulk import confirmation'
           },
@@ -260,6 +275,7 @@ const confirmImport = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
+      importBatchId: assignedBatchId,
       summary: {
         totalSubmitted: leads.length,
         imported: importedCount,

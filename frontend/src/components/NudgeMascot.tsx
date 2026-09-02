@@ -9,7 +9,7 @@ export default function NudgeMascot() {
   const [message, setMessage] = useState('');
   const [isReducedMotion, setIsReducedMotion] = useState(false);
 
-  // Fetch real performance & overdue follow-up counts
+  // Fetch real performance & uncontacted / overdue lead counts
   const { data } = useQuery({
     queryKey: ['myPerformance'],
     queryFn: getMyPerformance,
@@ -44,27 +44,36 @@ export default function NudgeMascot() {
       return;
     }
 
-    // 3. Set timer to trigger mascot nudge popup after 8 seconds on turn/load
-    const timer = setTimeout(() => {
+    const checkAndShowNudge = () => {
       const perf = data?.performance || {};
-      const overdue = perf.followupsOverdue || 0;
+      const uncontacted = perf.uncontactedLeads || perf.slaBreachedCount || perf.followupsOverdue || 0;
       const won = perf.opportunitiesWon || 0;
 
-      if (overdue > 0) {
-        setMessage(`👀 You have ${overdue} overdue follow-up task${overdue > 1 ? 's' : ''} waiting for action!`);
+      if (uncontacted > 0) {
+        setMessage(`📞 You still have ${uncontacted} lead${uncontacted > 1 ? 's' : ''} to contact today!`);
+        setIsVisible(true);
       } else if (won > 0) {
         setMessage(`🎉 Great progress! You have closed ${won} deal${won > 1 ? 's' : ''} won. Keep it up!`);
+        setIsVisible(true);
       } else {
         setMessage('✨ Fantastic job! Your daily action inbox is clean today.');
+        setIsVisible(true);
       }
+    };
 
-      setIsVisible(true);
-    }, 8000);
+    // Initial nudge trigger after 8 seconds
+    const initialTimer = setTimeout(checkAndShowNudge, 8000);
 
-    return () => clearTimeout(timer);
+    // 30-minute periodic reminder interval (30 * 60 * 1000 ms)
+    const intervalTimer = setInterval(checkAndShowNudge, 30 * 60 * 1000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(intervalTimer);
+    };
   }, [user, data]);
 
-  // Listen for dynamic Mascot Nudge Events (e.g. Login greeting / Logout farewell)
+  // Listen for dynamic Mascot Nudge Events
   useEffect(() => {
     const handleMascotEvent = (e: any) => {
       if (e.detail?.message && user?.nudgesEnabled !== false) {

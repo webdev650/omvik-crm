@@ -20,6 +20,11 @@ export async function updateOpportunityStage(id: string, data: any) {
   return response.data;
 }
 
+export async function updateOpportunityIntent(id: string, intent: 'high' | 'medium' | 'low') {
+  const response = await api.patch(`/opportunities/${id}/intent`, { intent });
+  return response.data;
+}
+
 export async function overrideDuplicateLead(data: { customerId: string; projectId: string; newOwnerId?: string; reason: string }) {
   const response = await api.post('/leads/override', data);
   return response.data;
@@ -34,8 +39,8 @@ export async function previewImportLeads(file: File) {
   return response.data;
 }
 
-export async function confirmImportLeads(leads: any[]) {
-  const response = await api.post('/leads/import/confirm', { leads });
+export async function confirmImportLeads(leads: any[], batchName?: string) {
+  const response = await api.post('/leads/import/confirm', { leads, batchName });
   return response.data;
 }
 

@@ -5,7 +5,8 @@ const {
   bulkAssign,
   getOpportunities,
   getOpportunityById,
-  updateStage
+  updateStage,
+  updateIntent
 } = require('../controllers/opportunityController');
 const { protect } = require('../middlewares/auth');
 const { authorize, applyDataScope } = require('../middlewares/rbac');
@@ -20,6 +21,7 @@ router.patch(
 );
 router.get('/:id', applyDataScope, getOpportunityById);
 router.patch('/:id/stage', applyDataScope, updateStage);
+router.patch('/:id/intent', applyDataScope, updateIntent);
 router.patch(
   '/:id/assign',
   authorize('super_admin', 'director', 'admin', 'team_lead'),
