@@ -26,7 +26,6 @@ import FlaggedReportsPage from './pages/admin/FlaggedReportsPage';
 import AdminEmployeeHistory from './pages/admin/AdminEmployeeHistory';
 import LoginActivityPage from './pages/admin/LoginActivityPage';
 import LeavePage from './pages/LeavePage';
-import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ForceChangePassword from './pages/ForceChangePassword';
 import MustChangePasswordModal from './components/MustChangePasswordModal';

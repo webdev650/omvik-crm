@@ -226,7 +226,7 @@ export default function Login() {
               )}
             </div>
 
-            {/* Row: Remember Me & Forgot Password */}
+            {/* Row: Remember Me */}
             <div className="flex items-center justify-between text-xs px-1 text-slate-200 font-medium pt-1">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
@@ -237,14 +237,6 @@ export default function Login() {
                 />
                 <span>Remember me</span>
               </label>
-
-              <button
-                type="button"
-                onClick={() => setServerError('Forgot password? Please contact system admin at aparna@omvikrealcon.com or your manager to reset your password.')}
-                className="text-slate-200 hover:text-white hover:underline transition-colors cursor-pointer text-xs"
-              >
-                Forgot password?
-              </button>
             </div>
 
             {/* Login Button (Pure White Pill Button) */}
