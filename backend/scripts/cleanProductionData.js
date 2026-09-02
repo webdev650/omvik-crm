@@ -13,27 +13,32 @@ async function cleanTestData() {
 
   const db = mongoose.connection.db;
 
-  // 1. Clean Test Users (Keep ONLY official admin emails)
-  const realAdminEmails = [
+  // 1. Clean Test Users (Keep ONLY official admin & employee emails)
+  const officialEmails = [
     'admin@omvik.com',
     'aparna@omvikrealcon.com',
     'barsha@omvikrealcon.com',
     'admin3@omvikrealcon.com',
-    'admin4@omvikrealcon.com'
+    'admin4@omvikrealcon.com',
+    'subhashree.omvik@gmail.com',
+    'ashalata.omvik@gmail.com',
+    'sruti.omvik@gmail.com',
+    'jagruti.omvik@gmail.com',
+    'kishan.omvik@gmail.com'
   ];
 
-  console.log('1. Cleaning test user accounts...');
+  console.log('1. Cleaning temporary test user accounts...');
   const userDeleteResult = await db.collection('users').deleteMany({
-    email: { $nin: realAdminEmails }
+    email: { $nin: officialEmails }
   });
   console.log(`   Deleted ${userDeleteResult.deletedCount} temporary test users.`);
 
-  // Verify remaining real admins
+  // Verify remaining real admins & staff
   const remainingUsers = await db.collection('users').find({}, { projection: { email: 1, name: 1, role: 1, employeeId: 1 } }).toArray();
   console.log('   Remaining Official Users:');
   remainingUsers.forEach(u => console.log(`   - [${u.employeeId || 'SYS'}] ${u.name} (${u.email}) - ${u.role}`));
 
-  // 2. Wipe Test Transactional Collections (Including leaves, fake opportunities, fake leads, sitevisits, etc.)
+  // 2. Wipe Test Transactional Collections
   const collectionsToWipe = [
     'opportunities',
     'customers',
@@ -59,24 +64,6 @@ async function cleanTestData() {
       console.log(`   - ${colName.padEnd(25)} : Collection does not exist or empty.`);
     }
   }
-
-  // 3. Reset ID Counters in `counters` collection
-  console.log('\n3. Resetting sequential ID counters...');
-  await db.collection('counters').updateOne(
-    { name: 'ADM' },
-    { $set: { value: 4 } },
-    { upsert: true }
-  );
-
-  await db.collection('counters').updateOne(
-    { name: 'EMP' },
-    { $set: { value: 0 } },
-    { upsert: true }
-  );
-
-  const updatedCounters = await db.collection('counters').find({}).toArray();
-  console.log('   Updated Counters:');
-  updatedCounters.forEach(c => console.log(`   - ${c.name} : next value will be ${c.value + 1}`));
 
   console.log('\n✅ PRODUCTION DATABASE CLEANUP COMPLETE. System is clean for live sales operations!');
   await mongoose.connection.close();

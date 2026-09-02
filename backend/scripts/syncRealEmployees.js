@@ -1,4 +1,5 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
@@ -6,8 +7,8 @@ const User = require('../models/User');
 const realEmployees = [
   { name: "Subhashree Mohanty",     employeeId: "OMVR-E26-SBD001", email: "subhashree.omvik@gmail.com" },
   { name: "Ashalata Nahak",         employeeId: "OMVR-E26-SBD002", email: "ashalata.omvik@gmail.com" },
-  { name: "Sruti Sagarika Behera", employeeId: "OMVR-E26-SBD003", email: "jagruti.omvik@gmail.com" },
-  { name: "Jagruti Goudu",          employeeId: "OMVR-E26-SBD004", email: "sruti.omvik@gmail.com" },
+  { name: "Sruti Sagarika Behera", employeeId: "OMVR-E26-SBD003", email: "sruti.omvik@gmail.com" },
+  { name: "Jagruti Goudu",          employeeId: "OMVR-E26-SBD004", email: "jagruti.omvik@gmail.com" },
   { name: "Kisen Kaneheya Sahu",   employeeId: "OMVR-E26-SBD006", email: "kishan.omvik@gmail.com" },
 ];
 
@@ -15,7 +16,8 @@ const officialAdmins = [
   'admin@omvik.com',
   'aparna@omvikrealcon.com',
   'barsha@omvikrealcon.com',
-  'admin3@omvikrealcon.com'
+  'admin3@omvikrealcon.com',
+  'admin4@omvikrealcon.com'
 ];
 
 async function sync() {
@@ -25,64 +27,46 @@ async function sync() {
   }
 
   await mongoose.connect(process.env.MONGO_URI);
-  console.log('=== SYNCING OFFICIAL REAL EMPLOYEES & CLEANING TEST USERS ===\n');
+  console.log('=== SYNCING OFFICIAL REAL EMPLOYEES & CREATING ACCOUNTS ===\n');
 
-  // 1. Assign temporary placeholder emails to avoid unique index conflict during swap
-  for (const emp of realEmployees) {
-    await User.updateOne(
-      { employeeId: emp.employeeId },
-      { $set: { email: `temp_${emp.employeeId.toLowerCase()}@omvik.com` } }
-    );
-  }
+  const defaultHashedPassword = await bcrypt.hash("password123", 12);
 
-  // 2. Update real employees with exact requested email & name pairings
   for (const emp of realEmployees) {
-    let user = await User.findOne({ employeeId: emp.employeeId });
+    let user = await User.findOne({
+      $or: [{ email: emp.email }, { employeeId: emp.employeeId }]
+    });
 
     if (user) {
       user.name = emp.name;
       user.email = emp.email;
+      user.employeeId = emp.employeeId;
       user.role = 'telecaller';
+      user.password = defaultHashedPassword;
       user.isActive = true;
       await user.save();
-      console.log(`Updated real employee: [${emp.employeeId}] ${emp.name} -> ${emp.email}`);
+      console.log(`Updated real employee account: [${emp.employeeId}] ${emp.name} -> ${emp.email}`);
     } else {
-      const tempPassword = Math.random().toString(36).slice(-10);
-      const hashed = await bcrypt.hash(tempPassword, 12);
-
       await User.create({
         name: emp.name,
         email: emp.email,
-        password: hashed,
+        password: defaultHashedPassword,
         role: "telecaller",
         employeeId: emp.employeeId,
-        mustChangePassword: true,
+        mustChangePassword: false,
         isActive: true,
       });
-      console.log(`Created real employee: [${emp.employeeId}] ${emp.name} -> ${emp.email}`);
+      console.log(`Created real employee account: [${emp.employeeId}] ${emp.name} -> ${emp.email}`);
     }
   }
 
-  // 3. Delete all test/fake accounts not in officialAdmins or realEmployees
-  const allowedEmails = [
-    ...officialAdmins,
-    ...realEmployees.map(e => e.email)
-  ];
-
-  const deleteResult = await User.deleteMany({
-    email: { $nin: allowedEmails }
-  });
-
-  console.log(`\nRemoved ${deleteResult.deletedCount} test/fake accounts.`);
-
-  // 4. Print final official user list
+  // Print final official user directory
   const finalUsers = await User.find({}).sort({ employeeId: 1 });
   console.log('\n=== OFFICIAL EMPLOYEE DIRECTORY ===');
   finalUsers.forEach((u) => {
     console.log(` - [${u.employeeId || 'SYS'}] ${u.name.padEnd(25)} (${u.email}) - ${u.role}`);
   });
 
-  console.log('\n✅ DATABASE SYNC COMPLETE!');
+  console.log('\n✅ EMPLOYEE DATABASE RESTORATION COMPLETE! All employee accounts ready with password123.');
   await mongoose.disconnect();
 }
 
