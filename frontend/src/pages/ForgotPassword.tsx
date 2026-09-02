@@ -43,7 +43,10 @@ export default function ForgotPassword() {
       // ONLY advance step on genuine success response from Step 1 API call
       setStep('verify');
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Failed to request password reset. Please try again.';
+      const isTimeout = err.code === 'ECONNABORTED' || err.message?.includes('timeout');
+      const msg = isTimeout
+        ? 'The server was waking up (Render free tier cold start). Please click "Send 6-Digit OTP" again now that the server is awake!'
+        : (err.response?.data?.message || err.message || 'Failed to request password reset. Please try again.');
       setErrorMsg(msg);
       // Do NOT advance step on error; stay on step 1 so user sees error on step 1
     } finally {
