@@ -65,7 +65,7 @@ export default function App() {
         <NudgeMascot />
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/forgot-password" element={<Navigate to="/login" replace />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route
             path="/force-change-password"

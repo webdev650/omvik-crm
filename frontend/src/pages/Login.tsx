@@ -238,12 +238,13 @@ export default function Login() {
                 <span>Remember me</span>
               </label>
 
-              <Link
-                to="/forgot-password"
-                className="text-slate-200 hover:text-white hover:underline transition-colors"
+              <button
+                type="button"
+                onClick={() => setServerError('Forgot password? Please contact system admin at aparna@omvikrealcon.com or your manager to reset your password.')}
+                className="text-slate-200 hover:text-white hover:underline transition-colors cursor-pointer text-xs"
               >
                 Forgot password?
-              </Link>
+              </button>
             </div>
 
             {/* Login Button (Pure White Pill Button) */}
