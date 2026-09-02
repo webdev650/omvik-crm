@@ -59,6 +59,14 @@ const getDashboardStats = async (req, res, next) => {
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const seventyTwoHoursAgo = new Date(now.getTime() - 72 * 60 * 60 * 1000);
 
+    // Site Visit filter for deep dive
+    let siteVisitFilter = { ...dateQuery };
+    if (employeeId) siteVisitFilter.scheduledBy = employeeId;
+    if (projectId) {
+      const oppsInProject = await Opportunity.find({ project: projectId }).distinct('_id');
+      siteVisitFilter.opportunity = { $in: oppsInProject };
+    }
+
     // Parallel aggregations & queries
     const [
       totalLeads,
@@ -206,7 +214,7 @@ const getDashboardStats = async (req, res, next) => {
       Opportunity.countDocuments({ ...deepDiveMatch, stage: { $ne: 'new' } }),
 
       // 3b/3c. Project Deep Dive — Site Visits
-      SiteVisit.countDocuments({ ...deepDiveScope }),
+      SiteVisit.countDocuments(siteVisitFilter),
 
       // 4a. Best Employee by Won Deals (EXCLUDING Admins, Super Admins, Directors)
       Opportunity.aggregate([
