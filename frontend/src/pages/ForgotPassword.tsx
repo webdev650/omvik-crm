@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, ArrowRight, ArrowLeft, KeyRound } from 'lucide-react';
@@ -15,6 +15,11 @@ export default function ForgotPassword() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Background ping to warm up backend connection on page load
+  useEffect(() => {
+    api.get('/health').catch(() => {});
+  }, []);
 
   // Step 1: Request 6-digit OTP email
   const handleRequestOtp = async (e: React.FormEvent) => {

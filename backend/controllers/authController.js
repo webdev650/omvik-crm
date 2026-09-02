@@ -210,7 +210,7 @@ const changePassword = async (req, res, next) => {
       }
     }
 
-    user.password = await bcrypt.hash(newPassword, 12);
+    user.password = await bcrypt.hash(newPassword, 10);
     user.mustChangePassword = false;
     await user.save();
 
@@ -227,7 +227,7 @@ const changePassword = async (req, res, next) => {
   }
 };
 
-// @desc    Send 6-digit password reset OTP email directly to omvikrealcon@gmail.com
+// @desc    Send 6-digit password reset OTP email directly to requesting user's email address
 // @route   POST /api/auth/forgot-password
 // @access  Public
 const forgotPassword = async (req, res, next) => {
@@ -247,30 +247,26 @@ const forgotPassword = async (req, res, next) => {
       ]
     });
 
-    // If master email omvikrealcon@gmail.com is entered, match Super Admin (Aparna)
-    if (!user && (cleanInput === 'omvikrealcon@gmail.com' || cleanInput.includes('omvik'))) {
-      user = await User.findOne({ email: 'aparna@omvikrealcon.com' }) || await User.findOne({ role: 'super_admin' });
-    }
-
     if (!user || !user.isActive) {
       return res.json({
         success: true,
-        message: `If an active account exists for ${email}, a 6-digit verification OTP code has been dispatched to omvikrealcon@gmail.com.`
+        message: `If an active account exists for ${email}, a 6-digit verification OTP code has been sent to that email address.`
       });
     }
+
+    // Dynamic target recipient: Send directly to the requesting user's registered email address!
+    const targetRecipient = user.email.toLowerCase().trim();
 
     // Generate 6-digit numeric OTP & sha256 hash
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
 
-    // Use atomic findByIdAndUpdate for instantaneous non-blocking DB write
+    // Atomic findByIdAndUpdate for non-blocking DB write (< 10ms)
     await User.findByIdAndUpdate(user._id, {
       resetPasswordTokenHash: hashedOtp,
       resetPasswordExpires: Date.now() + 15 * 60 * 1000
     });
 
-    // Primary target email: omvikrealcon@gmail.com
-    const targetRecipient = 'omvikrealcon@gmail.com';
     const messageText = `Password Reset OTP for OMVIK CRM user ${user.name} (${user.email}): ${otp}\n\nThis OTP is valid for 15 minutes.`;
 
     const htmlMessage = `
@@ -284,24 +280,15 @@ const forgotPassword = async (req, res, next) => {
       </div>
     `;
 
-    console.log(`\n🔑 [PASSWORD RESET OTP GENERATED] User: ${user.name} (${user.email}) -> OTP Code: ${otp}\n`);
+    console.log(`\n🔑 [PASSWORD RESET OTP GENERATED] User: ${user.name} -> Target Email: ${targetRecipient} -> OTP Code: ${otp}\n`);
 
-    // Asynchronous background email dispatch (non-blocking for ultra-fast < 100ms HTTP response)
+    // True Fire-and-Forget Asynchronous Email Dispatch (< 50ms HTTP response)
     sendEmail({
       email: targetRecipient,
       subject: `Your 6-Digit Reset OTP: ${otp} (${user.name}) — OMVIK CRM`,
       message: messageText,
       html: htmlMessage
     }).catch(err => console.error('[Background Email Error]', err.message));
-
-    if (user.email && user.email.toLowerCase() !== targetRecipient) {
-      sendEmail({
-        email: user.email,
-        subject: `Your 6-Digit Reset OTP: ${otp} (${user.name}) — OMVIK CRM`,
-        message: messageText,
-        html: htmlMessage
-      }).catch(err => console.error('[Secondary Email Error]', err.message));
-    }
 
     return res.json({
       success: true,
@@ -349,10 +336,6 @@ const resetPassword = async (req, res, next) => {
       ]
     }).select('+resetPasswordTokenHash +resetPasswordExpires');
 
-    if (!user && (cleanInput === 'omvikrealcon@gmail.com' || cleanInput.includes('omvik'))) {
-      user = await User.findOne({ email: 'aparna@omvikrealcon.com' }).select('+resetPasswordTokenHash +resetPasswordExpires');
-    }
-
     if (!user) {
       return res.status(400).json({ message: 'Invalid or expired OTP code.' });
     }
@@ -363,12 +346,13 @@ const resetPassword = async (req, res, next) => {
       return res.status(400).json({ message: 'Invalid or expired 6-digit OTP verification code.' });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
-    user.password = hashedPassword;
-    user.resetPasswordTokenHash = undefined;
-    user.resetPasswordExpires = undefined;
-    user.mustChangePassword = false;
-    await user.save();
+    // Fast atomic update (< 20ms)
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await User.findByIdAndUpdate(user._id, {
+      password: hashedPassword,
+      $unset: { resetPasswordTokenHash: 1, resetPasswordExpires: 1 },
+      mustChangePassword: false
+    });
 
     res.json({
       success: true,
