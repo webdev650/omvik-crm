@@ -35,8 +35,8 @@ export default function Login() {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: 'aparna@omvikrealcon.com',
-      password: 'password123'
+      email: '',
+      password: ''
     }
   });
 
