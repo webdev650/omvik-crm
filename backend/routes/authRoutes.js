@@ -8,7 +8,8 @@ const {
   logout,
   changePassword,
   forgotPassword,
-  resetPassword
+  verifyOtp,
+  resetPasswordWithToken
 } = require('../controllers/authController');
 const validate = require('../middlewares/validate');
 const { protect } = require('../middlewares/auth');
@@ -28,10 +29,13 @@ router.post('/login', loginLimiter, validate(loginSchema), login);
 router.get('/me', protect, getMe);
 router.post('/logout', protect, logout);
 
-// Password Security & Recovery Routes (Unrestricted rate limit for seamless OTP requests)
+// Password Security & Recovery Routes
 router.post('/change-password', protect, changePassword);
 router.patch('/change-password', protect, changePassword);
+
+// New PasswordResetOTP Endpoints
 router.post('/forgot-password', forgotPassword);
-router.post('/reset-password', resetPassword);
+router.post('/verify-otp', verifyOtp);
+router.post('/reset-with-token', resetPasswordWithToken);
 
 module.exports = router;

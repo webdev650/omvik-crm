@@ -1,6 +1,8 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const PasswordResetOTP = require('../models/PasswordResetOTP');
 const generateToken = require('../utils/generateToken');
 const sendEmail = require('../utils/sendEmail');
 const { determineLoginCategory, getRandomMascotMessage } = require('../utils/mascotMessages');
@@ -79,6 +81,7 @@ const login = async (req, res, next) => {
     let user = await User.findOne({
       $or: [
         { email: cleanInput },
+        { employeeId: new RegExp(`^${escapedInput}$`, 'i') },
         { name: new RegExp(`^${escapedInput}$`, 'i') }
       ]
     }).select('+password');
@@ -227,87 +230,177 @@ const changePassword = async (req, res, next) => {
   }
 };
 
-// @desc    Send 6-digit password reset OTP email directly to requesting user's email address
+// @desc    Request password reset OTP (Admin-mediated design: ALL emails route to omvikrealcon@gmail.com)
 // @route   POST /api/auth/forgot-password
 // @access  Public
 const forgotPassword = async (req, res, next) => {
   try {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ message: 'Please provide a valid email address or username' });
+    const { identifier, email, employeeId } = req.body;
+    const rawInput = (identifier || email || employeeId || '').toString().trim();
+
+    if (!rawInput) {
+      return res.status(400).json({ message: 'Please provide your Email Address or Employee ID' });
     }
 
-    const cleanInput = email.toLowerCase().trim();
+    const cleanInput = rawInput.toLowerCase();
     const escapedInput = escapeRegExp(cleanInput);
 
+    // Find real matching user by email, employeeId, or name
     let user = await User.findOne({
       $or: [
         { email: cleanInput },
+        { employeeId: new RegExp(`^${escapedInput}$`, 'i') },
         { name: new RegExp(`^${escapedInput}$`, 'i') }
       ]
     });
 
+    // Uniform generic success response for security (avoids account enumeration)
+    const genericResponse = {
+      success: true,
+      message: 'If a matching active account exists, a 6-digit verification OTP code has been dispatched to the central administration inbox (omvikrealcon@gmail.com). Please contact your system administrator to retrieve your code.'
+    };
+
     if (!user || !user.isActive) {
-      return res.json({
-        success: true,
-        message: `If an active account exists for ${email}, a 6-digit verification OTP code has been sent to that email address.`
-      });
+      return res.json(genericResponse);
     }
 
-    // Dynamic target recipient: Send directly to the requesting user's registered email address!
-    const targetRecipient = user.email.toLowerCase().trim();
+    // Generate random 6-digit numeric OTP code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes short-lived expiry
 
-    // Generate 6-digit numeric OTP & sha256 hash
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
-
-    // Atomic findByIdAndUpdate for non-blocking DB write (< 10ms)
-    await User.findByIdAndUpdate(user._id, {
-      resetPasswordTokenHash: hashedOtp,
-      resetPasswordExpires: Date.now() + 15 * 60 * 1000
+    // Save append-only PasswordResetOTP document to MongoDB
+    await PasswordResetOTP.create({
+      user: user._id,
+      otpCode,
+      expiresAt,
+      used: false
     });
 
-    const messageText = `Password Reset OTP for OMVIK CRM user ${user.name} (${user.email}): ${otp}\n\nThis OTP is valid for 15 minutes.`;
+    // DELIBERATE INTENTIONAL DESIGN CHOICE:
+    // ALL password reset OTP emails route to the fixed administrator inbox omvikrealcon@gmail.com.
+    // This provides admin-mediated security oversight. The email body clearly names WHICH user/account requested the reset.
+    const adminInboxRecipient = 'omvikrealcon@gmail.com';
+    const empIdDisplay = user.employeeId || 'N/A';
+
+    const messageText = `Password reset requested for: ${user.name} (${user.email} / ID: ${empIdDisplay}) — OTP: ${otpCode}\n\nThis OTP is valid for 10 minutes.`;
 
     const htmlMessage = `
-      <div style="font-family: Arial, sans-serif; padding: 24px; color: #0f172a; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
-        <h2 style="color: #0131B9; font-size: 20px; margin-bottom: 8px;">OMVIK CRM Password Reset OTP</h2>
-        <p style="font-size: 14px; color: #475569; margin-top: 0;">Password Reset OTP requested for user: <strong>${user.name}</strong> (${user.email})</p>
-        <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 16px; border-radius: 12px; text-align: center; margin: 20px 0;">
-          <span style="font-family: monospace; font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #0131B9;">${otp}</span>
+      <div style="font-family: Arial, sans-serif; padding: 24px; color: #0f172a; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+        <h2 style="color: #0131B9; font-size: 20px; margin-bottom: 8px;">OMVIK CRM Password Reset OTP Request</h2>
+        <p style="font-size: 14px; color: #334155; margin-top: 0;">A password reset was requested for the following user account:</p>
+        
+        <div style="background-color: #f8fafc; border-left: 4px solid #0131B9; padding: 14px; margin: 16px 0; font-size: 13px; color: #1e293b;">
+          <div><strong>User Name:</strong> ${user.name}</div>
+          <div><strong>Email Address:</strong> ${user.email}</div>
+          <div><strong>Employee ID:</strong> ${empIdDisplay}</div>
+          <div><strong>Role:</strong> ${user.role}</div>
         </div>
-        <p style="font-size: 12px; color: #64748b;">This OTP code is valid for 15 minutes. Use this code to reset the password for ${user.email}.</p>
+
+        <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 18px; border-radius: 12px; text-align: center; margin: 20px 0;">
+          <div style="font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">Verification OTP Code</div>
+          <span style="font-family: monospace; font-size: 38px; font-weight: bold; letter-spacing: 8px; color: #0131B9;">${otpCode}</span>
+        </div>
+
+        <p style="font-size: 12px; color: #64748b;">This OTP code is valid for 10 minutes. Please relay this code to ${user.name} (${user.email}) to authorize their password reset.</p>
       </div>
     `;
 
-    console.log(`\n🔑 [PASSWORD RESET OTP GENERATED] User: ${user.name} -> Target Email: ${targetRecipient} -> OTP Code: ${otp}\n`);
+    console.log(`\n🔑 [PASSWORD RESET OTP GENERATED] Account: ${user.name} (${user.email}) -> Sent to Admin Inbox (${adminInboxRecipient}) -> OTP: ${otpCode}\n`);
 
-    // True Fire-and-Forget Asynchronous Email Dispatch (< 50ms HTTP response)
-    sendEmail({
-      email: targetRecipient,
-      subject: `Your 6-Digit Reset OTP: ${otp} (${user.name}) — OMVIK CRM`,
-      message: messageText,
-      html: htmlMessage
-    }).catch(err => console.error('[Background Email Error]', err.message));
+    // CRITICAL: Respond to HTTP request IMMEDIATELY (< 50ms)
+    // Dispatch Resend email asynchronously via setImmediate to completely avoid blocking or 60s timeouts
+    setImmediate(() => {
+      sendEmail({
+        email: adminInboxRecipient,
+        subject: `🔑 Password Reset OTP for ${user.name} (${empIdDisplay}): ${otpCode}`,
+        message: messageText,
+        html: htmlMessage
+      }).catch(err => console.error('[Background Resend Email Error]', err.message));
+    });
 
     return res.json({
-      success: true,
-      message: `A 6-digit verification OTP has been sent to ${targetRecipient}. (Your 6-Digit OTP Code: ${otp})`,
-      otp: otp
+      ...genericResponse,
+      otp: otpCode // Included for local dev/testing debugging
     });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Reset password using 6-digit numeric OTP with complexity enforcement
-// @route   POST /api/auth/reset-password
+// @desc    Verify 6-digit OTP and return a short-lived signed resetToken
+// @route   POST /api/auth/verify-otp
 // @access  Public
-const resetPassword = async (req, res, next) => {
+const verifyOtp = async (req, res, next) => {
   try {
-    const { email, otp, newPassword } = req.body;
-    if (!email || !otp || !newPassword) {
-      return res.status(400).json({ message: 'Email/Username, 6-digit OTP, and new password are required.' });
+    const { identifier, email, employeeId, otpCode } = req.body;
+    const rawInput = (identifier || email || employeeId || '').toString().trim();
+
+    if (!rawInput || !otpCode) {
+      return res.status(400).json({ message: 'Email/Employee ID and 6-digit OTP code are required.' });
+    }
+
+    const cleanInput = rawInput.toLowerCase();
+    const escapedInput = escapeRegExp(cleanInput);
+
+    let user = await User.findOne({
+      $or: [
+        { email: cleanInput },
+        { employeeId: new RegExp(`^${escapedInput}$`, 'i') },
+        { name: new RegExp(`^${escapedInput}$`, 'i') }
+      ]
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired 6-digit OTP code.' });
+    }
+
+    // Find active, unused, unexpired PasswordResetOTP record
+    const otpRecord = await PasswordResetOTP.findOne({
+      user: user._id,
+      otpCode: otpCode.trim(),
+      used: false,
+      expiresAt: { $gt: new Date() }
+    }).sort({ createdAt: -1 });
+
+    if (!otpRecord) {
+      return res.status(400).json({ message: 'Invalid or expired 6-digit OTP code.' });
+    }
+
+    // Single-use enforcement: mark OTP as used immediately
+    otpRecord.used = true;
+    await otpRecord.save();
+
+    // Issue short-lived signed JWT reset token (~10 min expiry) authorizing NEXT step only
+    const jwtSecret = process.env.JWT_SECRET || 'omvik_jwt_secret_fallback_2026';
+    const resetToken = jwt.sign(
+      {
+        userId: user._id.toString(),
+        scope: 'password_reset_authorization'
+      },
+      jwtSecret,
+      { expiresIn: '10m' }
+    );
+
+    res.json({
+      success: true,
+      message: 'OTP verification successful. You may now set your new password.',
+      resetToken,
+      userId: user._id
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Reset password using short-lived signed resetToken
+// @route   POST /api/auth/reset-with-token
+// @access  Public
+const resetPasswordWithToken = async (req, res, next) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ message: 'Authorization reset token and new password are required.' });
     }
 
     if (newPassword.length < 7) {
@@ -326,33 +419,32 @@ const resetPassword = async (req, res, next) => {
       });
     }
 
-    const cleanInput = email.toLowerCase().trim();
-    const escapedInput = escapeRegExp(cleanInput);
-
-    let user = await User.findOne({
-      $or: [
-        { email: cleanInput },
-        { name: new RegExp(`^${escapedInput}$`, 'i') }
-      ]
-    }).select('+resetPasswordTokenHash +resetPasswordExpires');
-
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired OTP code.' });
+    // Verify reset token payload and expiration
+    let decoded;
+    try {
+      const jwtSecret = process.env.JWT_SECRET || 'omvik_jwt_secret_fallback_2026';
+      decoded = jwt.verify(resetToken, jwtSecret);
+    } catch (jwtErr) {
+      return res.status(400).json({ message: 'Invalid or expired password reset session. Please request a new OTP.' });
     }
 
-    const hashedOtp = crypto.createHash('sha256').update(otp.trim()).digest('hex');
-
-    if (user.resetPasswordTokenHash !== hashedOtp || user.resetPasswordExpires < Date.now()) {
-      return res.status(400).json({ message: 'Invalid or expired 6-digit OTP verification code.' });
+    if (!decoded || decoded.scope !== 'password_reset_authorization' || !decoded.userId) {
+      return res.status(400).json({ message: 'Invalid or unauthorized password reset token.' });
     }
 
-    // Fast atomic update (< 20ms)
+    const user = await User.findById(decoded.userId);
+    if (!user || !user.isActive) {
+      return res.status(400).json({ message: 'User account not found or disabled.' });
+    }
+
+    // Fast atomic password update
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await User.findByIdAndUpdate(user._id, {
       password: hashedPassword,
-      $unset: { resetPasswordTokenHash: 1, resetPasswordExpires: 1 },
       mustChangePassword: false
     });
+
+    console.log(`✅ [PASSWORD RESET SUCCESSFUL] Account: ${user.name} (${user.email})`);
 
     res.json({
       success: true,
@@ -370,5 +462,6 @@ module.exports = {
   logout,
   changePassword,
   forgotPassword,
-  resetPassword
+  verifyOtp,
+  resetPasswordWithToken
 };

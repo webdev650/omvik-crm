@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, ArrowRight, ArrowLeft, KeyRound } from 'lucide-react';
+import { Mail, ArrowRight, ArrowLeft, KeyRound, ShieldAlert } from 'lucide-react';
 import api from '../api/axios';
 import OtpVerificationCard from '../components/OtpVerificationCard';
 import { Input } from '../components/ui/input';
@@ -10,32 +10,28 @@ import { Label } from '../components/ui/label';
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [step, setStep] = useState<'request' | 'verify'>('request');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Background ping to warm up backend connection on page load
-  useEffect(() => {
-    api.get('/health').catch(() => {});
-  }, []);
-
-  // Step 1: Request 6-digit OTP email
+  // Step 1: Request 6-digit OTP code (Admin-mediated: routes to omvikrealcon@gmail.com)
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setStatusMsg(null);
 
-    if (!email || !email.includes('@')) {
-      setErrorMsg('Please enter a valid email address.');
+    const cleanInput = identifier.trim();
+    if (!cleanInput) {
+      setErrorMsg('Please enter your Email Address or Employee ID.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const response = await api.post('/auth/forgot-password', { email: email.trim() });
-      let msg = response.data?.message || 'A 6-digit OTP code has been sent to your email.';
+      const response = await api.post('/auth/forgot-password', { identifier: cleanInput });
+      let msg = response.data?.message || 'A 6-digit OTP code has been dispatched to the central admin inbox.';
       if (response.data?.otp) {
         msg += ` (Your 6-Digit OTP Code: ${response.data.otp})`;
       }
@@ -44,7 +40,7 @@ export default function ForgotPassword() {
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Failed to request password reset. Please try again.';
       setErrorMsg(msg);
-      // Auto-advance to verify step so user can enter active OTP code directly
+      // Advance to verify step so user can enter OTP directly if already obtained
       setStep('verify');
     } finally {
       setIsSubmitting(false);
@@ -55,8 +51,8 @@ export default function ForgotPassword() {
   const handleResendOtp = async () => {
     setErrorMsg(null);
     try {
-      const response = await api.post('/auth/forgot-password', { email: email.trim() });
-      let msg = response.data?.message || 'A fresh 6-digit OTP has been dispatched to your email.';
+      const response = await api.post('/auth/forgot-password', { identifier: identifier.trim() });
+      let msg = response.data?.message || 'A fresh 6-digit OTP has been dispatched to the central admin inbox.';
       if (response.data?.otp) {
         msg += ` (Your 6-Digit OTP Code: ${response.data.otp})`;
       }
@@ -68,18 +64,35 @@ export default function ForgotPassword() {
     }
   };
 
-  // Step 2: Verify OTP & Reset Password
-  const handleVerifyOtp = async (otp: string, newPassword?: string) => {
+  // Step 2 & Step 3: Verify OTP to obtain single-use resetToken, then perform Password Reset
+  const handleVerifyAndReset = async (otp: string, newPassword?: string) => {
+    if (!newPassword) {
+      setErrorMsg('New password is required.');
+      return;
+    }
+
     setErrorMsg(null);
     setIsSubmitting(true);
     try {
-      const response = await api.post('/auth/reset-password', {
-        email: email.trim(),
-        otp,
+      // Step A: Verify 6-digit OTP to get single-use short-lived resetToken
+      const verifyRes = await api.post('/auth/verify-otp', {
+        identifier: identifier.trim() || 'omvikrealcon@gmail.com',
+        otpCode: otp
+      });
+
+      if (!verifyRes.data?.resetToken) {
+        throw new Error('Invalid or expired OTP verification code.');
+      }
+
+      const resetToken = verifyRes.data.resetToken;
+
+      // Step B: Submit new password with signed resetToken
+      const resetRes = await api.post('/auth/reset-with-token', {
+        resetToken,
         newPassword
       });
 
-      if (response.data?.success) {
+      if (resetRes.data?.success) {
         navigate('/login');
       }
     } catch (err: any) {
@@ -126,11 +139,19 @@ export default function ForgotPassword() {
                     Forgot Password?
                   </h2>
                   <p className="text-xs text-slate-500 leading-relaxed px-2">
-                    Enter your account email below to receive a secure 6-digit numeric verification OTP.
+                    Enter your Email Address or Employee ID to request a 6-digit reset code.
                   </p>
                 </div>
 
-                <form onSubmit={handleRequestOtp} className="space-y-4 text-left">
+                {/* Admin-mediated reset notification box */}
+                <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200/80 text-left flex items-start gap-2.5">
+                  <ShieldAlert className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-blue-900 leading-relaxed font-medium">
+                    <strong>Admin Security Oversight:</strong> Your 6-digit verification code will be dispatched to the central administration inbox (<strong>omvikrealcon@gmail.com</strong>). Please check with your administrator for your code.
+                  </p>
+                </div>
+
+                <form onSubmit={handleRequestOtp} autoComplete="off" className="space-y-4 text-left">
                   {errorMsg && (
                     <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-600 text-xs font-semibold flex items-center gap-2">
                       <span>⚠️</span>
@@ -139,19 +160,19 @@ export default function ForgotPassword() {
                   )}
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="email" className="text-xs font-bold text-slate-700">
-                      Email Address
+                    <Label htmlFor="identifier" className="text-xs font-bold text-slate-700">
+                      Email Address or Employee ID
                     </Label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                       <Input
-                        id="email"
-                        type="email"
+                        id="identifier"
+                        type="text"
                         autoComplete="off"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Enter your email address"
-                        className="pl-10 h-11 bg-slate-50 border-slate-200 text-slate-900 text-xs rounded-xl focus:bg-white focus:border-indigo-600"
+                        value={identifier}
+                        onChange={(e) => setIdentifier(e.target.value)}
+                        placeholder="e.g. subhashree.omvik@gmail.com or EMP-005"
+                        className="pl-10 h-11 bg-slate-50 border-slate-200 text-slate-900 text-xs rounded-xl focus:bg-white focus:border-indigo-600 font-medium"
                       />
                     </div>
                   </div>
@@ -164,7 +185,7 @@ export default function ForgotPassword() {
                     {isSubmitting ? (
                       <span className="flex items-center gap-2">
                         <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Dispatching Code...
+                        Requesting Code...
                       </span>
                     ) : (
                       <>
@@ -199,8 +220,8 @@ export default function ForgotPassword() {
               exit={{ opacity: 0, scale: 0.95 }}
             >
               <OtpVerificationCard
-                email={email || 'omvikrealcon@gmail.com'}
-                onVerify={handleVerifyOtp}
+                email={identifier || 'Admin Inbox (omvikrealcon@gmail.com)'}
+                onVerify={handleVerifyAndReset}
                 onResend={handleResendOtp}
                 isSubmitting={isSubmitting}
                 errorMsg={errorMsg}

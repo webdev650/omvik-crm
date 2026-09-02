@@ -55,14 +55,6 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
-    resetPasswordTokenHash: {
-      type: String,
-      select: false
-    },
-    resetPasswordExpires: {
-      type: Date,
-      select: false
-    },
     teamId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Team',
