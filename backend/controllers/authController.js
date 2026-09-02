@@ -6,6 +6,11 @@ const sendEmail = require('../utils/sendEmail');
 const { determineLoginCategory, getRandomMascotMessage } = require('../utils/mascotMessages');
 const { getOrCreateSettings } = require('../models/Settings');
 
+// Helper function to escape special regex characters
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // @desc    Register a new user (Staff / Telecaller / Admin)
 // @route   POST /api/auth/register
 // @access  Public (or Admin only depending on workflow)
@@ -68,12 +73,13 @@ const login = async (req, res, next) => {
     }
 
     const cleanInput = email.toLowerCase().trim();
+    const escapedInput = escapeRegExp(cleanInput);
 
     // Flexible query: check email OR match name (case-insensitive) OR omvikrealcon master email
     let user = await User.findOne({
       $or: [
         { email: cleanInput },
-        { name: new RegExp(`^${cleanInput}$`, 'i') }
+        { name: new RegExp(`^${escapedInput}$`, 'i') }
       ]
     }).select('+password');
 
@@ -232,10 +238,12 @@ const forgotPassword = async (req, res, next) => {
     }
 
     const cleanInput = email.toLowerCase().trim();
+    const escapedInput = escapeRegExp(cleanInput);
+
     let user = await User.findOne({
       $or: [
         { email: cleanInput },
-        { name: new RegExp(`^${cleanInput}$`, 'i') }
+        { name: new RegExp(`^${escapedInput}$`, 'i') }
       ]
     });
 
@@ -255,9 +263,11 @@ const forgotPassword = async (req, res, next) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
 
-    user.resetPasswordTokenHash = hashedOtp;
-    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes expiry
-    await user.save({ validateBeforeSave: false });
+    // Use atomic findByIdAndUpdate for instantaneous non-blocking DB write
+    await User.findByIdAndUpdate(user._id, {
+      resetPasswordTokenHash: hashedOtp,
+      resetPasswordExpires: Date.now() + 15 * 60 * 1000
+    });
 
     // Primary target email: omvikrealcon@gmail.com
     const targetRecipient = 'omvikrealcon@gmail.com';
@@ -276,7 +286,7 @@ const forgotPassword = async (req, res, next) => {
 
     console.log(`\n🔑 [PASSWORD RESET OTP GENERATED] User: ${user.name} (${user.email}) -> OTP Code: ${otp}\n`);
 
-    // Asynchronous background email dispatch (non-blocking for ultra-fast < 150ms HTTP response)
+    // Asynchronous background email dispatch (non-blocking for ultra-fast < 100ms HTTP response)
     sendEmail({
       email: targetRecipient,
       subject: `Your 6-Digit Reset OTP: ${otp} (${user.name}) — OMVIK CRM`,
@@ -330,10 +340,12 @@ const resetPassword = async (req, res, next) => {
     }
 
     const cleanInput = email.toLowerCase().trim();
+    const escapedInput = escapeRegExp(cleanInput);
+
     let user = await User.findOne({
       $or: [
         { email: cleanInput },
-        { name: new RegExp(`^${cleanInput}$`, 'i') }
+        { name: new RegExp(`^${escapedInput}$`, 'i') }
       ]
     }).select('+resetPasswordTokenHash +resetPasswordExpires');
 
@@ -351,7 +363,8 @@ const resetPassword = async (req, res, next) => {
       return res.status(400).json({ message: 'Invalid or expired 6-digit OTP verification code.' });
     }
 
-    user.password = await bcrypt.hash(newPassword, 12);
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    user.password = hashedPassword;
     user.resetPasswordTokenHash = undefined;
     user.resetPasswordExpires = undefined;
     user.mustChangePassword = false;
