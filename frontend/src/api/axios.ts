@@ -2,11 +2,19 @@ import axios from 'axios';
 import { toast } from 'sonner';
 
 const meta = import.meta as any;
-const baseURL = (meta && meta.env && meta.env.VITE_API_URL) || 'https://omvik-crm-dy3u.onrender.com/api';
+let rawURL = (meta && meta.env && meta.env.VITE_API_URL) || 'https://omvik-crm-dy3u.onrender.com/api';
+
+// Fallback safeguard against old/dead URL in environment variables
+if (!rawURL || rawURL.includes('omvik-backend.onrender.com')) {
+  rawURL = 'https://omvik-crm-dy3u.onrender.com/api';
+}
+
+const baseURL = rawURL;
 
 const api = axios.create({
   baseURL,
   withCredentials: true,
+  timeout: 15000, // 15 seconds timeout safeguard
   headers: {
     'Content-Type': 'application/json'
   }
