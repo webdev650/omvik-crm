@@ -14,7 +14,7 @@ const baseURL = rawURL;
 const api = axios.create({
   baseURL,
   withCredentials: true,
-  timeout: 15000, // 15 seconds timeout safeguard
+  timeout: 60000, // 60 seconds timeout to allow Render free tier cold starts
   headers: {
     'Content-Type': 'application/json'
   }
@@ -39,7 +39,10 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
-    const message = error.response?.data?.message || 'Something went wrong. Please try again.';
+    const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout');
+    const message = isTimeout
+      ? 'Server is warming up, please try again in a few seconds.'
+      : (error.response?.data?.message || 'Something went wrong. Please try again.');
     const isLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
 
     // Show toast for non-401 errors, or 401 errors when not on login page
