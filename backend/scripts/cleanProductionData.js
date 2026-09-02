@@ -1,13 +1,19 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const mongoose = require('mongoose');
 
 async function cleanTestData() {
+  if (!process.env.MONGO_URI) {
+    console.error('MONGO_URI is missing from environment');
+    process.exit(1);
+  }
+
   await mongoose.connect(process.env.MONGO_URI);
   console.log('=== PRODUCTION DATABASE CLEANUP & RESET SCRIPT ===\n');
 
   const db = mongoose.connection.db;
 
-  // 1. Clean Test Users (Keep ONLY real admins: admin@omvik.com, aparna, barsha, admin3, admin4)
+  // 1. Clean Test Users (Keep ONLY official admin emails)
   const realAdminEmails = [
     'admin@omvik.com',
     'aparna@omvikrealcon.com',
@@ -27,7 +33,7 @@ async function cleanTestData() {
   console.log('   Remaining Official Users:');
   remainingUsers.forEach(u => console.log(`   - [${u.employeeId || 'SYS'}] ${u.name} (${u.email}) - ${u.role}`));
 
-  // 2. Wipe Test Transactional Collections (Including leaves)
+  // 2. Wipe Test Transactional Collections (Including leaves, fake opportunities, fake leads, sitevisits, etc.)
   const collectionsToWipe = [
     'opportunities',
     'customers',
@@ -40,7 +46,8 @@ async function cleanTestData() {
     'auditlogs',
     'assignmenthistories',
     'duplicateattemptlogs',
-    'leaves'
+    'leaves',
+    'leadbatches'
   ];
 
   console.log('\n2. Wiping test transactional data collections...');
