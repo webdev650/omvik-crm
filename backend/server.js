@@ -88,6 +88,7 @@ app.use('/api/daily-reports', require('./routes/dailyReportRoutes'));
 app.use('/api/leave', require('./routes/leaveRoutes'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok_v3', db: 'omvik-crm', loginActivity: true }));
+app.get('/api/health', (req, res) => res.json({ status: 'ok_v3', db: 'omvik-crm', loginActivity: true }));
 
 app.get('/', (req, res) => {
   res.send('OMVIK API is running...');

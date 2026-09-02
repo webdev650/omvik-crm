@@ -44,10 +44,12 @@ api.interceptors.response.use(
     const message = isTimeout
       ? 'Server is warming up, please try again in a few seconds.'
       : (error.response?.data?.message || 'Something went wrong. Please try again.');
-    const isLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login';
 
-    // Show toast for non-401 errors, or 401 errors when not on login page
-    if (status !== 401 || !isLoginPage) {
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+    const isAuthPage = ['/login', '/forgot-password', '/reset-password', '/register'].some(p => pathname.startsWith(p));
+
+    // Show toast for non-401 errors, or 401 errors when NOT on auth pages
+    if (status !== 401 || !isAuthPage) {
       toast.error(message, {
         duration: 4000,
         position: 'top-right'
