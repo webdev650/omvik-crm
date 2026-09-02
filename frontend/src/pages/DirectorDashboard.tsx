@@ -36,7 +36,8 @@ import {
   PhoneCall,
   Eye,
   FileSpreadsheet,
-  ArrowUpRight
+  ArrowUpRight,
+  PieChart as PieIcon
 } from 'lucide-react';
 
 import Navbar from '../components/Navbar';
@@ -65,11 +66,12 @@ const SOURCE_COLORS = [
   '#10b981'  // Emerald
 ];
 
+// Vibrant colors matching the user's reference basic pie chart
 const DEEP_DIVE_COLORS = [
-  '#15B0F8', // Active - Vibrant Blue
-  '#FF0000', // Inactive - Red
-  '#FBB040', // Bookings (Won) - Yellow/Gold
-  '#0131B9'  // Site Visits - Deep Blue
+  '#3b82f6', // Active Leads - Blue
+  '#f59e0b', // Inactive Leads - Yellow/Gold
+  '#10b981', // Bookings (Won) - Green
+  '#ef4444'  // Site Visits - Red
 ];
 
 const STAGE_LABELS: Record<string, string> = {
@@ -104,7 +106,6 @@ export default function DirectorDashboard() {
   const navigate = useNavigate();
 
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'deep_dive'>('overview');
 
   // Deep-Dive Filter State
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
@@ -181,7 +182,7 @@ export default function DirectorDashboard() {
     }));
   }, [stats?.byProject]);
 
-  // Project Deep-Dive PieChart
+  // Project Deep-Dive Solid PieChart Data
   const deepDiveChartData = useMemo(() => {
     if (!stats?.projectDeepDive) return [];
     const pd = stats.projectDeepDive;
@@ -535,193 +536,187 @@ export default function DirectorDashboard() {
               </div>
             </div>
 
-            {/* ── SECTION 3: OPPORTUNITIES BY PROJECT (TOGGLE & DEEP DIVE) ──────────── */}
-            <div className="bg-[#131c31] border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-sm space-y-6">
-              {/* Header & Mode Selector */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/60 pb-4">
+            {/* ── SECTION 3A: OPPORTUNITIES BY PROJECT OVERVIEW (MULTI-PROJECT BAR CHART - KEPT PERMANENTLY) ── */}
+            <div className="bg-[#131c31] border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
                 <div>
-                  <h3 className="text-lg font-bold text-white">Opportunities by Project</h3>
-                  <p className="text-xs text-slate-400">Multi-project comparison or single-project deep dive analytics</p>
+                  <h3 className="text-base sm:text-lg font-bold text-white">Opportunities by Project</h3>
+                  <p className="text-xs text-slate-400">Total active opportunities across all real-estate projects</p>
                 </div>
+                <span className="px-2.5 py-1 rounded-md bg-slate-800 text-[#15B0F8] text-[11px] font-bold border border-slate-700/60 flex items-center gap-1.5">
+                  <BarChart className="w-3.5 h-3.5" />
+                  <span>All Projects Overview</span>
+                </span>
+              </div>
 
-                {/* View Mode Toggle Tabs */}
-                <div className="flex items-center gap-2 bg-[#0b0f19] p-1 rounded-xl border border-slate-800">
-                  <button
-                    onClick={() => setActiveTab('overview')}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-                      activeTab === 'overview'
-                        ? 'bg-[#0131B9] text-white shadow-sm'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <BarChart className="w-3.5 h-3.5" />
-                    <span>Compare All Projects</span>
-                  </button>
+              <div className="h-72 w-full pt-2">
+                {projectChartData.length === 0 ? (
+                  <div className="flex items-center justify-center h-full text-xs text-slate-500">
+                    No project data recorded yet.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={projectChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                      <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
+                      <YAxis stroke="#64748b" fontSize={11} tickLine={false} allowDecimals={false} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#f8fafc', fontSize: '12px' }}
+                        cursor={{ fill: '#1e293b', opacity: 0.5 }}
+                      />
+                      <Bar dataKey="count" fill="#15B0F8" radius={[6, 6, 0, 0]} barSize={40} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
 
-                  <button
-                    onClick={() => setActiveTab('deep_dive')}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-                      activeTab === 'deep_dive'
-                        ? 'bg-[#0131B9] text-white shadow-sm'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>Deep Dive: One Project</span>
-                  </button>
+            {/* ── SECTION 3B: DEDICATED PROJECT DEEP DIVE & STAGE CONVERSION PIE CHART (SOLID PIE CHART WITH Slice % LABELS) ── */}
+            <div className="bg-[#131c31] border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/60 pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-[#0131B9]/20 text-[#15B0F8] border border-[#15B0F8]/30 flex items-center justify-center">
+                    <PieIcon className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Project Deep Dive & Stage Conversion Analytics</h3>
+                    <p className="text-xs text-slate-400">Filter by Project, Employee, & Date Range to analyze stage distribution and conversion ratios</p>
+                  </div>
                 </div>
               </div>
 
-              {/* MODE 1: COMPARE ALL PROJECTS (BAR CHART) */}
-              {activeTab === 'overview' && (
-                <div className="h-72 w-full pt-2">
-                  {projectChartData.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-xs text-slate-500">
-                      No project data recorded yet.
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={projectChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                        <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
-                        <YAxis stroke="#64748b" fontSize={11} tickLine={false} allowDecimals={false} />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#f8fafc', fontSize: '12px' }}
-                          cursor={{ fill: '#1e293b', opacity: 0.5 }}
-                        />
-                        <Bar dataKey="count" fill="#15B0F8" radius={[6, 6, 0, 0]} barSize={40} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
+              {/* Filter Bar: Project Dropdown, Employee Dropdown, Date Range */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-[#0b0f19] p-4 rounded-2xl border border-slate-800">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Filter by Project (e.g. MCO)</label>
+                  <select
+                    value={selectedProjectId}
+                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                    className="w-full bg-[#131c31] border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 font-medium focus:border-[#15B0F8]"
+                  >
+                    <option value="">All Real-Estate Projects</option>
+                    {projectsList.map((p: any) => (
+                      <option key={p._id} value={p._id}>{p.name}</option>
+                    ))}
+                  </select>
                 </div>
-              )}
 
-              {/* MODE 2: DEEP DIVE: ONE PROJECT (FILTERS + PIE CHART + RATIOS) */}
-              {activeTab === 'deep_dive' && (
-                <div className="space-y-6">
-                  {/* Filter Bar: Project Dropdown, Employee Dropdown, Date Range */}
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-[#0b0f19] p-4 rounded-2xl border border-slate-800">
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-400 block mb-1">Select Project</label>
-                      <select
-                        value={selectedProjectId}
-                        onChange={(e) => setSelectedProjectId(e.target.value)}
-                        className="w-full bg-[#131c31] border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 font-medium focus:border-[#15B0F8]"
-                      >
-                        <option value="">All Real-Estate Projects</option>
-                        {projectsList.map((p: any) => (
-                          <option key={p._id} value={p._id}>{p.name}</option>
-                        ))}
-                      </select>
-                    </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Filter by Employee (Optional)</label>
+                  <select
+                    value={selectedEmployeeId}
+                    onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                    className="w-full bg-[#131c31] border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 font-medium focus:border-[#15B0F8]"
+                  >
+                    <option value="">All Team Members</option>
+                    {usersList.map((u: any) => (
+                      <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                    ))}
+                  </select>
+                </div>
 
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-400 block mb-1">Select Sales Rep (Optional)</label>
-                      <select
-                        value={selectedEmployeeId}
-                        onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                        className="w-full bg-[#131c31] border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 font-medium focus:border-[#15B0F8]"
-                      >
-                        <option value="">All Team Members</option>
-                        {usersList.map((u: any) => (
-                          <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
-                        ))}
-                      </select>
-                    </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">Start Date (dt/month/yr)</label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="bg-[#131c31] border-slate-700 text-xs text-slate-200 rounded-xl h-10"
+                  />
+                </div>
 
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-400 block mb-1">From Date</label>
-                      <Input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className="bg-[#131c31] border-slate-700 text-xs text-slate-200 rounded-xl h-10"
-                      />
-                    </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block mb-1">End Date (dt/month/yr)</label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="bg-[#131c31] border-slate-700 text-xs text-slate-200 rounded-xl h-10"
+                  />
+                </div>
+              </div>
 
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-400 block mb-1">To Date</label>
-                      <Input
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        className="bg-[#131c31] border-slate-700 text-xs text-slate-200 rounded-xl h-10"
-                      />
-                    </div>
+              {/* Deep-Dive Grid: Solid Pie Chart + Conversion Ratios */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                {/* Left (7 Cols): Solid Filled Basic Pie Chart with Percentage Labels */}
+                <div className="lg:col-span-7 bg-[#0b0f19] p-5 rounded-2xl border border-slate-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-bold text-slate-200">Basic Pie Chart Distribution</h4>
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      {startDate && endDate ? `${startDate} to ${endDate}` : 'All Date Ranges'}
+                    </span>
                   </div>
 
-                  {/* Deep-Dive Grid: Pie Chart + Conversion Ratios */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-                    {/* Left (7 Cols): Deep Dive Pie Chart */}
-                    <div className="lg:col-span-7 bg-[#0b0f19] p-5 rounded-2xl border border-slate-800">
-                      <h4 className="text-sm font-bold text-slate-200 mb-2">Project Distribution Segments</h4>
-                      <div className="h-64 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={deepDiveChartData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={45}
-                              outerRadius={75}
-                              paddingAngle={4}
-                              dataKey="value"
-                            >
-                              {deepDiveChartData.map((_entry: any, index: number) => (
-                                <Cell key={`cell-${index}`} fill={DEEP_DIVE_COLORS[index % DEEP_DIVE_COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#f8fafc', fontSize: '12px' }}
-                            />
-                            <Legend
-                              verticalAlign="bottom"
-                              height={36}
-                              iconType="circle"
-                              wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-
-                    {/* Right (5 Cols): Conversion Ratios Pair Cards */}
-                    <div className="lg:col-span-5 space-y-3">
-                      <h4 className="text-sm font-bold text-slate-200 mb-1">Stage Conversion Ratios</h4>
-
-                      <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-semibold text-slate-400">Contacted : Visits</p>
-                          <p className="text-[11px] text-slate-500">Contacted leads vs Completed Site Visits</p>
-                        </div>
-                        <span className="text-lg font-black text-[#15B0F8] font-mono">
-                          {stats.projectDeepDive?.ratios?.contactedToVisits || '0:0'}
-                        </span>
-                      </div>
-
-                      <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-semibold text-slate-400">Contacted : Bookings</p>
-                          <p className="text-[11px] text-slate-500">Contacted leads vs Won Bookings</p>
-                        </div>
-                        <span className="text-lg font-black text-emerald-400 font-mono">
-                          {stats.projectDeepDive?.ratios?.contactedToBookings || '0:0'}
-                        </span>
-                      </div>
-
-                      <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-semibold text-slate-400">Visits : Bookings</p>
-                          <p className="text-[11px] text-slate-500">Completed Site Visits vs Won Bookings</p>
-                        </div>
-                        <span className="text-lg font-black text-[#FBB040] font-mono">
-                          {stats.projectDeepDive?.ratios?.visitsToBookings || '0:0'}
-                        </span>
-                      </div>
-                    </div>
+                  <div className="h-72 w-full flex items-center justify-center">
+                    {deepDiveChartData.every((d) => d.value === 0) ? (
+                      <p className="text-xs text-slate-500 italic">No distribution metrics recorded for this project filter.</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={deepDiveChartData}
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={95}
+                            innerRadius={0} // Solid Pie Chart matching user's image!
+                            dataKey="value"
+                            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                            labelLine={true}
+                          >
+                            {deepDiveChartData.map((_entry: any, index: number) => (
+                              <Cell key={`cell-${index}`} fill={DEEP_DIVE_COLORS[index % DEEP_DIVE_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#f8fafc', fontSize: '12px' }}
+                          />
+                          <Legend
+                            verticalAlign="bottom"
+                            height={36}
+                            iconType="circle"
+                            wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
                 </div>
-              )}
+
+                {/* Right (5 Cols): Stage Conversion Ratios */}
+                <div className="lg:col-span-5 space-y-3">
+                  <h4 className="text-sm font-bold text-slate-200 mb-1">Stage Conversion Ratios</h4>
+
+                  <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-300">Contacted : Visits</p>
+                      <p className="text-[11px] text-slate-500">Contacted leads vs Completed Site Visits</p>
+                    </div>
+                    <span className="text-xl font-black text-[#3b82f6] font-mono">
+                      {stats.projectDeepDive?.ratios?.contactedToVisits || '0:0'}
+                    </span>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-300">Contacted : Bookings</p>
+                      <p className="text-[11px] text-slate-500">Contacted leads vs Won Bookings</p>
+                    </div>
+                    <span className="text-xl font-black text-emerald-400 font-mono">
+                      {stats.projectDeepDive?.ratios?.contactedToBookings || '0:0'}
+                    </span>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-300">Visits : Bookings</p>
+                      <p className="text-[11px] text-slate-500">Completed Site Visits vs Won Bookings</p>
+                    </div>
+                    <span className="text-xl font-black text-[#f59e0b] font-mono">
+                      {stats.projectDeepDive?.ratios?.visitsToBookings || '0:0'}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* ── SECTION 2: LEAD SOURCES (NORMALIZED UPPERCASE) & FUNNEL ────────── */}
