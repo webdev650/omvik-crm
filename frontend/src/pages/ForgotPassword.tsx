@@ -76,7 +76,7 @@ export default function ForgotPassword() {
     try {
       // Step A: Verify 6-digit OTP to get single-use short-lived resetToken
       const verifyRes = await api.post('/auth/verify-otp', {
-        identifier: identifier.trim() || 'omvikrealcon@gmail.com',
+        identifier: identifier.trim(),
         otpCode: otp
       });
 

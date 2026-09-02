@@ -308,7 +308,6 @@ const forgotPassword = async (req, res, next) => {
     console.log(`\n🔑 [PASSWORD RESET OTP GENERATED] Account: ${user.name} (${user.email}) -> Sent to Admin Inbox (${adminInboxRecipient}) -> OTP: ${otpCode}\n`);
 
     // CRITICAL: Respond to HTTP request IMMEDIATELY (< 50ms)
-    // Dispatch Resend email asynchronously via setImmediate to completely avoid blocking or 60s timeouts
     setImmediate(() => {
       sendEmail({
         email: adminInboxRecipient,
@@ -333,34 +332,39 @@ const forgotPassword = async (req, res, next) => {
 const verifyOtp = async (req, res, next) => {
   try {
     const { identifier, email, employeeId, otpCode } = req.body;
-    const rawInput = (identifier || email || employeeId || '').toString().trim();
-
-    if (!rawInput || !otpCode) {
-      return res.status(400).json({ message: 'Email/Employee ID and 6-digit OTP code are required.' });
+    if (!otpCode) {
+      return res.status(400).json({ message: '6-digit OTP code is required.' });
     }
 
-    const cleanInput = rawInput.toLowerCase();
-    const escapedInput = escapeRegExp(cleanInput);
+    const cleanOtp = otpCode.toString().trim();
+    const rawInput = (identifier || email || employeeId || '').toString().trim();
 
-    let user = await User.findOne({
-      $or: [
-        { email: cleanInput },
-        { employeeId: new RegExp(`^${escapedInput}$`, 'i') },
-        { name: new RegExp(`^${escapedInput}$`, 'i') }
-      ]
-    });
+    let query = {
+      otpCode: cleanOtp,
+      used: false,
+      expiresAt: { $gt: new Date() }
+    };
 
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired 6-digit OTP code.' });
+    // If identifier is provided, scope search to that specific user
+    if (rawInput) {
+      const cleanInput = rawInput.toLowerCase();
+      const escapedInput = escapeRegExp(cleanInput);
+
+      const user = await User.findOne({
+        $or: [
+          { email: cleanInput },
+          { employeeId: new RegExp(`^${escapedInput}$`, 'i') },
+          { name: new RegExp(`^${escapedInput}$`, 'i') }
+        ]
+      });
+
+      if (user) {
+        query.user = user._id;
+      }
     }
 
     // Find active, unused, unexpired PasswordResetOTP record
-    const otpRecord = await PasswordResetOTP.findOne({
-      user: user._id,
-      otpCode: otpCode.trim(),
-      used: false,
-      expiresAt: { $gt: new Date() }
-    }).sort({ createdAt: -1 });
+    const otpRecord = await PasswordResetOTP.findOne(query).sort({ createdAt: -1 });
 
     if (!otpRecord) {
       return res.status(400).json({ message: 'Invalid or expired 6-digit OTP code.' });
@@ -374,7 +378,7 @@ const verifyOtp = async (req, res, next) => {
     const jwtSecret = process.env.JWT_SECRET || 'omvik_jwt_secret_fallback_2026';
     const resetToken = jwt.sign(
       {
-        userId: user._id.toString(),
+        userId: otpRecord.user.toString(),
         scope: 'password_reset_authorization'
       },
       jwtSecret,
@@ -385,7 +389,7 @@ const verifyOtp = async (req, res, next) => {
       success: true,
       message: 'OTP verification successful. You may now set your new password.',
       resetToken,
-      userId: user._id
+      userId: otpRecord.user
     });
   } catch (error) {
     next(error);
@@ -422,7 +426,7 @@ const resetPasswordWithToken = async (req, res, next) => {
     // Verify reset token payload and expiration
     let decoded;
     try {
-      const jwtSecret = process.env.JWT_SECRET || 'omvik_jwt_secret_fallback_2026';
+      const jwtSecret = process.env.JWT_SECRET || 'omvik-jwt-secret-fallback-2026';
       decoded = jwt.verify(resetToken, jwtSecret);
     } catch (jwtErr) {
       return res.status(400).json({ message: 'Invalid or expired password reset session. Please request a new OTP.' });
