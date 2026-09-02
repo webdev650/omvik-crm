@@ -166,7 +166,7 @@ export default function Login() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-1">
+          <form onSubmit={handleSubmit(onSubmit)} autoComplete="off" className="space-y-4 pt-1">
             {serverError && (
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
@@ -187,6 +187,7 @@ export default function Login() {
                 <Input
                   id="email"
                   type="text"
+                  autoComplete="off"
                   placeholder="Enter your username or email"
                   className="w-full h-11 pr-11 pl-4 bg-slate-950/40 border-slate-600/70 text-slate-100 text-xs rounded-full focus:border-amber-300 focus:ring-1 focus:ring-amber-300/50 transition-all placeholder:text-slate-400 font-medium"
                   {...register('email')}
@@ -207,6 +208,7 @@ export default function Login() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
                   placeholder="Enter your password"
                   className="w-full h-11 pr-11 pl-4 bg-slate-950/40 border-slate-600/70 text-slate-100 text-xs rounded-full focus:border-amber-300 focus:ring-1 focus:ring-amber-300/50 transition-all placeholder:text-slate-400 font-medium"
                   {...register('password')}

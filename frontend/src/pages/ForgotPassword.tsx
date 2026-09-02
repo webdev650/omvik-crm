@@ -142,9 +142,10 @@ export default function ForgotPassword() {
                       <Input
                         id="email"
                         type="email"
+                        autoComplete="off"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="omvikrealcon@gmail.com"
+                        placeholder="Enter your email address"
                         className="pl-10 h-11 bg-slate-50 border-slate-200 text-slate-900 text-xs rounded-xl focus:bg-white focus:border-indigo-600"
                       />
                     </div>
