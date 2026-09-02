@@ -30,18 +30,22 @@ export default function ForgotPassword() {
 
     setIsSubmitting(true);
     try {
-      const response = await api.post('/auth/forgot-password', { identifier: cleanInput });
+      const response = await api.post('/auth/forgot-password', {
+        identifier: cleanInput,
+        email: cleanInput,
+        username: cleanInput
+      });
       let msg = response.data?.message || 'A 6-digit OTP code has been dispatched to the central admin inbox.';
       if (response.data?.otp) {
         msg += ` (Your 6-Digit OTP Code: ${response.data.otp})`;
       }
       setStatusMsg(msg);
+      // ONLY advance step on genuine success response from Step 1 API call
       setStep('verify');
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Failed to request password reset. Please try again.';
       setErrorMsg(msg);
-      // Advance to verify step so user can enter OTP directly if already obtained
-      setStep('verify');
+      // Do NOT advance step on error; stay on step 1 so user sees error on step 1
     } finally {
       setIsSubmitting(false);
     }
@@ -50,8 +54,21 @@ export default function ForgotPassword() {
   // Resend OTP handler
   const handleResendOtp = async () => {
     setErrorMsg(null);
+    setStatusMsg(null);
+
+    const cleanInput = identifier.trim();
+    if (!cleanInput) {
+      const msg = 'Please enter your Email Address or Employee ID to resend OTP.';
+      setErrorMsg(msg);
+      throw new Error(msg);
+    }
+
     try {
-      const response = await api.post('/auth/forgot-password', { identifier: identifier.trim() });
+      const response = await api.post('/auth/forgot-password', {
+        identifier: cleanInput,
+        email: cleanInput,
+        username: cleanInput
+      });
       let msg = response.data?.message || 'A fresh 6-digit OTP has been dispatched to the central admin inbox.';
       if (response.data?.otp) {
         msg += ` (Your 6-Digit OTP Code: ${response.data.otp})`;
@@ -72,11 +89,14 @@ export default function ForgotPassword() {
     }
 
     setErrorMsg(null);
+    setStatusMsg(null);
     setIsSubmitting(true);
     try {
       // Step A: Verify 6-digit OTP to get single-use short-lived resetToken
       const verifyRes = await api.post('/auth/verify-otp', {
         identifier: identifier.trim(),
+        email: identifier.trim(),
+        username: identifier.trim(),
         otpCode: otp
       });
 
@@ -94,6 +114,8 @@ export default function ForgotPassword() {
 
       if (resetRes.data?.success) {
         navigate('/login');
+      } else {
+        throw new Error(resetRes.data?.message || 'Password reset failed.');
       }
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Verification failed. The OTP code may be invalid or expired.';
@@ -223,6 +245,11 @@ export default function ForgotPassword() {
                 email={identifier || 'Admin Inbox (omvikrealcon@gmail.com)'}
                 onVerify={handleVerifyAndReset}
                 onResend={handleResendOtp}
+                onBack={() => {
+                  setStep('request');
+                  setErrorMsg(null);
+                  setStatusMsg(null);
+                }}
                 isSubmitting={isSubmitting}
                 errorMsg={errorMsg}
                 successMsg={statusMsg}

@@ -426,7 +426,7 @@ const resetPasswordWithToken = async (req, res, next) => {
     // Verify reset token payload and expiration
     let decoded;
     try {
-      const jwtSecret = process.env.JWT_SECRET || 'omvik-jwt-secret-fallback-2026';
+      const jwtSecret = process.env.JWT_SECRET || 'omvik_jwt_secret_fallback_2026';
       decoded = jwt.verify(resetToken, jwtSecret);
     } catch (jwtErr) {
       return res.status(400).json({ message: 'Invalid or expired password reset session. Please request a new OTP.' });

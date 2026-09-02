@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, CheckCircle2, ArrowRight, RefreshCw, KeyRound, ShieldAlert } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, CheckCircle2, ArrowRight, ArrowLeft, RefreshCw, KeyRound, ShieldAlert } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 
@@ -8,6 +8,7 @@ interface OtpVerificationCardProps {
   email: string;
   onVerify: (otp: string, newPassword?: string) => Promise<void>;
   onResend?: () => Promise<void>;
+  onBack?: () => void;
   isSubmitting?: boolean;
   errorMsg?: string | null;
   successMsg?: string | null;
@@ -18,6 +19,7 @@ export default function OtpVerificationCard({
   email,
   onVerify,
   onResend,
+  onBack,
   isSubmitting = false,
   errorMsg = null,
   successMsg = null,
@@ -314,25 +316,40 @@ export default function OtpVerificationCard({
             </Button>
           </form>
 
-          {/* Resend Countdown Text */}
-          <div className="pt-2 text-xs text-slate-500">
-            Didn't receive the code?{' '}
-            {countdown > 0 ? (
-              <span className="font-semibold text-indigo-600">
-                Resend ({countdown}s)
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={handleResendClick}
-                disabled={isResending}
-                className="font-bold text-indigo-600 hover:text-indigo-800 hover:underline inline-flex items-center gap-1 focus:outline-none"
-              >
-                {isResending ? (
-                  <RefreshCw className="w-3 h-3 animate-spin" />
-                ) : null}
-                <span>Resend OTP</span>
-              </button>
+          {/* Resend Countdown Text & Back Button */}
+          <div className="pt-2 text-xs text-slate-500 space-y-2">
+            <div>
+              Didn't receive the code?{' '}
+              {countdown > 0 ? (
+                <span className="font-semibold text-indigo-600">
+                  Resend ({countdown}s)
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleResendClick}
+                  disabled={isResending}
+                  className="font-bold text-indigo-600 hover:text-indigo-800 hover:underline inline-flex items-center gap-1 focus:outline-none"
+                >
+                  {isResending ? (
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                  ) : null}
+                  <span>Resend OTP</span>
+                </button>
+              )}
+            </div>
+
+            {onBack && (
+              <div className="pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="font-bold text-indigo-600 hover:text-indigo-800 hover:underline inline-flex items-center gap-1 text-xs"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Change Email / Employee ID</span>
+                </button>
+              </div>
             )}
           </div>
 
