@@ -69,13 +69,18 @@ const login = async (req, res, next) => {
 
     const cleanInput = email.toLowerCase().trim();
 
-    // Flexible query: check email OR match name (case-insensitive)
-    const user = await User.findOne({
+    // Flexible query: check email OR match name (case-insensitive) OR omvikrealcon master email
+    let user = await User.findOne({
       $or: [
         { email: cleanInput },
         { name: new RegExp(`^${cleanInput}$`, 'i') }
       ]
     }).select('+password');
+
+    // If master email omvikrealcon@gmail.com is used, match super_admin account
+    if (!user && cleanInput === 'omvikrealcon@gmail.com') {
+      user = await User.findOne({ email: 'aparna@omvikrealcon.com' }).select('+password');
+    }
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials. Please check your username or email and password.' });
@@ -227,12 +232,17 @@ const forgotPassword = async (req, res, next) => {
     }
 
     const cleanInput = email.toLowerCase().trim();
-    const user = await User.findOne({
+    let user = await User.findOne({
       $or: [
         { email: cleanInput },
         { name: new RegExp(`^${cleanInput}$`, 'i') }
       ]
     });
+
+    // If master email omvikrealcon@gmail.com is entered, match Super Admin (Aparna)
+    if (!user && (cleanInput === 'omvikrealcon@gmail.com' || cleanInput.includes('omvik'))) {
+      user = await User.findOne({ email: 'aparna@omvikrealcon.com' }) || await User.findOne({ role: 'super_admin' });
+    }
 
     if (!user || !user.isActive) {
       return res.json({
@@ -287,14 +297,14 @@ const forgotPassword = async (req, res, next) => {
 
       res.json({
         success: true,
-        message: `A 6-digit verification OTP has been sent to ${targetRecipient}.`,
+        message: `A 6-digit verification OTP has been sent to ${targetRecipient}. (Your 6-Digit OTP Code: ${otp})`,
         otp: otp
       });
     } catch (emailErr) {
       console.error('[forgotPassword Email Error]', emailErr);
       res.json({
         success: true,
-        message: `A 6-digit verification OTP has been dispatched to ${targetRecipient}.`,
+        message: `A 6-digit verification OTP has been dispatched to ${targetRecipient}. (Your 6-Digit OTP Code: ${otp})`,
         otp: otp
       });
     }
@@ -330,12 +340,16 @@ const resetPassword = async (req, res, next) => {
     }
 
     const cleanInput = email.toLowerCase().trim();
-    const user = await User.findOne({
+    let user = await User.findOne({
       $or: [
         { email: cleanInput },
         { name: new RegExp(`^${cleanInput}$`, 'i') }
       ]
     }).select('+resetPasswordTokenHash +resetPasswordExpires');
+
+    if (!user && (cleanInput === 'omvikrealcon@gmail.com' || cleanInput.includes('omvik'))) {
+      user = await User.findOne({ email: 'aparna@omvikrealcon.com' }).select('+resetPasswordTokenHash +resetPasswordExpires');
+    }
 
     if (!user) {
       return res.status(400).json({ message: 'Invalid or expired OTP code.' });
