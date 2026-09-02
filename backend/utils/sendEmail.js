@@ -2,13 +2,15 @@ const { Resend } = require('resend');
 const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
-  // Always enforce delivery to omvikrealcon@gmail.com if specified, or target recipient
+  // Always enforce delivery to target recipient or omvikrealcon@gmail.com
   const targetRecipient = options.email || process.env.ADMIN_ALERT_EMAIL || 'omvikrealcon@gmail.com';
   const subject = options.subject;
   const message = options.message;
   const html = options.html;
 
-  // 1. Primary Engine: Resend API (Verified Working)
+  let resendSuccess = false;
+
+  // 1. Primary Engine: Resend API
   if (process.env.RESEND_API_KEY) {
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
@@ -24,9 +26,10 @@ const sendEmail = async (options) => {
       });
 
       if (error) {
-        console.error('[Resend API Error]', error);
-      } else {
-        console.log(`✅ [Resend Email Delivered] ID: ${data?.id} -> ${targetRecipient}`);
+        console.error('[Resend API Error]', error.message || error);
+      } else if (data && data.id) {
+        console.log(`✅ [Resend Email Delivered] ID: ${data.id} -> ${targetRecipient}`);
+        resendSuccess = true;
         return data;
       }
     } catch (resendErr) {
@@ -34,9 +37,10 @@ const sendEmail = async (options) => {
     }
   }
 
-  // 2. Secondary Engine: Nodemailer SMTP if configured
-  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+  // 2. Secondary Engine: Nodemailer Gmail SMTP (Fallback if Resend fails or is restricted)
+  if (!resendSuccess && process.env.SMTP_USER && process.env.SMTP_PASS) {
     try {
+      console.log(`[sendEmail] Attempting Nodemailer Gmail SMTP fallback to ${targetRecipient}...`);
       const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {

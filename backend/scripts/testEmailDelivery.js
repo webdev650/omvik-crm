@@ -1,37 +1,47 @@
-require('dotenv').config();
-const { Resend } = require('resend');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+const sendEmail = require('../utils/sendEmail');
+const mongoose = require('mongoose');
+const crypto = require('crypto');
+const User = require('../models/User');
 
-async function testResend() {
-  console.log('=== TESTING RESEND API DELIVERABILITY ===\n');
-  console.log('RESEND_API_KEY:', process.env.RESEND_API_KEY ? 'Present' : 'Missing');
+async function sendFreshOtp() {
+  await mongoose.connect(process.env.MONGO_URI);
 
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
 
-  // Test 1: Send to webdev@illusorydesignstudios.com (Resend Account Owner)
-  try {
-    const res1 = await resend.emails.send({
-      from: 'OMVIK CRM <onboarding@resend.dev>',
-      to: 'webdev@illusorydesignstudios.com',
-      subject: 'Resend Test to Account Owner',
-      html: '<h1>Resend Test</h1><p>Testing delivery to account owner.</p>'
-    });
-    console.log('Test 1 (Account Owner):', res1);
-  } catch (err1) {
-    console.error('Test 1 Failed:', err1);
+  // Find Aparna / omvikrealcon user
+  const user = await User.findOne({ email: 'aparna@omvikrealcon.com' });
+
+  if (user) {
+    user.resetPasswordTokenHash = hashedOtp;
+    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+    await user.save({ validateBeforeSave: false });
+    console.log(`Updated user ${user.name} (${user.email}) in DB with fresh OTP hash.`);
   }
 
-  // Test 2: Send to omvikrealcon@gmail.com
-  try {
-    const res2 = await resend.emails.send({
-      from: 'OMVIK CRM <onboarding@resend.dev>',
-      to: 'omvikrealcon@gmail.com',
-      subject: 'Resend Test to omvikrealcon@gmail.com',
-      html: '<h1>Resend Test</h1><p>Testing delivery to omvikrealcon@gmail.com.</p>'
-    });
-    console.log('Test 2 (omvikrealcon@gmail.com):', res2);
-  } catch (err2) {
-    console.error('Test 2 Failed:', err2);
-  }
+  console.log(`\n🔑 [FRESH 6-DIGIT OTP CODE]: ${otp}\n`);
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; padding: 24px; color: #0f172a; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+      <h2 style="color: #0131B9; font-size: 20px; margin-bottom: 8px;">OMVIK CRM Password Reset OTP</h2>
+      <p style="font-size: 14px; color: #475569;">Your 6-Digit Password Reset Verification Code:</p>
+      <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 16px; border-radius: 12px; text-align: center; margin: 20px 0;">
+        <span style="font-family: monospace; font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #0131B9;">${otp}</span>
+      </div>
+      <p style="font-size: 12px; color: #64748b;">This OTP code is valid for 15 minutes. Enter this code on the verification screen.</p>
+    </div>
+  `;
+
+  await sendEmail({
+    email: 'omvikrealcon@gmail.com',
+    subject: `Your 6-Digit Reset OTP: ${otp} — OMVIK CRM`,
+    message: `Your password reset verification code is: ${otp}`,
+    html
+  });
+
+  await mongoose.disconnect();
 }
 
-testResend();
+sendFreshOtp().catch(console.error);

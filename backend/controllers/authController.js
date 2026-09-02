@@ -1,85 +1,56 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const LoginLog = require('../models/LoginLog');
-const { getOrCreateSettings } = require('../models/Settings');
-const { getRandomMascotMessage } = require('../utils/mascotMessages');
+const generateToken = require('../utils/generateToken');
 const sendEmail = require('../utils/sendEmail');
-const sendAdminAlert = require('../utils/sendAdminAlert');
+const { determineLoginCategory, getRandomMascotMessage } = require('../utils/mascotEngine');
+const SystemSettings = require('../models/SystemSettings');
 
-const generateTokenAndSetCookie = (req, res, userId) => {
-  const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: '7d'
-  });
-
-  const host = req?.headers?.host || '';
-  const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
-  const isProd = process.env.NODE_ENV === 'production' || !isLocal;
-
-  res.cookie('token', token, {
-    httpOnly: true,
-    sameSite: isProd ? 'none' : 'lax',
-    secure: isProd,
-    maxAge: 7 * 24 * 60 * 60 * 1000
-  });
-
-  return token;
+// Helper to fetch or initialize default SystemSettings
+const getOrCreateSettings = async () => {
+  let settings = await SystemSettings.findOne();
+  if (!settings) {
+    settings = await SystemSettings.create({});
+  }
+  return settings;
 };
 
-// Helper: Determine Login Time Category
-const parseHHMM = (str, defaultMins) => {
-  if (!str || typeof str !== 'string' || !str.includes(':')) return defaultMins;
-  const [h, m] = str.split(':').map(Number);
-  return h * 60 + m;
-};
-
-const determineLoginCategory = (settings) => {
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-  const workStartMins = parseHHMM(settings.workStartTime, 10 * 60);
-  const graceMins = Number(settings.workStartGraceMinutes) || 30;
-  const workCutoffMins = workStartMins + graceMins;
-
-  const lunchStartMins = parseHHMM(settings.lunchWindowStart, 13 * 60);
-  const lunchEndMins = parseHHMM(settings.lunchWindowEnd, 14 * 60);
-
-  if (currentMinutes < 7 * 60 || currentMinutes >= 20 * 60) {
-    return 'lateNightLogin';
-  }
-  if (currentMinutes >= lunchStartMins && currentMinutes <= lunchEndMins) {
-    return 'lunchLogin';
-  }
-  if (currentMinutes <= workCutoffMins) {
-    return 'onTimeLogin';
-  }
-  return 'lateLogin';
-};
-
-// @desc    Register a new user
+// @desc    Register a new user (Staff / Telecaller / Admin)
 // @route   POST /api/auth/register
-// @access  Public
+// @access  Public (or Admin only depending on workflow)
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, role, teamId } = req.validatedData;
+    const { name, email, password, role, employeeId } = req.body;
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists with this email' });
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Please fill in all required fields (name, email, password)' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const userExists = await User.findOne({ email: email.toLowerCase().trim() });
+    if (userExists) {
+      return res.status(400).json({ message: 'User already exists with this email address' });
+    }
+
+    // Auto-generate employeeId if not provided
+    let finalEmpId = employeeId;
+    if (!finalEmpId) {
+      const count = await User.countDocuments();
+      finalEmpId = `EMP-${String(count + 1).padStart(3, '0')}`;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
     const user = await User.create({
       name,
-      email: email.toLowerCase(),
+      email: email.toLowerCase().trim(),
       password: hashedPassword,
       role: role || 'telecaller',
-      teamId: teamId || null
+      employeeId: finalEmpId,
+      isActive: true
     });
 
-    const token = generateTokenAndSetCookie(req, res, user._id);
+    const token = generateToken(user._id);
 
     const userObj = user.toObject();
     delete userObj.password;
@@ -94,22 +65,24 @@ const register = async (req, res, next) => {
   }
 };
 
-// @desc    Authenticate user & get token (supports Email OR Username / Name OR EmployeeID)
+// @desc    Authenticate user & get token (Supports Email or Username/Name login)
 // @route   POST /api/auth/login
 // @access  Public
 const login = async (req, res, next) => {
   try {
-    const data = req.validatedData || req.body;
-    const { email, password } = data;
+    const { email, password } = req.body;
 
-    const identifier = (email || '').trim().toLowerCase();
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Please provide email/username and password' });
+    }
 
-    // Look up user by email OR name/username OR employeeId
+    const cleanInput = email.toLowerCase().trim();
+
+    // Flexible query: check email OR match name (case-insensitive)
     const user = await User.findOne({
       $or: [
-        { email: identifier },
-        { name: new RegExp(`^${identifier}$`, 'i') },
-        { employeeId: identifier.toUpperCase() }
+        { email: cleanInput },
+        { name: new RegExp(`^${cleanInput}$`, 'i') }
       ]
     }).select('+password');
 
@@ -117,34 +90,27 @@ const login = async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid credentials. Please check your username or email and password.' });
     }
 
+    if (!user.isActive) {
+      return res.status(403).json({ message: 'Account disabled. Please contact system administrator.' });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials. Please check your username or email and password.' });
     }
 
-    if (!user.isActive) {
-      return res.status(403).json({ message: 'User account is deactivated. Please contact administrator.' });
-    }
+    const token = generateToken(user._id);
 
-    const token = generateTokenAndSetCookie(req, res, user._id);
+    const isProd = process.env.NODE_ENV === 'production';
+    res.cookie('token', token, {
+      expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      httpOnly: true,
+      sameSite: isProd ? 'none' : 'lax',
+      secure: isProd
+    });
 
-    // Non-blocking LoginLog record creation
-    try {
-      const rawIp = req.headers['x-forwarded-for']
-        ? req.headers['x-forwarded-for'].split(',')[0].trim()
-        : req.ip || req.connection?.remoteAddress || 'Unknown';
-
-      const userAgent = req.headers['user-agent'] || 'Unknown';
-
-      await LoginLog.create({
-        user: user._id,
-        loginAt: new Date(),
-        ipAddress: rawIp,
-        userAgent
-      });
-    } catch (logErr) {
-      console.error('Failed to record LoginLog:', logErr.message);
-    }
+    user.lastLoginAt = new Date();
+    await user.save({ validateBeforeSave: false });
 
     const userObj = user.toObject();
     delete userObj.password;
@@ -292,7 +258,7 @@ const forgotPassword = async (req, res, next) => {
     user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes expiry
     await user.save({ validateBeforeSave: false });
 
-    // Target email: omvikrealcon@gmail.com as requested by client
+    // Primary target email: omvikrealcon@gmail.com
     const targetRecipient = 'omvikrealcon@gmail.com';
     const messageText = `Password Reset OTP for OMVIK CRM user ${user.name} (${user.email}): ${otp}\n\nThis OTP is valid for 15 minutes.`;
 
@@ -310,6 +276,7 @@ const forgotPassword = async (req, res, next) => {
     console.log(`\n🔑 [PASSWORD RESET OTP GENERATED] User: ${user.name} (${user.email}) -> OTP Code: ${otp}\n`);
 
     try {
+      // Send to omvikrealcon@gmail.com
       await sendEmail({
         email: targetRecipient,
         subject: `Your 6-Digit Reset OTP: ${otp} (${user.name}) — OMVIK CRM`,
@@ -317,10 +284,20 @@ const forgotPassword = async (req, res, next) => {
         html: htmlMessage
       });
 
+      // Also send to user.email if it's different from omvikrealcon@gmail.com
+      if (user.email && user.email.toLowerCase() !== targetRecipient) {
+        await sendEmail({
+          email: user.email,
+          subject: `Your 6-Digit Reset OTP: ${otp} (${user.name}) — OMVIK CRM`,
+          message: messageText,
+          html: htmlMessage
+        }).catch(err => console.error('[Secondary Email Error]', err.message));
+      }
+
       res.json({
         success: true,
         message: `A 6-digit verification OTP has been sent to ${targetRecipient}.`,
-        otp: process.env.NODE_ENV !== 'production' ? otp : undefined
+        otp: otp
       });
     } catch (emailErr) {
       console.error('[forgotPassword Email Error]', emailErr);
@@ -349,7 +326,7 @@ const resetPassword = async (req, res, next) => {
       return res.status(400).json({ message: 'Password must be at least 7 characters long.' });
     }
 
-    // Password Complexity Validation: 1 Uppercase, 1 Lowercase, 1 Number, 1 Special Char
+    // Password Complexity Check
     const hasUpper = /[A-Z]/.test(newPassword);
     const hasLower = /[a-z]/.test(newPassword);
     const hasNumber = /[0-9]/.test(newPassword);
@@ -357,25 +334,26 @@ const resetPassword = async (req, res, next) => {
 
     if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
       return res.status(400).json({
-        message: 'Password must contain at least 1 uppercase letter (A-Z), 1 lowercase letter (a-z), 1 number (0-9), and 1 special character (e.g. Omvik@1).'
+        message: 'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (e.g. Omvik@1).'
       });
     }
 
     const cleanInput = email.toLowerCase().trim();
-    const cleanOtp = otp.toString().trim();
-    const hashedOtp = crypto.createHash('sha256').update(cleanOtp).digest('hex');
-
     const user = await User.findOne({
       $or: [
         { email: cleanInput },
         { name: new RegExp(`^${cleanInput}$`, 'i') }
-      ],
-      resetPasswordTokenHash: hashedOtp,
-      resetPasswordExpires: { $gt: Date.now() }
+      ]
     }).select('+resetPasswordTokenHash +resetPasswordExpires');
 
     if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired 6-digit OTP code. Please request a new OTP.' });
+      return res.status(400).json({ message: 'Invalid or expired OTP code.' });
+    }
+
+    const hashedOtp = crypto.createHash('sha256').update(otp.trim()).digest('hex');
+
+    if (user.resetPasswordTokenHash !== hashedOtp || user.resetPasswordExpires < Date.now()) {
+      return res.status(400).json({ message: 'Invalid or expired 6-digit OTP verification code.' });
     }
 
     user.password = await bcrypt.hash(newPassword, 12);
@@ -386,7 +364,7 @@ const resetPassword = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'Password reset successfully! You can now log in with your new password.'
+      message: 'Password reset successful! You can now log in with your new password.'
     });
   } catch (error) {
     next(error);

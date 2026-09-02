@@ -30,9 +30,11 @@ export default function ForgotPassword() {
     setIsSubmitting(true);
     try {
       const response = await api.post('/auth/forgot-password', { email: email.trim() });
-      if (response.data?.message) {
-        setStatusMsg('A 6-digit OTP code has been sent to your email.');
+      let msg = response.data?.message || 'A 6-digit OTP code has been sent to your email.';
+      if (response.data?.otp) {
+        msg += ` (Your 6-Digit OTP Code: ${response.data.otp})`;
       }
+      setStatusMsg(msg);
       setStep('verify');
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Failed to request password reset. Please try again.';
@@ -47,7 +49,11 @@ export default function ForgotPassword() {
     setErrorMsg(null);
     try {
       const response = await api.post('/auth/forgot-password', { email: email.trim() });
-      setStatusMsg('A fresh 6-digit OTP has been dispatched to your email.');
+      let msg = response.data?.message || 'A fresh 6-digit OTP has been dispatched to your email.';
+      if (response.data?.otp) {
+        msg += ` (Your 6-Digit OTP Code: ${response.data.otp})`;
+      }
+      setStatusMsg(msg);
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Failed to resend OTP.';
       setErrorMsg(msg);
@@ -136,7 +142,7 @@ export default function ForgotPassword() {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="aparna@omvikrealcon.com"
+                        placeholder="omvikrealcon@gmail.com"
                         className="pl-10 h-11 bg-slate-50 border-slate-200 text-slate-900 text-xs rounded-xl focus:bg-white focus:border-indigo-600"
                       />
                     </div>
