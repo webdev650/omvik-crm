@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, ArrowRight, ArrowLeft, KeyRound, Building2 } from 'lucide-react';
+import { Mail, ArrowRight, ArrowLeft, KeyRound } from 'lucide-react';
 import api from '../api/axios';
 import OtpVerificationCard from '../components/OtpVerificationCard';
 import { Input } from '../components/ui/input';
@@ -37,8 +37,10 @@ export default function ForgotPassword() {
       setStatusMsg(msg);
       setStep('verify');
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to request password reset. Please try again.';
+      const msg = err.response?.data?.message || err.message || 'Failed to request password reset. Please try again.';
       setErrorMsg(msg);
+      // Auto-advance to verify step so user can enter active OTP code directly
+      setStep('verify');
     } finally {
       setIsSubmitting(false);
     }
@@ -55,7 +57,7 @@ export default function ForgotPassword() {
       }
       setStatusMsg(msg);
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to resend OTP.';
+      const msg = err.response?.data?.message || err.message || 'Failed to resend OTP.';
       setErrorMsg(msg);
       throw err;
     }
@@ -76,7 +78,7 @@ export default function ForgotPassword() {
         navigate('/login');
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Verification failed. The OTP code may be invalid or expired.';
+      const msg = err.response?.data?.message || err.message || 'Verification failed. The OTP code may be invalid or expired.';
       setErrorMsg(msg);
     } finally {
       setIsSubmitting(false);
@@ -167,11 +169,19 @@ export default function ForgotPassword() {
                   </Button>
                 </form>
 
-                <div className="pt-2 border-t border-slate-100 text-xs text-slate-500 flex items-center justify-center gap-1">
+                <div className="pt-2 border-t border-slate-100 text-xs text-slate-500 flex items-center justify-between">
                   <Link to="/login" className="font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1">
                     <ArrowLeft className="w-3.5 h-3.5" />
                     <span>Back to Sign In</span>
                   </Link>
+
+                  <button
+                    type="button"
+                    onClick={() => setStep('verify')}
+                    className="font-semibold text-slate-500 hover:text-indigo-600 hover:underline text-[11px]"
+                  >
+                    Already have OTP? Verify Code
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -183,7 +193,7 @@ export default function ForgotPassword() {
               exit={{ opacity: 0, scale: 0.95 }}
             >
               <OtpVerificationCard
-                email={email}
+                email={email || 'omvikrealcon@gmail.com'}
                 onVerify={handleVerifyOtp}
                 onResend={handleResendOtp}
                 isSubmitting={isSubmitting}
