@@ -29,6 +29,19 @@ const TEMPLATES = {
   ]
 };
 
+function determineLoginCategory(settings) {
+  const now = new Date();
+  const hour = now.getHours();
+
+  const officeStartHour = settings?.workingHours?.start ? parseInt(settings.workingHours.start.split(':')[0], 10) : 9;
+
+  if (hour < 5) return 'lateNightLogin';
+  if (hour <= officeStartHour) return 'onTimeLogin';
+  if (hour >= 13 && hour < 15) return 'lunchLogin';
+  if (hour >= 21) return 'lateNightLogin';
+  return 'lateLogin';
+}
+
 function getRandomMascotMessage(category, name) {
   const firstName = (name || 'Friend').trim().split(' ')[0];
   const list = TEMPLATES[category] || TEMPLATES.onTimeLogin;
@@ -38,5 +51,6 @@ function getRandomMascotMessage(category, name) {
 
 module.exports = {
   TEMPLATES,
+  determineLoginCategory,
   getRandomMascotMessage
 };

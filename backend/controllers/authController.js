@@ -3,17 +3,8 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
 const sendEmail = require('../utils/sendEmail');
-const { determineLoginCategory, getRandomMascotMessage } = require('../utils/mascotEngine');
-const SystemSettings = require('../models/SystemSettings');
-
-// Helper to fetch or initialize default SystemSettings
-const getOrCreateSettings = async () => {
-  let settings = await SystemSettings.findOne();
-  if (!settings) {
-    settings = await SystemSettings.create({});
-  }
-  return settings;
-};
+const { determineLoginCategory, getRandomMascotMessage } = require('../utils/mascotMessages');
+const { getOrCreateSettings } = require('../models/Settings');
 
 // @desc    Register a new user (Staff / Telecaller / Admin)
 // @route   POST /api/auth/register
