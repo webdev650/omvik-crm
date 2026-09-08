@@ -66,3 +66,10 @@ export async function exportLeads(params = {}) {
 
   return true;
 }
+
+export async function getProjectTeamStats(projectId) {
+  const response = await api.get('/opportunities/project-team-stats', {
+    params: { project: projectId }
+  });
+  return response.data;
+}

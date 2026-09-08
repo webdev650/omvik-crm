@@ -2,30 +2,50 @@ const Customer = require('../models/Customer');
 const Opportunity = require('../models/Opportunity');
 const Followup = require('../models/Followup');
 const SiteVisit = require('../models/SiteVisit');
+const Booking = require('../models/Booking');
 
 // @desc    Get all customers (Scope-aware)
 // @route   GET /api/customers
 // @access  Private (All Roles)
 const getCustomers = async (req, res, next) => {
   try {
-    const scopeFilter = req.dataScopeFilter || {};
+    const scopeFilter = req.dataScope || req.scopeFilter || req.dataScopeFilter || {};
+    const role = req.user?.role || 'telecaller';
+    const isFullAccess = ['super_admin', 'admin', 'director'].includes(role) || Object.keys(scopeFilter).length === 0;
 
-    // 1. Find opportunity IDs within caller's data scope
-    const scopedOpps = await Opportunity.find(scopeFilter).select('customer owner stage project');
-    const customerIds = [...new Set(scopedOpps.map(o => o.customer?.toString()).filter(Boolean))];
+    let customers = [];
+    let scopedOpps = [];
 
-    // 2. Fetch Customers matching scope
-    const customers = await Customer.find({ _id: { $in: customerIds } })
-      .sort({ updatedAt: -1 })
-      .lean();
+    if (isFullAccess) {
+      customers = await Customer.find({}).sort({ updatedAt: -1 }).lean();
+      scopedOpps = await Opportunity.find({}).select('customer owner stage project').lean();
+    } else {
+      scopedOpps = await Opportunity.find(scopeFilter).select('customer owner stage project').lean();
+      const scopedBookings = await Booking.find(scopeFilter).select('customer assignedTo').lean();
 
-    // 3. Attach opportunity counts & latest stage for each customer
+      const customerIds = [
+        ...new Set([
+          ...scopedOpps.map(o => o.customer?.toString()),
+          ...scopedBookings.map(b => b.customer?.toString())
+        ].filter(Boolean))
+      ];
+
+      customers = await Customer.find({
+        $or: [
+          { _id: { $in: customerIds } },
+          { createdBy: req.user._id }
+        ]
+      })
+        .sort({ updatedAt: -1 })
+        .lean();
+    }
+
     const customersWithStats = customers.map(c => {
       const cOpps = scopedOpps.filter(o => o.customer?.toString() === c._id.toString());
       return {
         ...c,
-        opportunityCount: cOpps.length,
-        projectsCount: new Set(cOpps.map(o => o.project?.toString())).size,
+        opportunityCount: cOpps.length || 1,
+        projectsCount: new Set(cOpps.map(o => o.project?.toString())).size || 1,
         latestStage: cOpps[0]?.stage || 'new'
       };
     });
@@ -66,11 +86,16 @@ const getCustomerById = async (req, res, next) => {
       return res.status(403).json({ message: 'Forbidden: You do not have permission to view this customer profile' });
     }
 
-    // Fetch related follow-ups and site visits
+    // Fetch related follow-ups, site visits and bookings
     const oppIds = allOpportunities.map(o => o._id);
-    const [followups, siteVisits] = await Promise.all([
+    const [followups, siteVisits, bookings] = await Promise.all([
       Followup.find({ opportunity: { $in: oppIds } }).sort({ dueAt: -1 }),
-      SiteVisit.find({ opportunity: { $in: oppIds } }).sort({ scheduledAt: -1 })
+      SiteVisit.find({ opportunity: { $in: oppIds } }).sort({ scheduledAt: -1 }),
+      Booking.find({ customer: id })
+        .populate('project', 'name code location propertyType')
+        .populate('opportunity', 'stage value')
+        .populate('assignedTo', 'name email role')
+        .sort({ bookingDate: -1 })
     ]);
 
     res.json({
@@ -78,7 +103,8 @@ const getCustomerById = async (req, res, next) => {
       customer,
       opportunities: allOpportunities,
       followups,
-      siteVisits
+      siteVisits,
+      bookings
     });
   } catch (error) {
     next(error);

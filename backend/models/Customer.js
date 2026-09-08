@@ -30,6 +30,11 @@ const customerSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: ''
+    },
+    address: {
+      type: String,
+      trim: true,
+      default: ''
     }
   },
   {

@@ -396,7 +396,7 @@ export default function ImportLeadsPage() {
                       </TableRow>
                     ) : (
                       previewResult.valid?.map((item: any, idx: number) => (
-                        <TableRow key={idx} className="border-b border-slate-800/40 hover:bg-slate-800/40">
+                        <TableRow key={idx} className="border-b border-slate-800/40 hover:bg-slate-800/40 border-l-4 border-l-emerald-500 bg-emerald-500/5">
                           <TableCell className="text-slate-500 text-xs font-mono">{item.rowNumber}</TableCell>
                           <TableCell className="font-semibold text-slate-200 text-xs">{item.rawName}</TableCell>
                           <TableCell className="text-slate-300 font-mono text-xs">{item.mobile}</TableCell>
@@ -425,7 +425,7 @@ export default function ImportLeadsPage() {
                       </TableRow>
                     ) : (
                       previewResult.duplicates?.map((item: any, idx: number) => (
-                        <TableRow key={idx} className="border-b border-slate-800/40 hover:bg-slate-800/40">
+                        <TableRow key={idx} className="border-b border-slate-800/40 hover:bg-slate-800/40 border-l-4 border-l-amber-500 bg-amber-500/5">
                           <TableCell className="text-slate-500 text-xs font-mono">{item.rowNumber}</TableCell>
                           <TableCell className="font-semibold text-slate-200 text-xs">{item.rawName}</TableCell>
                           <TableCell className="text-slate-300 font-mono text-xs">{item.mobile}</TableCell>
@@ -457,7 +457,7 @@ export default function ImportLeadsPage() {
                       </TableRow>
                     ) : (
                       previewResult.invalid?.map((item: any, idx: number) => (
-                        <TableRow key={idx} className="border-b border-slate-800/40 hover:bg-slate-800/40">
+                        <TableRow key={idx} className="border-b border-slate-800/40 hover:bg-slate-800/40 border-l-4 border-l-red-500 bg-red-500/5">
                           <TableCell className="text-slate-500 text-xs font-mono">{item.rowNumber}</TableCell>
                           <TableCell className="text-slate-400 font-mono text-xs">
                             {item.rawRow?.name || item.rawRow?.Name || '—'}

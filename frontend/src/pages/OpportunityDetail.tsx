@@ -11,17 +11,50 @@ import ActivityTimeline from '../features/activities/ActivityTimeline';
 import LogActivityForm from '../features/activities/LogActivityForm';
 import OpportunitySiteVisits from '../features/siteVisits/OpportunitySiteVisits';
 import { toast } from 'sonner';
+import useAuth from '../hooks/useAuth';
+import { getBookingByOpportunityId, createBooking } from '../api/bookings';
+import { Label } from '../components/ui/label';
+import { Input } from '../components/ui/input';
+import { X, Building2, Calendar, FileText } from 'lucide-react';
 
 export default function OpportunityDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isPrivilegedRole = user?.role && ['admin', 'super_admin', 'director', 'team_lead'].includes(user.role);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['opportunity', id],
     queryFn: () => getOpportunityById(id!),
     enabled: !!id,
     retry: 1
+  });
+
+  const opp = data?.opportunity;
+
+  const { data: bookingCheckData } = useQuery({
+    queryKey: ['booking', 'opportunity', id],
+    queryFn: () => getBookingByOpportunityId(id!),
+    enabled: !!id && opp?.stage === 'won'
+  });
+
+  const existingBooking = bookingCheckData?.booking;
+
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [bookingForm, setBookingForm] = useState({
+    unitNumber: '',
+    sqftArea: '',
+    bhk: '2BHK',
+    bookingDate: new Date().toISOString().split('T')[0],
+    finalPrice: '',
+    totalCost: '',
+    totalPaid: '0',
+    probableRegistrationDate: '',
+    currentStatus: 'booked',
+    remarks: '',
+    address: '',
+    city: ''
   });
 
   const intentMutation = useMutation({
@@ -36,7 +69,44 @@ export default function OpportunityDetail() {
     }
   });
 
-  const opp = data?.opportunity;
+  const createBookingMutation = useMutation({
+    mutationFn: createBooking,
+    onSuccess: () => {
+      toast.success('🎉 Booking record created successfully!');
+      setIsBookingModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['booking', 'opportunity', id] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      navigate('/bookings');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to create booking.');
+    }
+  });
+
+  const handleBookingSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookingForm.finalPrice || Number(bookingForm.finalPrice) <= 0) {
+      toast.error('Final closing price is required');
+      return;
+    }
+    const cost = bookingForm.totalCost ? Number(bookingForm.totalCost) : Number(bookingForm.finalPrice);
+
+    createBookingMutation.mutate({
+      opportunityId: id,
+      unitNumber: bookingForm.unitNumber,
+      sqftArea: bookingForm.sqftArea ? Number(bookingForm.sqftArea) : 0,
+      bhk: bookingForm.bhk,
+      bookingDate: bookingForm.bookingDate,
+      finalPrice: Number(bookingForm.finalPrice),
+      totalCost: cost,
+      totalPaid: Number(bookingForm.totalPaid || 0),
+      probableRegistrationDate: bookingForm.probableRegistrationDate || null,
+      currentStatus: bookingForm.currentStatus,
+      remarks: bookingForm.remarks,
+      address: bookingForm.address || opp?.customer?.address || '',
+      city: bookingForm.city || opp?.customer?.city || ''
+    });
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-8 relative overflow-hidden">
@@ -217,6 +287,31 @@ export default function OpportunityDetail() {
                         </p>
                       </div>
                     )}
+
+                    {/* CONVERT TO BOOKING BUTTON (Visible when stage === 'won') */}
+                    {opp.stage === 'won' && (
+                      <div className="pt-2">
+                        {existingBooking ? (
+                          <Button
+                            onClick={() => navigate('/bookings')}
+                            className="bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 text-xs font-bold"
+                          >
+                            ✓ Booking Record Created →
+                          </Button>
+                        ) : isPrivilegedRole ? (
+                          <Button
+                            onClick={() => setIsBookingModalOpen(true)}
+                            className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-600/20 text-xs font-bold flex items-center gap-2"
+                          >
+                            <span>🎉 Convert to Customer Booking</span>
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20">
+                            🎉 Deal Won (Booking Pending Admin Action)
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -277,6 +372,214 @@ export default function OpportunityDetail() {
                 </Card>
               </TabsContent>
             </Tabs>
+          </div>
+        )}
+
+        {/* CONVERT TO BOOKING MODAL DIALOG */}
+        {isBookingModalOpen && opp && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-[#0f172a] border border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-6 shadow-2xl my-8 relative">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-emerald-400" />
+                    <span>Convert Deal to Customer Booking</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Customer: <span className="text-slate-200 font-bold">{opp.customer?.name}</span> ({opp.customer?.primaryMobile}) • Project: <span className="text-slate-200 font-bold">{opp.project?.name}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsBookingModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleBookingSubmit} className="space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Unit Number */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="unitNumber" className="text-slate-300 font-semibold">Unit Number</Label>
+                    <Input
+                      id="unitNumber"
+                      placeholder="e.g. A-402 / Villa 12"
+                      value={bookingForm.unitNumber}
+                      onChange={(e) => setBookingForm({ ...bookingForm, unitNumber: e.target.value })}
+                      className="bg-slate-900 border-slate-800 h-9"
+                    />
+                  </div>
+
+                  {/* Sq.ft Area */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="sqftArea" className="text-slate-300 font-semibold">Sq.ft Area</Label>
+                    <Input
+                      id="sqftArea"
+                      type="number"
+                      placeholder="e.g. 1450"
+                      value={bookingForm.sqftArea}
+                      onChange={(e) => setBookingForm({ ...bookingForm, sqftArea: e.target.value })}
+                      className="bg-slate-900 border-slate-800 h-9"
+                    />
+                  </div>
+
+                  {/* BHK */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="bhk" className="text-slate-300 font-semibold">BHK Config</Label>
+                    <select
+                      id="bhk"
+                      value={bookingForm.bhk}
+                      onChange={(e) => setBookingForm({ ...bookingForm, bhk: e.target.value })}
+                      className="w-full h-9 rounded-xl border border-slate-800 bg-slate-900 px-3 text-xs text-slate-100 focus:border-indigo-500 focus:outline-none"
+                    >
+                      <option value="1BHK">1 BHK</option>
+                      <option value="2BHK">2 BHK</option>
+                      <option value="3BHK">3 BHK</option>
+                      <option value="4BHK">4 BHK</option>
+                      <option value="Penthouse">Penthouse</option>
+                      <option value="Plot">Plot</option>
+                      <option value="N/A">N/A</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Booking Date */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="bookingDate" className="text-slate-300 font-semibold">Date of Booking *</Label>
+                    <Input
+                      id="bookingDate"
+                      type="date"
+                      value={bookingForm.bookingDate}
+                      onChange={(e) => setBookingForm({ ...bookingForm, bookingDate: e.target.value })}
+                      className="bg-slate-900 border-slate-800 h-9"
+                      required
+                    />
+                  </div>
+
+                  {/* Probable Registration Date */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="probableRegistrationDate" className="text-slate-300 font-semibold">Probable Registration Date</Label>
+                    <Input
+                      id="probableRegistrationDate"
+                      type="date"
+                      value={bookingForm.probableRegistrationDate}
+                      onChange={(e) => setBookingForm({ ...bookingForm, probableRegistrationDate: e.target.value })}
+                      className="bg-slate-900 border-slate-800 h-9"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3 bg-slate-900/80 rounded-xl border border-slate-800">
+                  {/* Final Price */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="finalPrice" className="text-emerald-400 font-semibold">Final Closing Price (₹) *</Label>
+                    <Input
+                      id="finalPrice"
+                      type="number"
+                      placeholder="e.g. 7500000"
+                      value={bookingForm.finalPrice}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setBookingForm({
+                          ...bookingForm,
+                          finalPrice: val,
+                          totalCost: bookingForm.totalCost ? bookingForm.totalCost : val
+                        });
+                      }}
+                      className="bg-slate-950 border-emerald-500/30 text-emerald-300 h-9 font-mono"
+                      required
+                    />
+                  </div>
+
+                  {/* Total Cost */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="totalCost" className="text-slate-300 font-semibold">Total Cost (incl. charges ₹) *</Label>
+                    <Input
+                      id="totalCost"
+                      type="number"
+                      placeholder="e.g. 7800000"
+                      value={bookingForm.totalCost}
+                      onChange={(e) => setBookingForm({ ...bookingForm, totalCost: e.target.value })}
+                      className="bg-slate-950 border-slate-800 h-9 font-mono"
+                      required
+                    />
+                  </div>
+
+                  {/* Initial Total Paid */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="totalPaid" className="text-indigo-400 font-semibold">Initial Payment Received (₹)</Label>
+                    <Input
+                      id="totalPaid"
+                      type="number"
+                      placeholder="e.g. 500000"
+                      value={bookingForm.totalPaid}
+                      onChange={(e) => setBookingForm({ ...bookingForm, totalPaid: e.target.value })}
+                      className="bg-slate-950 border-indigo-500/30 text-indigo-300 h-9 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Customer Address */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="address" className="text-slate-300 font-semibold">Customer Full Address</Label>
+                    <Input
+                      id="address"
+                      placeholder="e.g. Flat 301, Sunshine Heights, Jubilee Hills"
+                      value={bookingForm.address}
+                      onChange={(e) => setBookingForm({ ...bookingForm, address: e.target.value })}
+                      className="bg-slate-900 border-slate-800 h-9"
+                    />
+                  </div>
+
+                  {/* Location / City */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="city" className="text-slate-300 font-semibold">Location / City</Label>
+                    <Input
+                      id="city"
+                      placeholder="e.g. Hyderabad"
+                      value={bookingForm.city}
+                      onChange={(e) => setBookingForm({ ...bookingForm, city: e.target.value })}
+                      className="bg-slate-900 border-slate-800 h-9"
+                    />
+                  </div>
+                </div>
+
+                {/* Remarks */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="remarks" className="text-slate-300 font-semibold">Booking Remarks</Label>
+                  <textarea
+                    id="remarks"
+                    rows={2}
+                    placeholder="Enter special payment structure notes, agreement terms..."
+                    value={bookingForm.remarks}
+                    onChange={(e) => setBookingForm({ ...bookingForm, remarks: e.target.value })}
+                    className="w-full rounded-xl border border-slate-800 bg-slate-900 p-2 text-xs text-slate-100 focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setIsBookingModalOpen(false)}
+                    className="h-9 text-xs text-slate-400"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createBookingMutation.isPending}
+                    className="h-9 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5"
+                  >
+                    {createBookingMutation.isPending ? 'Creating Booking...' : 'Create Booking Record'}
+                  </Button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
       </div>

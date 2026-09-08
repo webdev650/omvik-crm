@@ -2,6 +2,8 @@ const Opportunity = require('../models/Opportunity');
 const User = require('../models/User');
 const AssignmentHistory = require('../models/AssignmentHistory');
 const AuditLog = require('../models/AuditLog');
+const Activity = require('../models/Activity');
+const mongoose = require('mongoose');
 
 // @desc    Assign single opportunity to a user
 // @route   PATCH /api/opportunities/:id/assign
@@ -75,6 +77,20 @@ const getOpportunities = async (req, res, next) => {
 
     if (req.query.project) {
       filter.project = req.query.project;
+    }
+
+    // Date range filter on createdAt (AND-combined with other filters)
+    if (req.query.fromDate || req.query.toDate) {
+      filter.createdAt = {};
+      if (req.query.fromDate) {
+        filter.createdAt.$gte = new Date(req.query.fromDate);
+      }
+      if (req.query.toDate) {
+        // Include the full end day up to 23:59:59.999
+        const endDate = new Date(req.query.toDate);
+        endDate.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = endDate;
+      }
     }
 
     const opportunities = await Opportunity.find(filter)
@@ -267,11 +283,96 @@ const updateIntent = async (req, res, next) => {
   }
 };
 
+// @desc    Project team workload stats for a given project
+// @route   GET /api/opportunities/project-team-stats?project=<id>
+// @access  Private
+const getProjectTeamStats = async (req, res, next) => {
+  try {
+    const { project } = req.query;
+    if (!project) {
+      return res.status(400).json({ message: 'project query param is required' });
+    }
+
+    // 1. Get all active opportunities for this project
+    const opps = await Opportunity.find({
+      project: new mongoose.Types.ObjectId(project),
+      isActive: true
+    })
+      .populate('owner', 'name')
+      .lean();
+
+    if (opps.length === 0) {
+      return res.json({ success: true, teamStats: [] });
+    }
+
+    // 2. Build today's date window (midnight → now) in UTC
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    // 3. Get all activities logged today for opportunities on this project
+    const oppIds = opps.map((o) => o._id);
+    const todayActivities = await Activity.find({
+      opportunity: { $in: oppIds },
+      createdAt: { $gte: todayStart, $lte: todayEnd }
+    })
+      .select('opportunity')
+      .lean();
+
+    // Set of opportunity IDs contacted today
+    const contactedTodaySet = new Set(
+      todayActivities.map((a) => a.opportunity.toString())
+    );
+
+    // 4. Group opportunities by owner
+    const ownerMap = new Map();
+    for (const opp of opps) {
+      const ownerId = opp.owner ? opp.owner._id.toString() : 'unassigned';
+      const ownerName = opp.owner ? opp.owner.name : 'Unassigned';
+
+      if (!ownerMap.has(ownerId)) {
+        ownerMap.set(ownerId, {
+          ownerId,
+          ownerName,
+          earliestCreatedAt: opp.createdAt,
+          totalLeads: 0,
+          contactedToday: 0,
+          remainingToday: 0
+        });
+      }
+
+      const entry = ownerMap.get(ownerId);
+      entry.totalLeads += 1;
+
+      // Track earliest createdAt as proxy for "assigned since"
+      if (opp.createdAt < entry.earliestCreatedAt) {
+        entry.earliestCreatedAt = opp.createdAt;
+      }
+
+      if (contactedTodaySet.has(opp._id.toString())) {
+        entry.contactedToday += 1;
+      } else {
+        entry.remainingToday += 1;
+      }
+    }
+
+    const teamStats = Array.from(ownerMap.values()).sort(
+      (a, b) => b.totalLeads - a.totalLeads
+    );
+
+    res.json({ success: true, teamStats });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   assignOne,
   bulkAssign,
   getOpportunities,
   getOpportunityById,
   updateStage,
-  updateIntent
+  updateIntent,
+  getProjectTeamStats
 };

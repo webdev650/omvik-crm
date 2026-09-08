@@ -6,7 +6,7 @@ const sendAdminAlert = require('../utils/sendAdminAlert');
 // @access  Private
 const submitLead = async (req, res, next) => {
   try {
-    const { rawName, rawMobile, project, source, campaign, email, city, allowDuplicate } = req.body;
+    const { rawName, rawMobile, project, source, campaign, email, city, allowDuplicate, assignedTo } = req.body;
 
     if (!rawMobile || !project) {
       return res.status(400).json({
@@ -15,7 +15,7 @@ const submitLead = async (req, res, next) => {
     }
 
     const result = await processIncomingLead(
-      { rawName, rawMobile, project, source, campaign, email, city, allowDuplicate },
+      { rawName, rawMobile, project, source, campaign, email, city, allowDuplicate, owner: assignedTo || null },
       req.user
     );
 

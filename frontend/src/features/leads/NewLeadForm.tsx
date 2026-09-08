@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { submitLead, overrideDuplicateLead } from '../../api/opportunities';
 import { getProjects } from '../../api/projects';
+import { getUsers } from '../../api/users';
 import { formatProjectName } from '../../utils/formatProjectName';
 import useAuthStore from '../../store/authStore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/card';
@@ -13,10 +14,26 @@ import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
 import { AlertDialog } from '../../components/ui/alert-dialog';
 
+// Fixed lead source options — controlled list prevents casing duplicates
+const LEAD_SOURCE_OPTIONS = [
+  { value: 'call_received', label: 'Call Received' },
+  { value: 'meta', label: 'Meta (Facebook / Instagram)' },
+  { value: 'reference', label: 'Reference' },
+  { value: 'facebook_ads', label: 'Facebook Ads' },
+  { value: 'google_ads', label: 'Google Ads' },
+  { value: 'magicbricks', label: 'MagicBricks' },
+  { value: 'housing', label: 'Housing.com' },
+  { value: 'website', label: 'Website Direct' }
+];
+
+// Roles that get the full "Assigned To" dropdown
+const ROLES_WITH_ASSIGN_DROPDOWN = ['super_admin', 'admin', 'director', 'team_lead'];
+
 const newLeadSchema = z.object({
   rawName: z.string().min(2, 'Full name must be at least 2 characters'),
   rawMobile: z.string().min(10, 'Mobile number must be at least 10 digits'),
   project: z.string().min(1, 'Please select a project'),
+  assignedTo: z.string().optional(),
   source: z.string().optional()
 });
 
@@ -26,6 +43,8 @@ export default function NewLeadForm() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role === 'super_admin';
+  const canAssign = user?.role ? ROLES_WITH_ASSIGN_DROPDOWN.includes(user.role) : false;
+  const isTelecaller = user?.role === 'telecaller';
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -50,10 +69,20 @@ export default function NewLeadForm() {
 
   const projects = projectsData?.projects || [];
 
+  // Fetch active users for "Assigned To" dropdown (only for roles that can assign)
+  const { data: usersData, isLoading: isLoadingUsers } = useQuery({
+    queryKey: ['users', 'active'],
+    queryFn: () => getUsers(),
+    enabled: canAssign // Only fetch if the current role needs the dropdown
+  });
+
+  const activeUsers = (usersData?.users || []).filter((u: any) => u.isActive);
+
   const {
     register,
     handleSubmit,
     reset,
+    setError,
     formState: { errors, isSubmitting }
   } = useForm<NewLeadFormValues>({
     resolver: zodResolver(newLeadSchema),
@@ -61,7 +90,8 @@ export default function NewLeadForm() {
       rawName: '',
       rawMobile: '',
       project: '',
-      source: 'website'
+      assignedTo: '',
+      source: ''
     }
   });
 
@@ -73,9 +103,10 @@ export default function NewLeadForm() {
       setShowOverrideForm(false);
       const ownerName = data.opportunity?.owner?.name || 'assigned agent';
       setSuccessMessage(
-        `Lead created successfully! Auto-assigned to ${ownerName}.`
+        `Lead created successfully! Assigned to ${ownerName}.`
       );
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['projectTeamStats'] });
       reset();
     },
     onError: (error: any) => {
@@ -116,6 +147,7 @@ export default function NewLeadForm() {
       const ownerName = data.opportunity?.owner?.name || 'assigned agent';
       setSuccessMessage(`✓ Super Admin Override Successful! Lead created and assigned to ${ownerName}.`);
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['projectTeamStats'] });
       reset();
     },
     onError: (error: any) => {
@@ -125,7 +157,20 @@ export default function NewLeadForm() {
   });
 
   const onSubmit = (values: NewLeadFormValues) => {
-    mutation.mutate(values);
+    // For telecallers: inject their own ID as assignedTo
+    const payload = { ...values };
+    if (isTelecaller && user?._id) {
+      payload.assignedTo = user._id;
+    } else if (canAssign) {
+      if (!payload.assignedTo) {
+        setError('assignedTo', {
+          type: 'manual',
+          message: 'Please select an employee to assign this lead to'
+        });
+        return;
+      }
+    }
+    mutation.mutate(payload);
   };
 
   const handleOverrideSubmit = (e: React.FormEvent) => {
@@ -136,7 +181,6 @@ export default function NewLeadForm() {
     }
     if (!duplicateData) return;
 
-    setOverrideError(null);
     setShowConfirmDialog(true);
   };
 
@@ -226,6 +270,7 @@ export default function NewLeadForm() {
             </div>
           )}
 
+          {/* Customer Full Name */}
           <div className="space-y-2">
             <Label htmlFor="rawName">Customer Full Name</Label>
             <Input
@@ -238,6 +283,7 @@ export default function NewLeadForm() {
             )}
           </div>
 
+          {/* Primary Mobile Number */}
           <div className="space-y-2">
             <Label htmlFor="rawMobile">Primary Mobile Number</Label>
             <Input
@@ -250,6 +296,7 @@ export default function NewLeadForm() {
             )}
           </div>
 
+          {/* Target Real-Estate Project */}
           <div className="space-y-2">
             <Label htmlFor="project">Target Real-Estate Project</Label>
             <select
@@ -270,18 +317,46 @@ export default function NewLeadForm() {
             )}
           </div>
 
+          {/* Assigned To — shown only for admin/super_admin/director/team_lead */}
+          {canAssign && (
+            <div className="space-y-2">
+              <Label htmlFor="assignedTo">
+                Assigned To <span className="text-red-400">*</span>
+              </Label>
+              <select
+                id="assignedTo"
+                disabled={isLoadingUsers}
+                {...register('assignedTo')}
+                className="flex h-11 w-full rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              >
+                <option value="">Select employee to assign...</option>
+                {activeUsers.map((u: any) => (
+                  <option key={u._id} value={u._id}>
+                    {u.name}
+                    {u.role ? ` (${u.role.replace('_', ' ')})` : ''}
+                  </option>
+                ))}
+              </select>
+              {errors.assignedTo && (
+                <p className="text-xs text-red-400">{errors.assignedTo.message}</p>
+              )}
+            </div>
+          )}
+
+          {/* Lead Source */}
           <div className="space-y-2">
-            <Label htmlFor="source">Lead Source (Optional)</Label>
+            <Label htmlFor="source">Lead Source</Label>
             <select
               id="source"
               {...register('source')}
               className="flex h-11 w-full rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none"
             >
-              <option value="website">Website Direct</option>
-              <option value="google_ads">Google Ads</option>
-              <option value="facebook_ads">Facebook / Meta</option>
-              <option value="referral">Referral</option>
-              <option value="walk_in">Walk-in</option>
+              <option value="">Select source...</option>
+              {LEAD_SOURCE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </div>
 

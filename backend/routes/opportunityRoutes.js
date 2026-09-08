@@ -6,7 +6,8 @@ const {
   getOpportunities,
   getOpportunityById,
   updateStage,
-  updateIntent
+  updateIntent,
+  getProjectTeamStats
 } = require('../controllers/opportunityController');
 const { protect } = require('../middlewares/auth');
 const { authorize, applyDataScope } = require('../middlewares/rbac');
@@ -14,6 +15,10 @@ const { authorize, applyDataScope } = require('../middlewares/rbac');
 router.use(protect);
 
 router.get('/', applyDataScope, getOpportunities);
+
+// Must be before /:id to avoid param conflict
+router.get('/project-team-stats', applyDataScope, getProjectTeamStats);
+
 router.patch(
   '/bulk-assign',
   authorize('super_admin', 'director', 'admin', 'team_lead'),

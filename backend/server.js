@@ -86,6 +86,7 @@ app.use('/api/admin/lead-batches', require('./routes/leadBatchRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
 app.use('/api/daily-reports', require('./routes/dailyReportRoutes'));
 app.use('/api/leave', require('./routes/leaveRoutes'));
+app.use('/api/bookings', require('./routes/bookingRoutes'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok_v3', db: 'omvik-crm', loginActivity: true }));
 app.get('/api/health', (req, res) => res.json({ status: 'ok_v3', db: 'omvik-crm', loginActivity: true }));
