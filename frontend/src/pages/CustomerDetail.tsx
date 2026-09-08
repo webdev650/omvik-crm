@@ -72,10 +72,12 @@ export default function CustomerDetail() {
   // Create Booking Mutation
   const createBookingMutation = useMutation({
     mutationFn: createBooking,
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('🎉 Booking recorded successfully!');
       setConvertingOpp(null);
-      queryClient.invalidateQueries({ queryKey: ['customer', id] });
+      await queryClient.invalidateQueries({ queryKey: ['customer', id] });
+      await queryClient.refetchQueries({ queryKey: ['customer', id] });
+      refetch();
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'Failed to create booking.');
@@ -86,10 +88,12 @@ export default function CustomerDetail() {
   const updateBookingMutation = useMutation({
     mutationFn: ({ bookingId, payload }: { bookingId: string; payload: BookingPayload }) =>
       updateBooking(bookingId, payload),
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       toast.success(res.message || 'Booking updated successfully');
       setEditingBooking(null);
-      queryClient.invalidateQueries({ queryKey: ['customer', id] });
+      await queryClient.invalidateQueries({ queryKey: ['customer', id] });
+      await queryClient.refetchQueries({ queryKey: ['customer', id] });
+      refetch();
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'Failed to update booking.');
