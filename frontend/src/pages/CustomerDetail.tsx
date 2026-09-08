@@ -691,54 +691,96 @@ export default function CustomerDetail() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3 bg-slate-900/80 rounded-xl border border-slate-800">
-                {/* Final Price */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="finalPrice" className="text-emerald-400 font-semibold">Final Price (₹) *</Label>
-                  <Input
-                    id="finalPrice"
-                    type="number"
-                    placeholder="e.g. 7500000"
-                    value={bookingForm.finalPrice}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setBookingForm({
-                        ...bookingForm,
-                        finalPrice: val,
-                        totalCost: bookingForm.totalCost ? bookingForm.totalCost : val
-                      });
-                    }}
-                    className="bg-slate-950 border-emerald-500/30 text-emerald-300 h-9 font-mono"
-                    required
-                  />
+              <div className="p-3.5 bg-slate-900/80 rounded-xl border border-slate-800 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Final Price */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="finalPrice" className="text-emerald-400 font-semibold">Final Price (₹) *</Label>
+                    <Input
+                      id="finalPrice"
+                      type="number"
+                      placeholder="e.g. 7500000"
+                      value={bookingForm.finalPrice}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setBookingForm({
+                          ...bookingForm,
+                          finalPrice: val,
+                          totalCost: bookingForm.totalCost ? bookingForm.totalCost : val
+                        });
+                      }}
+                      className="bg-slate-950 border-emerald-500/30 text-emerald-300 h-9 font-mono"
+                      required
+                    />
+                  </div>
+
+                  {/* Total Cost */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="totalCost" className="text-slate-300 font-semibold">Total Cost (₹) *</Label>
+                    <Input
+                      id="totalCost"
+                      type="number"
+                      placeholder="e.g. 7800000"
+                      value={bookingForm.totalCost}
+                      onChange={(e) => setBookingForm({ ...bookingForm, totalCost: e.target.value })}
+                      className="bg-slate-950 border-slate-800 h-9 font-mono"
+                      required
+                    />
+                  </div>
+
+                  {/* Initial Total Paid */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="totalPaid" className="text-indigo-400 font-semibold">Total Paid (₹)</Label>
+                    <Input
+                      id="totalPaid"
+                      type="number"
+                      placeholder="e.g. 500000"
+                      value={bookingForm.totalPaid}
+                      onChange={(e) => setBookingForm({ ...bookingForm, totalPaid: e.target.value })}
+                      className="bg-slate-950 border-indigo-500/30 text-indigo-300 h-9 font-mono"
+                    />
+                  </div>
                 </div>
 
-                {/* Total Cost */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="totalCost" className="text-slate-300 font-semibold">Total Cost (₹) *</Label>
-                  <Input
-                    id="totalCost"
-                    type="number"
-                    placeholder="e.g. 7800000"
-                    value={bookingForm.totalCost}
-                    onChange={(e) => setBookingForm({ ...bookingForm, totalCost: e.target.value })}
-                    className="bg-slate-950 border-slate-800 h-9 font-mono"
-                    required
-                  />
-                </div>
+                {/* LIVE AUTO-UPDATING READ-ONLY CALCULATED FIELDS */}
+                {(() => {
+                  const formCost = Number(bookingForm.totalCost || bookingForm.finalPrice || 0);
+                  const formPaid = Number(bookingForm.totalPaid || 0);
+                  const liveRemaining = Math.max(0, formCost - formPaid);
+                  const livePct = formCost > 0 ? Number(((formPaid / formCost) * 100).toFixed(1)) : 0;
 
-                {/* Initial Total Paid */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="totalPaid" className="text-indigo-400 font-semibold">Total Paid (₹)</Label>
-                  <Input
-                    id="totalPaid"
-                    type="number"
-                    placeholder="e.g. 500000"
-                    value={bookingForm.totalPaid}
-                    onChange={(e) => setBookingForm({ ...bookingForm, totalPaid: e.target.value })}
-                    className="bg-slate-950 border-indigo-500/30 text-indigo-300 h-9 font-mono"
-                  />
-                </div>
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-800/80">
+                      <div className="space-y-1.5">
+                        <Label className="text-amber-400 font-semibold flex items-center justify-between text-[11px]">
+                          <span>Payment Remaining (₹)</span>
+                          <span className="text-[10px] text-slate-500 font-normal uppercase">(Auto-Calculated)</span>
+                        </Label>
+                        <div className="h-9 px-3 rounded-xl bg-slate-950/90 border border-slate-800/80 text-amber-400 font-mono text-xs font-bold flex items-center select-none cursor-not-allowed pointer-events-none">
+                          {formatCurrency(liveRemaining)}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-slate-300 font-semibold flex items-center justify-between text-[11px]">
+                          <span>% Payment Received</span>
+                          <span className="text-[10px] text-slate-500 font-normal uppercase">(Auto-Calculated)</span>
+                        </Label>
+                        <div className="h-9 px-3 rounded-xl bg-slate-950/90 border border-slate-800/80 text-slate-200 font-mono text-xs font-bold flex items-center select-none cursor-not-allowed pointer-events-none">
+                          <span className={`px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold border ${
+                            livePct >= 100
+                              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                              : livePct >= 50
+                              ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                              : 'bg-red-500/15 text-red-400 border-red-500/30'
+                          }`}>
+                            {formCost > 0 ? `${livePct}%` : '0%'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Status & Remarks */}
@@ -834,6 +876,35 @@ export default function CustomerDetail() {
                   onChange={(e) => setEditTotalPaid(e.target.value)}
                   className="bg-slate-900 border-indigo-500/30 text-indigo-200 h-9 font-mono text-xs"
                 />
+
+                {/* LIVE CALCULATION PREVIEW FOR QUICK-EDIT */}
+                {(() => {
+                  const editCost = Number(editingBooking?.totalCost || editingBooking?.finalPrice || 0);
+                  const editPaid = Number(editTotalPaid || 0);
+                  const editRemaining = Math.max(0, editCost - editPaid);
+                  const editPct = editCost > 0 ? Number(((editPaid / editCost) * 100).toFixed(1)) : 0;
+
+                  return (
+                    <div className="grid grid-cols-2 gap-3 p-2.5 bg-slate-950/70 rounded-xl border border-slate-800/80 font-mono text-[11px] mt-2">
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">Payment Remaining:</span>
+                        <span className="text-amber-400 font-bold">{formatCurrency(editRemaining)}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">% Payment Received:</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          editPct >= 100
+                            ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                            : editPct >= 50
+                            ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                            : 'bg-red-500/15 text-red-400 border-red-500/30'
+                        }`}>
+                          {editCost > 0 ? `${editPct}%` : '0%'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Status */}
