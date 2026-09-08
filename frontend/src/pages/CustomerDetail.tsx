@@ -201,12 +201,14 @@ export default function CustomerDetail() {
         return <Badge className="bg-blue-500/15 text-blue-400 border border-blue-500/30">Booked</Badge>;
       case 'registration':
         return <Badge className="bg-amber-500/15 text-amber-400 border border-amber-500/30">Registration</Badge>;
+      case 'construction_under_progress':
       case 'construction_in_progress':
-        return <Badge className="bg-orange-500/15 text-orange-400 border border-orange-500/30">Construction In Progress</Badge>;
+        return <Badge className="bg-orange-500/15 text-orange-400 border border-orange-500/30">Construction Under Progress</Badge>;
       case 'completed':
         return <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Completed</Badge>;
+      case 'unit_handover_etc':
       case 'unit_handover':
-        return <Badge className="bg-purple-500/15 text-purple-400 border border-purple-500/30">Unit Handover</Badge>;
+        return <Badge className="bg-purple-500/15 text-purple-400 border border-purple-500/30">Unit Handover etc.</Badge>;
       case 'deal_closed':
         return <Badge className="bg-emerald-950 text-emerald-300 border border-emerald-700">Deal Closed</Badge>;
       default:
@@ -751,9 +753,9 @@ export default function CustomerDetail() {
                   >
                     <option value="booked">Booked</option>
                     <option value="registration">Registration</option>
-                    <option value="construction_in_progress">Construction In Progress</option>
+                    <option value="construction_under_progress">Construction Under Progress</option>
                     <option value="completed">Completed</option>
-                    <option value="unit_handover">Unit Handover</option>
+                    <option value="unit_handover_etc">Unit Handover etc.</option>
                     <option value="deal_closed">Deal Closed</option>
                   </select>
                 </div>
@@ -845,9 +847,9 @@ export default function CustomerDetail() {
                 >
                   <option value="booked">Booked</option>
                   <option value="registration">Registration</option>
-                  <option value="construction_in_progress">Construction In Progress</option>
+                  <option value="construction_under_progress">Construction Under Progress</option>
                   <option value="completed">Completed</option>
-                  <option value="unit_handover">Unit Handover</option>
+                  <option value="unit_handover_etc">Unit Handover etc.</option>
                   <option value="deal_closed">Deal Closed</option>
                 </select>
               </div>

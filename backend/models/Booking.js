@@ -72,8 +72,10 @@ const bookingSchema = new mongoose.Schema(
       enum: [
         'booked',
         'registration',
+        'construction_under_progress',
         'construction_in_progress',
         'completed',
+        'unit_handover_etc',
         'unit_handover',
         'deal_closed'
       ],
