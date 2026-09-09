@@ -16,6 +16,6 @@ router.post('/', authorize('super_admin', 'admin', 'director', 'team_lead'), cre
 router.get('/customer/:customerId', applyDataScope, getBookingsByCustomer);
 router.get('/opportunity/:opportunityId', applyDataScope, getBookingByOpportunityId);
 
-router.patch('/:id', updateBooking);
+router.patch('/:id', authorize('super_admin', 'admin', 'director', 'team_lead'), updateBooking);
 
 module.exports = router;

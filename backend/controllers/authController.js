@@ -319,7 +319,9 @@ const forgotPassword = async (req, res, next) => {
 
     return res.json({
       ...genericResponse,
-      otp: otpCode // Included for local dev/testing debugging
+      // OTP is only included in the response body during local development for debugging.
+      // In production this is intentionally omitted so admin-inbox mediation is enforced.
+      ...(process.env.NODE_ENV !== 'production' && { otp: otpCode })
     });
   } catch (error) {
     next(error);
