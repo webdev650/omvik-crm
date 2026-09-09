@@ -226,7 +226,7 @@ export default function Login() {
               )}
             </div>
 
-            {/* Row: Remember Me */}
+            {/* Row: Remember Me + Forgot Password */}
             <div className="flex items-center justify-between text-xs px-1 text-slate-200 font-medium pt-1">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
@@ -237,6 +237,12 @@ export default function Login() {
                 />
                 <span>Remember me</span>
               </label>
+              <Link
+                to="/forgot-password"
+                className="text-amber-400 hover:text-amber-300 hover:underline transition-colors font-semibold"
+              >
+                Forgot Password?
+              </Link>
             </div>
 
             {/* Login Button (Pure White Pill Button) */}

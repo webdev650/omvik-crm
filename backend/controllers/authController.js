@@ -277,9 +277,12 @@ const forgotPassword = async (req, res, next) => {
     });
 
     // DELIBERATE INTENTIONAL DESIGN CHOICE:
-    // ALL password reset OTP emails route to the fixed administrator inbox omvikrealcon@gmail.com.
-    // This provides admin-mediated security oversight. The email body clearly names WHICH user/account requested the reset.
-    const adminInboxRecipient = 'omvikrealcon@gmail.com';
+    // ALL password reset OTP emails route to the centralized administrator inbox.
+    // The recipient is controlled by the ADMIN_ALERT_EMAIL environment variable (set in Render /
+    // .env) so the target inbox can be changed via a config update, NOT a code change/redeploy.
+    // Falls back to the literal address only as a last-resort safety net.
+    const adminInboxRecipient =
+      process.env.ADMIN_ALERT_EMAIL || 'omvikrealcon@gmail.com';
     const empIdDisplay = user.employeeId || 'N/A';
 
     const messageText = `Password reset requested for: ${user.name} (${user.email} / ID: ${empIdDisplay}) — OTP: ${otpCode}\n\nThis OTP is valid for 10 minutes.`;
