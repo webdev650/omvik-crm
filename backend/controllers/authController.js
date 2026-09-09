@@ -328,8 +328,8 @@ const forgotPassword = async (req, res, next) => {
     // CRITICAL: Respond to HTTP request IMMEDIATELY (< 50ms)
     setImmediate(() => {
       sendEmail({
-        email: adminInboxRecipient,
-        subject: `🔑 Password Reset OTP for ${user.name} (${empIdDisplay}): ${otpCode}`,
+        email: user.email,
+        subject: `🔑 Password Reset OTP for ${user.name} (${user.email} / ${empIdDisplay}): ${otpCode}`,
         message: messageText,
         html: htmlMessage
       }).catch(err => console.error('[Background Resend Email Error]', err.message));
