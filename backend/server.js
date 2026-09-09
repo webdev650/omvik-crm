@@ -88,8 +88,8 @@ app.use('/api/daily-reports', require('./routes/dailyReportRoutes'));
 app.use('/api/leave', require('./routes/leaveRoutes'));
 app.use('/api/bookings', require('./routes/bookingRoutes'));
 
-app.get('/health', (req, res) => res.json({ status: 'ok_v3', db: 'omvik-crm', loginActivity: true }));
-app.get('/api/health', (req, res) => res.json({ status: 'ok_v3', db: 'omvik-crm', loginActivity: true }));
+app.get('/health', (req, res) => res.json({ status: 'ok_v4', db: 'omvik-crm', loginActivity: true, nodeEnv: process.env.NODE_ENV }));
+app.get('/api/health', (req, res) => res.json({ status: 'ok_v4', db: 'omvik-crm', loginActivity: true, nodeEnv: process.env.NODE_ENV }));
 
 app.get('/', (req, res) => {
   res.send('OMVIK API is running...');

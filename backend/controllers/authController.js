@@ -320,12 +320,7 @@ const forgotPassword = async (req, res, next) => {
       }).catch(err => console.error('[Background Resend Email Error]', err.message));
     });
 
-    return res.json({
-      ...genericResponse,
-      // OTP is only included in the response body during local development for debugging.
-      // In production this is intentionally omitted so admin-inbox mediation is enforced.
-      ...(process.env.NODE_ENV === 'development' && { otp: otpCode })
-    });
+    return res.json(genericResponse);
   } catch (error) {
     next(error);
   }
