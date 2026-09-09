@@ -155,6 +155,26 @@ const updateBooking = async (req, res, next) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
+    // --- OWNERSHIP ENFORCEMENT FOR TELECALLERS ---
+    // Telecallers may only update bookings where they are assignedTo or createdBy.
+    // They cannot reassign a booking to a different user.
+    if (req.user.role === 'telecaller') {
+      const userId = req.user._id.toString();
+      const isOwner =
+        booking.assignedTo?.toString() === userId ||
+        booking.createdBy?.toString() === userId;
+      if (!isOwner) {
+        return res.status(403).json({
+          message: 'You are not authorized to update this booking'
+        });
+      }
+      if (req.body.assignedTo !== undefined) {
+        return res.status(403).json({
+          message: 'Telecallers cannot reassign bookings'
+        });
+      }
+    }
+
     if (totalPaid !== undefined) booking.totalPaid = Number(totalPaid);
     if (status !== undefined) booking.status = status;
     if (contact !== undefined) booking.contact = contact;
@@ -196,11 +216,21 @@ const updateBooking = async (req, res, next) => {
 const getBookingByOpportunityId = async (req, res, next) => {
   try {
     const { opportunityId } = req.params;
-    const booking = await Booking.findOne({ opportunity: opportunityId })
+    // Apply data-scope so telecallers cannot retrieve another user's booking
+    // by supplying an opportunity ID that happens to belong to someone else.
+    const scopeFilter = req.dataScope || {};
+    const booking = await Booking.findOne({
+      opportunity: opportunityId,
+      ...scopeFilter
+    })
       .populate('customer', 'name primaryMobile alternateMobile email city address')
       .populate('project', 'name code location propertyType')
       .populate('opportunity', 'stage value')
       .populate('assignedTo', 'name email role');
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
 
     res.status(200).json({
       success: true,
