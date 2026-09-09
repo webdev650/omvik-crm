@@ -36,9 +36,6 @@ export default function ForgotPassword() {
         username: cleanInput
       });
       let msg = response.data?.message || 'A 6-digit OTP code has been dispatched to the central admin inbox.';
-      if (response.data?.otp) {
-        msg += ` (Your 6-Digit OTP Code: ${response.data.otp})`;
-      }
       setStatusMsg(msg);
       // ONLY advance step on genuine success response from Step 1 API call
       setStep('verify');
@@ -73,9 +70,6 @@ export default function ForgotPassword() {
         username: cleanInput
       });
       let msg = response.data?.message || 'A fresh 6-digit OTP has been dispatched to the central admin inbox.';
-      if (response.data?.otp) {
-        msg += ` (Your 6-Digit OTP Code: ${response.data.otp})`;
-      }
       setStatusMsg(msg);
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Failed to resend OTP.';
