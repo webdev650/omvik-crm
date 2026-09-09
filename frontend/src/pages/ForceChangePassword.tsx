@@ -21,10 +21,21 @@ export default function ForceChangePassword() {
     e.preventDefault();
     setErrorMsg(null);
 
-    if (newPassword.length < 6) {
-      setErrorMsg('New password must be at least 6 characters long.');
+    if (newPassword.length < 7) {
+      setErrorMsg('Password must be at least 7 characters long.');
       return;
     }
+
+    const hasUpper = /[A-Z]/.test(newPassword);
+    const hasLower = /[a-z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+
+    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+      setErrorMsg('Password must contain at least 1 uppercase (A-Z), 1 lowercase (a-z), 1 number (0-9), and 1 special character (e.g. Omvik@1).');
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       setErrorMsg('New passwords do not match. Please re-enter.');
       return;
@@ -90,13 +101,13 @@ export default function ForceChangePassword() {
               )}
 
               <div className="space-y-1.5">
-                <Label htmlFor="newPassword">New Private Password (min 6 characters)</Label>
+                <Label htmlFor="newPassword">New Password (min 7 chars, 1 upper, 1 lower, 1 number, 1 special)</Label>
                 <Input
                   id="newPassword"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter your new password"
+                  placeholder="e.g. Omvik@1"
                   className="bg-slate-950 border-slate-800 text-slate-100"
                 />
               </div>
