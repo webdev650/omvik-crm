@@ -325,15 +325,16 @@ const forgotPassword = async (req, res, next) => {
 
     console.log(`\n🔑 [PASSWORD RESET OTP GENERATED] Account: ${user.name} (${user.email}) -> Sent to Admin Inbox (${adminInboxRecipient}) -> OTP: ${otpCode}\n`);
 
-    // CRITICAL: Respond to HTTP request IMMEDIATELY (< 50ms)
-    setImmediate(() => {
-      sendEmail({
-        email: user.email,
-        subject: `🔑 Password Reset OTP for ${user.name} (${user.email} / ${empIdDisplay}): ${otpCode}`,
-        message: messageText,
-        html: htmlMessage
-      }).catch(err => console.error('[Background Resend Email Error]', err.message));
-    });
+    // Send OTP email DIRECTLY to admin inbox (not user's email)
+    // Resend is on a sandbox plan — only verified addresses can receive.
+    // The admin inbox (ADMIN_ALERT_EMAIL) is the verified address on file.
+    // The admin then relays the OTP to the requesting user.
+    sendEmail({
+      email: adminInboxRecipient,
+      subject: `🔑 Password Reset OTP for ${user.name} (${user.email} / ${empIdDisplay}): ${otpCode}`,
+      message: messageText,
+      html: htmlMessage
+    }).catch(err => console.error('[Background OTP Email Error]', err.message));
 
     return res.json(genericResponse);
   } catch (error) {
