@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, ArrowRight, ArrowLeft, KeyRound, ShieldAlert } from 'lucide-react';
+import { Mail, ArrowRight, ArrowLeft, KeyRound, ShieldAlert, CheckCircle2, Lock, Eye, EyeOff } from 'lucide-react';
+import { toast } from 'sonner';
 import api from '../api/axios';
 import OtpVerificationCard from '../components/OtpVerificationCard';
 import { Input } from '../components/ui/input';
@@ -11,10 +12,16 @@ import { Label } from '../components/ui/label';
 export default function ForgotPassword() {
   const navigate = useNavigate();
   const [identifier, setIdentifier] = useState('');
-  const [step, setStep] = useState<'request' | 'verify'>('request');
+  const [step, setStep] = useState<'request' | 'verify' | 'new-password'>('request');
+  const [resetToken, setResetToken] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // New Password State for Step 3
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Step 1: Request 6-digit OTP code (Admin-mediated: routes to omvikrealcon@gmail.com)
   const handleRequestOtp = async (e: React.FormEvent) => {
@@ -35,9 +42,8 @@ export default function ForgotPassword() {
         email: cleanInput,
         username: cleanInput
       });
-      let msg = response.data?.message || 'A 6-digit OTP code has been dispatched to the central admin inbox.';
+      const msg = response.data?.message || 'A 6-digit OTP code has been dispatched to the central admin inbox.';
       setStatusMsg(msg);
-      // ONLY advance step on genuine success response from Step 1 API call
       setStep('verify');
     } catch (err: any) {
       const isTimeout = err.code === 'ECONNABORTED' || err.message?.includes('timeout');
@@ -45,7 +51,6 @@ export default function ForgotPassword() {
         ? 'The server was waking up (Render free tier cold start). Please click "Send 6-Digit OTP" again now that the server is awake!'
         : (err.response?.data?.message || err.message || 'Failed to request password reset. Please try again.');
       setErrorMsg(msg);
-      // Do NOT advance step on error; stay on step 1 so user sees error on step 1
     } finally {
       setIsSubmitting(false);
     }
@@ -69,7 +74,7 @@ export default function ForgotPassword() {
         email: cleanInput,
         username: cleanInput
       });
-      let msg = response.data?.message || 'A fresh 6-digit OTP has been dispatched to the central admin inbox.';
+      const msg = response.data?.message || 'A fresh 6-digit OTP has been dispatched to the central admin inbox.';
       setStatusMsg(msg);
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Failed to resend OTP.';
@@ -78,18 +83,13 @@ export default function ForgotPassword() {
     }
   };
 
-  // Step 2 & Step 3: Verify OTP to obtain single-use resetToken, then perform Password Reset
-  const handleVerifyAndReset = async (otp: string, newPassword?: string) => {
-    if (!newPassword) {
-      setErrorMsg('New password is required.');
-      return;
-    }
-
+  // Step 2: Verify 6-digit OTP -> get single-use resetToken -> advance to Step 3
+  const handleVerifyOtp = async (otp: string) => {
     setErrorMsg(null);
     setStatusMsg(null);
     setIsSubmitting(true);
+
     try {
-      // Step A: Verify 6-digit OTP to get single-use short-lived resetToken
       const verifyRes = await api.post('/auth/verify-otp', {
         identifier: identifier.trim(),
         email: identifier.trim(),
@@ -101,21 +101,65 @@ export default function ForgotPassword() {
         throw new Error('Invalid or expired OTP verification code.');
       }
 
-      const resetToken = verifyRes.data.resetToken;
+      setResetToken(verifyRes.data.resetToken);
+      setStatusMsg('✓ OTP Verified Successfully! Please enter your new password below.');
+      setStep('new-password');
+      toast.success('OTP code verified! You can now set your new password.');
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Verification failed. The OTP code may be invalid or expired.';
+      setErrorMsg(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-      // Step B: Submit new password with signed resetToken
+  // Step 3: Reset Password using resetToken
+  const handleSaveNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setStatusMsg(null);
+
+    if (!resetToken) {
+      setErrorMsg('Password reset session expired. Please verify your OTP again.');
+      setStep('verify');
+      return;
+    }
+
+    if (!newPassword || newPassword.length < 7) {
+      setErrorMsg('Password must be at least 7 characters long.');
+      return;
+    }
+
+    const hasUpper = /[A-Z]/.test(newPassword);
+    const hasLower = /[a-z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+
+    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+      setErrorMsg('Password must contain at least 1 uppercase (A-Z), 1 lowercase (a-z), 1 number (0-9), and 1 special character (e.g. Omvik@1).');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setErrorMsg('Passwords do not match.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
       const resetRes = await api.post('/auth/reset-with-token', {
         resetToken,
         newPassword
       });
 
       if (resetRes.data?.success) {
-        navigate('/login');
+        toast.success('Password reset successful! Please sign in with your new password.');
+        navigate('/login', { replace: true });
       } else {
         throw new Error(resetRes.data?.message || 'Password reset failed.');
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || 'Verification failed. The OTP code may be invalid or expired.';
+      const msg = err.response?.data?.message || err.message || 'Failed to update password. Please try again.';
       setErrorMsg(msg);
     } finally {
       setIsSubmitting(false);
@@ -140,7 +184,7 @@ export default function ForgotPassword() {
 
       <div className="w-full max-w-md relative z-10">
         <AnimatePresence mode="wait">
-          {step === 'request' ? (
+          {step === 'request' && (
             <motion.div
               key="request-card"
               initial={{ opacity: 0, scale: 0.95 }}
@@ -190,7 +234,7 @@ export default function ForgotPassword() {
                         autoComplete="off"
                         value={identifier}
                         onChange={(e) => setIdentifier(e.target.value)}
-                        placeholder="e.g. subhashree.omvik@gmail.com or EMP-005"
+                        placeholder="e.g. aparna@omvikrealcon.com or ADM-005"
                         className="pl-10 h-11 bg-slate-50 border-slate-200 text-slate-900 text-xs rounded-xl focus:bg-white focus:border-indigo-600 font-medium"
                       />
                     </div>
@@ -231,7 +275,9 @@ export default function ForgotPassword() {
                 </div>
               </div>
             </motion.div>
-          ) : (
+          )}
+
+          {step === 'verify' && (
             <motion.div
               key="verify-card"
               initial={{ opacity: 0, scale: 0.95 }}
@@ -240,7 +286,7 @@ export default function ForgotPassword() {
             >
               <OtpVerificationCard
                 email={identifier || 'Admin Inbox (omvikrealcon@gmail.com)'}
-                onVerify={handleVerifyAndReset}
+                onVerify={async (otp) => handleVerifyOtp(otp)}
                 onResend={handleResendOtp}
                 onBack={() => {
                   setStep('request');
@@ -250,8 +296,130 @@ export default function ForgotPassword() {
                 isSubmitting={isSubmitting}
                 errorMsg={errorMsg}
                 successMsg={statusMsg}
-                requireNewPassword={true}
+                requireNewPassword={false}
               />
+            </motion.div>
+          )}
+
+          {step === 'new-password' && (
+            <motion.div
+              key="new-password-card"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="rounded-[36px] bg-gradient-to-b from-indigo-500/20 via-purple-500/10 to-indigo-600/20 p-2 sm:p-3 shadow-2xl backdrop-blur-2xl border border-white/10"
+            >
+              <div className="rounded-[30px] bg-white text-slate-900 p-7 sm:p-9 shadow-2xl space-y-6 text-center">
+                
+                {/* Header Icon */}
+                <div className="inline-flex p-3.5 rounded-2xl bg-emerald-50 text-emerald-600 shadow-sm border border-emerald-100/50">
+                  <CheckCircle2 className="w-7 h-7 stroke-[2.2]" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+                    Set New Password
+                  </h2>
+                  <p className="text-xs text-slate-500 leading-relaxed px-2">
+                    OTP Code Verified for <strong className="text-indigo-600">{identifier}</strong>. <br />
+                    Please set your new secure password below.
+                  </p>
+                </div>
+
+                {/* OTP Verified Success Banner */}
+                <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold text-left flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>✓ 6-Digit OTP Verified Successfully!</span>
+                </div>
+
+                <form onSubmit={handleSaveNewPassword} className="space-y-4 text-left">
+                  {errorMsg && (
+                    <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-600 text-xs font-semibold flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-red-500 shrink-0" />
+                      <span>{errorMsg}</span>
+                    </div>
+                  )}
+
+                  {/* Password Requirements Box */}
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1.5">
+                    <p className="font-bold text-slate-800">Password Requirements:</p>
+                    <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-slate-500 font-medium">
+                      <li>Minimum 7 characters long</li>
+                      <li>At least 1 uppercase letter (A-Z) & 1 lowercase letter (a-z)</li>
+                      <li>At least 1 number (0-9) & 1 special character (@, #, $, %, !, &)</li>
+                    </ul>
+                    <p className="text-[10px] font-mono text-indigo-600 pt-0.5 font-semibold">Examples: Omvik@1, Test#123, Hello@7</p>
+                  </div>
+
+                  {/* New Password */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="newPassword" className="text-xs font-bold text-slate-700">
+                      New Password
+                    </Label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
+                      <Input
+                        id="newPassword"
+                        type={showPassword ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="e.g. Omvik@1"
+                        className="pl-10 pr-10 h-11 bg-slate-50 border-slate-200 text-slate-900 text-xs rounded-xl focus:bg-white focus:border-indigo-600 font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Confirm New Password */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="confirmPassword" className="text-xs font-bold text-slate-700">
+                      Confirm New Password
+                    </Label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
+                      <Input
+                        id="confirmPassword"
+                        type={showPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Re-enter new password"
+                        className="pl-10 h-11 bg-slate-50 border-slate-200 text-slate-900 text-xs rounded-xl focus:bg-white focus:border-indigo-600 font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-2xl shadow-lg shadow-indigo-600/30 transition-all duration-300 flex items-center justify-center gap-2 group"
+                  >
+                    {isSubmitting ? (
+                      <span className="flex items-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Saving Password...
+                      </span>
+                    ) : (
+                      <>
+                        <span>Save New Password & Sign In</span>
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
+                  </Button>
+                </form>
+
+                <div className="pt-2 border-t border-slate-100 text-xs text-slate-500 text-center">
+                  <Link to="/login" className="font-bold text-indigo-600 hover:text-indigo-800 hover:underline inline-flex items-center gap-1">
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back to Sign In</span>
+                  </Link>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
