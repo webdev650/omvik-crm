@@ -27,6 +27,7 @@ import AdminEmployeeHistory from './pages/admin/AdminEmployeeHistory';
 import LoginActivityPage from './pages/admin/LoginActivityPage';
 import LeavePage from './pages/LeavePage';
 import ResetPassword from './pages/ResetPassword';
+import ForgotPassword from './pages/ForgotPassword';
 import ForceChangePassword from './pages/ForceChangePassword';
 import MustChangePasswordModal from './components/MustChangePasswordModal';
 import NudgeMascot from './components/NudgeMascot';
@@ -64,7 +65,7 @@ export default function App() {
         <NudgeMascot />
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/forgot-password" element={<Navigate to="/login" replace />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route
             path="/force-change-password"
