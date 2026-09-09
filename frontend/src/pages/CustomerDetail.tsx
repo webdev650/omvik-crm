@@ -291,7 +291,7 @@ export default function CustomerDetail() {
 
               <Card className="border-slate-800 bg-slate-900/90 shadow-2xl backdrop-blur-xl overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full min-w-[1400px] text-left text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-slate-800 bg-[#0d1322] text-slate-400 font-bold uppercase tracking-wider text-[10px] whitespace-nowrap">
                         <th className="py-3.5 px-3 text-center">Sl. No.</th>
@@ -363,9 +363,19 @@ export default function CustomerDetail() {
                                 {b.location || customer.city || proj.location || '—'}
                               </td>
 
-                              {/* 5. Project Name */}
+                              {/* 5. Project Name & Linked Deal Warning Flag */}
                               <td className="py-3.5 px-3 font-semibold text-slate-200">
-                                {proj.name || '—'}
+                                <div className="flex items-center gap-2">
+                                  <span>{proj.name || '—'}</span>
+                                  {b.opportunity && b.opportunity.stage && b.opportunity.stage !== 'won' && (
+                                    <span
+                                      className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full"
+                                      title={`Note: linked opportunity stage is currently '${b.opportunity.stage.replace('_', ' ')}' (no longer marked Won). Booking record remains active.`}
+                                    >
+                                      ⚠️ Deal Stage: {b.opportunity.stage.replace('_', ' ')} (Not Won)
+                                    </span>
+                                  )}
+                                </div>
                               </td>
 
                               {/* 6. Project Type */}

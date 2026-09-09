@@ -87,11 +87,13 @@ const getCustomerById = async (req, res, next) => {
     }
 
     // Fetch related follow-ups, site visits and bookings
-    const oppIds = allOpportunities.map(o => o._id);
+    const oppIds = allOpportunities.map((o) => o._id);
     const [followups, siteVisits, bookings] = await Promise.all([
       Followup.find({ opportunity: { $in: oppIds } }).sort({ dueAt: -1 }),
       SiteVisit.find({ opportunity: { $in: oppIds } }).sort({ scheduledAt: -1 }),
-      Booking.find({ customer: id })
+      Booking.find({
+        $or: [{ customer: id }, { opportunity: { $in: oppIds } }]
+      })
         .populate('project', 'name code location propertyType')
         .populate('opportunity', 'stage value')
         .populate('assignedTo', 'name email role')

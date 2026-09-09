@@ -172,6 +172,7 @@ export default function KanbanBoard() {
   const [mobileActiveStage, setMobileActiveStage] = useState<string>('new');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [lostModalOpp, setLostModalOpp] = useState<any | null>(null);
+  const [wonWarningModalOpp, setWonWarningModalOpp] = useState<any | null>(null);
   const [lostReasonInput, setLostReasonInput] = useState<string>('');
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
 
@@ -275,6 +276,19 @@ export default function KanbanBoard() {
     const currentOpp = opportunities.find((o) => o._id === oppId);
     if (!currentOpp || currentOpp.stage === targetStageId) return;
 
+    // SAFEGUARD: If moving FROM 'won' to another stage AND opportunity has a Booking
+    if (currentOpp.stage === 'won' && targetStageId !== 'won' && currentOpp.booking) {
+      setWonWarningModalOpp({
+        oppId,
+        targetStageId,
+        unitNumber: currentOpp.booking.unitNumber || 'N/A',
+        bookingDate: currentOpp.booking.bookingDate
+          ? new Date(currentOpp.booking.bookingDate).toLocaleDateString('en-IN')
+          : 'N/A'
+      });
+      return;
+    }
+
     if (targetStageId === 'lost') {
       setLostModalOpp({ oppId, targetStage: 'lost' });
       setLostReasonInput('');
@@ -285,6 +299,22 @@ export default function KanbanBoard() {
   };
 
   const handleMobileStageChange = (oppId: string, newStage: string) => {
+    const currentOpp = opportunities.find((o) => o._id === oppId);
+    if (!currentOpp || currentOpp.stage === newStage) return;
+
+    // SAFEGUARD: If moving FROM 'won' to another stage AND opportunity has a Booking
+    if (currentOpp.stage === 'won' && newStage !== 'won' && currentOpp.booking) {
+      setWonWarningModalOpp({
+        oppId,
+        targetStageId: newStage,
+        unitNumber: currentOpp.booking.unitNumber || 'N/A',
+        bookingDate: currentOpp.booking.bookingDate
+          ? new Date(currentOpp.booking.bookingDate).toLocaleDateString('en-IN')
+          : 'N/A'
+      });
+      return;
+    }
+
     if (newStage === 'lost') {
       setLostModalOpp({ oppId, targetStage: 'lost' });
       setLostReasonInput('');
@@ -538,6 +568,47 @@ export default function KanbanBoard() {
                   className="bg-red-600 hover:bg-red-500 text-white text-xs h-10 px-4 rounded-xl font-bold"
                 >
                   Confirm Lost
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Won Stage Change Safeguard Warning Modal */}
+        {wonWarningModalOpp && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="max-w-md w-full p-6 bg-[#131c31] border border-amber-500/30 rounded-2xl shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+              <h3 className="text-base font-bold text-amber-400 flex items-center gap-2">
+                <span>⚠️ Existing Booking Record Warning</span>
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                This deal has an existing booking record (Unit{' '}
+                <strong className="text-indigo-300 font-mono font-bold">{wonWarningModalOpp.unitNumber}</strong>, booked{' '}
+                <strong className="text-indigo-300 font-mono font-bold">{wonWarningModalOpp.bookingDate}</strong>). Are you sure you want to change its stage away from Won? The booking record itself will NOT be deleted, but this may cause confusion in reporting.
+              </p>
+
+              <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
+                <Button
+                  variant="outline"
+                  onClick={() => setWonWarningModalOpp(null)}
+                  className="text-xs h-10 border-slate-800 rounded-xl"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    const { oppId, targetStageId } = wonWarningModalOpp;
+                    setWonWarningModalOpp(null);
+                    if (targetStageId === 'lost') {
+                      setLostModalOpp({ oppId, targetStage: 'lost' });
+                      setLostReasonInput('');
+                    } else {
+                      stageMutation.mutate({ id: oppId, stage: targetStageId });
+                    }
+                  }}
+                  className="bg-amber-600 hover:bg-amber-500 text-white text-xs h-10 px-4 rounded-xl font-bold"
+                >
+                  Confirm Stage Change
                 </Button>
               </div>
             </div>

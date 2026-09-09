@@ -99,10 +99,32 @@ const getOpportunities = async (req, res, next) => {
       .populate('owner', 'name')
       .sort({ createdAt: -1 });
 
+    const Booking = require('../models/Booking');
+    const oppIds = opportunities.map((o) => o._id);
+    const bookings = await Booking.find({ opportunity: { $in: oppIds } }).lean();
+    const bookingMap = new Map(bookings.map((b) => [b.opportunity.toString(), b]));
+
+    const oppsWithBookings = opportunities.map((o) => {
+      const obj = o.toObject();
+      const b = bookingMap.get(o._id.toString());
+      return {
+        ...obj,
+        booking: b
+          ? {
+              _id: b._id,
+              unitNumber: b.unitNumber,
+              bookingDate: b.bookingDate,
+              totalCost: b.totalCost,
+              totalPaid: b.totalPaid
+            }
+          : null
+      };
+    });
+
     res.json({
       success: true,
-      count: opportunities.length,
-      opportunities
+      count: oppsWithBookings.length,
+      opportunities: oppsWithBookings
     });
   } catch (error) {
     next(error);
@@ -128,9 +150,22 @@ const getOpportunityById = async (req, res, next) => {
       return res.status(404).json({ message: 'Opportunity not found' });
     }
 
+    const Booking = require('../models/Booking');
+    const booking = await Booking.findOne({ opportunity: opportunity._id }).lean();
+    const oppObj = opportunity.toObject();
+    if (booking) {
+      oppObj.booking = {
+        _id: booking._id,
+        unitNumber: booking.unitNumber,
+        bookingDate: booking.bookingDate,
+        totalCost: booking.totalCost,
+        totalPaid: booking.totalPaid
+      };
+    }
+
     res.json({
       success: true,
-      opportunity
+      opportunity: oppObj
     });
   } catch (error) {
     next(error);
