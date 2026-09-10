@@ -67,6 +67,7 @@ export default function AlarmModal() {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const hasInteractedRef = useRef(false);
   const soundPlayedForRef = useRef<string | null>(null); // track which notification ID we played for
+  const [dismissedIds, setDismissedIds] = React.useState<string[]>([]);
 
   // Track first user interaction to unlock audio
   useEffect(() => {
@@ -100,7 +101,7 @@ export default function AlarmModal() {
 
   // The first unacknowledged high-priority visit_reminder (only show one at a time)
   const alarmNotification = (data?.notifications ?? []).find(
-    (n: any) => n.priority === 'high' && n.type === 'visit_reminder' && !n.acknowledgedAt
+    (n: any) => n.priority === 'high' && n.type === 'visit_reminder' && !n.acknowledgedAt && !dismissedIds.includes(n._id)
   ) ?? null;
 
   // Play sound when new alarm appears (only once per notification, only after user interaction)
@@ -131,17 +132,19 @@ export default function AlarmModal() {
     }
   });
 
+  const handleDismiss = (id: string) => {
+    setDismissedIds((prev) => [...prev, id]);
+    dismissMutation.mutate(id);
+  };
+
+  const handleSnooze = (id: string) => {
+    setDismissedIds((prev) => [...prev, id]);
+    snoozeMutation.mutate(id);
+  };
+
   if (!alarmNotification) return null;
 
   const isPending = dismissMutation.isPending || snoozeMutation.isPending;
-
-  // Extract reminder ID from notification metadata (stored in link as /leads/oppId#reminderId)
-  // Since we don't store reminderId directly in notification, we'll pass the notificationId
-  // to the snooze endpoint which will find the latest unfired reminder for the same siteVisit.
-  // For simplicity, we pass the notification ID as the "reminderId" in the snooze call
-  // (the backend snooze route uses the VisitReminder record directly).
-  // Note: reminderId lookup is handled server-side via notification._id → siteVisit chain.
-  // Frontend just needs the notification._id for the dismiss/snooze actions.
   const notifId = alarmNotification._id;
 
   return (
@@ -150,7 +153,6 @@ export default function AlarmModal() {
       <div
         className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
         style={{ backgroundColor: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(8px)' }}
-        // Intentionally NOT onClick to close — this is an alarm, not a regular modal
       >
         {/* Pulsing alarm ring effect */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -163,18 +165,25 @@ export default function AlarmModal() {
           <div className="absolute -inset-1 rounded-3xl bg-gradient-to-br from-red-600/40 via-orange-500/20 to-red-700/40 blur-xl" />
 
           <div className="relative rounded-3xl bg-[#0f0f1a] border border-red-500/40 shadow-2xl overflow-hidden">
-            {/* Top alarm bar */}
-            <div className="bg-gradient-to-r from-red-600 to-orange-600 px-6 py-3 flex items-center gap-3">
-              <Bell className="w-5 h-5 text-white animate-bounce" />
-              <span className="text-white font-black text-sm uppercase tracking-widest">
-                Site Visit Alarm
-              </span>
-              <div className="ml-auto flex gap-1">
-                {[0, 1, 2].map(i => (
-                  <div key={i} className="w-2 h-2 rounded-full bg-white/60 animate-pulse"
-                    style={{ animationDelay: `${i * 150}ms` }} />
-                ))}
+            {/* Top alarm bar with Close Cross Button */}
+            <div className="bg-gradient-to-r from-red-600 to-orange-600 px-6 py-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Bell className="w-5 h-5 text-white animate-bounce" />
+                <span className="text-white font-black text-sm uppercase tracking-widest">
+                  Site Visit Alarm
+                </span>
               </div>
+
+              {/* TOP-RIGHT OFF / CROSS (X) BUTTON */}
+              <button
+                type="button"
+                onClick={() => handleDismiss(notifId)}
+                disabled={isPending}
+                className="w-8 h-8 rounded-full bg-black/20 hover:bg-black/40 text-white flex items-center justify-center transition-all cursor-pointer border border-white/20 hover:scale-110 active:scale-95 shrink-0"
+                title="Turn Off / Close Alarm"
+              >
+                <X className="w-5 h-5 stroke-[2.5]" />
+              </button>
             </div>
 
             {/* Alarm body */}
@@ -207,7 +216,7 @@ export default function AlarmModal() {
               {/* Action buttons */}
               <div className="grid grid-cols-2 gap-3">
                 <button
-                  onClick={() => snoozeMutation.mutate(notifId)}
+                  onClick={() => handleSnooze(notifId)}
                   disabled={isPending}
                   className="flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-slate-800 border border-slate-700 text-slate-200 font-bold text-sm hover:bg-slate-700 hover:border-slate-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -216,7 +225,7 @@ export default function AlarmModal() {
                 </button>
 
                 <button
-                  onClick={() => dismissMutation.mutate(notifId)}
+                  onClick={() => handleDismiss(notifId)}
                   disabled={isPending}
                   className="flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-red-600 to-orange-600 text-white font-black text-sm hover:from-red-500 hover:to-orange-500 transition-all shadow-lg shadow-red-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
