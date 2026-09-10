@@ -19,6 +19,7 @@ import {
   History,
   TrendingUp,
   Layers,
+  CopyCheck,
   FileWarning,
   KeyRound,
   ChevronRight
@@ -488,6 +489,24 @@ export default function Navbar() {
                               </div>
                               <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
                                 Audit missing fields & hygiene
+                              </div>
+                            </div>
+                          </NavLink>
+
+                          <NavLink
+                            to="/admin/duplicate-monitor"
+                            onClick={() => setIsMoreOpen(false)}
+                            className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-800/80 transition-all group"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                              <CopyCheck className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors">
+                                Duplicate Monitor
+                              </div>
+                              <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
+                                Track duplicate leads & overrides
                               </div>
                             </div>
                           </NavLink>
