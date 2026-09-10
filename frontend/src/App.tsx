@@ -62,6 +62,7 @@ export default function App() {
         idleTimeout={700}
         fadeDuration={900}
         blendMode="screen"
+        style={{}}
       >
         <Toaster position="top-right" theme="dark" richColors />
         <MustChangePasswordModal />

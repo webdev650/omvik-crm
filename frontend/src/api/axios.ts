@@ -47,8 +47,8 @@ api.interceptors.response.use(
     const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
     const isAuthPage = ['/login', '/forgot-password', '/reset-password', '/register'].some(p => pathname.startsWith(p));
 
-    // Show toast for non-401 errors, or 401 errors when NOT on auth pages
-    if (status !== 401 || !isAuthPage) {
+    // Show toast for non-401 errors, or 401 errors when NOT on auth pages (unless skipToast is true)
+    if ((status !== 401 || !isAuthPage) && !(error.config as any)?.skipToast) {
       toast.error(message, {
         duration: 4000,
         position: 'top-right'

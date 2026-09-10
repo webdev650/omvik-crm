@@ -16,8 +16,11 @@ export interface BookingPayload {
   totalPaid?: number;
   probableRegistrationDate?: string | null;
   status?: string;
+  currentStatus?: string;
   assignedTo?: string;
   remarks?: string;
+  address?: string;
+  city?: string;
 }
 
 export async function getBookingsByCustomer(customerId: string) {

@@ -66,3 +66,8 @@ export async function exportLeads(params: Record<string, any> = {}) {
 
   return true;
 }
+
+export async function getProjectTeamStats(projectId: string) {
+  const response = await api.get(`/opportunities/project-team-stats/${projectId}`);
+  return response.data;
+}

@@ -12,6 +12,12 @@ export async function completeFollowup(id: string) {
 }
 
 export async function getFollowupsByOpportunity(opportunityId: string) {
-  const response = await api.get(`/followups/opportunity/${opportunityId}`);
-  return response.data;
+  try {
+    const response = await api.get(`/followups/opportunity/${opportunityId}`, {
+      skipToast: true
+    } as any);
+    return response.data;
+  } catch (error) {
+    return { success: true, followups: [] };
+  }
 }
