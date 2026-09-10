@@ -18,3 +18,12 @@ export async function completeFollowup(id) {
   const response = await api.patch(`/followups/${id}/complete`);
   return response.data;
 }
+
+/**
+ * Get all followups for a specific opportunity (for Contact History / Next Contact Date).
+ * @param {string} opportunityId
+ */
+export async function getFollowupsByOpportunity(opportunityId) {
+  const response = await api.get(`/followups/opportunity/${opportunityId}`);
+  return response.data;
+}
