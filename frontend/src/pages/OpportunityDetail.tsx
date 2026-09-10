@@ -3,6 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Navbar from '../components/Navbar';
 import { getOpportunityById, updateOpportunityIntent } from '../api/opportunities';
+import { getActivities } from '../api/activities';
+import { getFollowupsByOpportunity } from '../api/followups';
 import { Badge, getStageBadgeVariant } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -15,7 +17,131 @@ import useAuth from '../hooks/useAuth';
 import { getBookingByOpportunityId, createBooking } from '../api/bookings';
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
-import { X, Building2, Calendar, FileText } from 'lucide-react';
+import { X, Building2, Calendar, FileText, Phone, ChevronRight } from 'lucide-react';
+import { ordinalNum, ordinalDate, shortDateTime, shortOrdinalDate } from '../utils/dateFormat';
+
+// ── Contact History + Next Contact Date Panel ─────────────────────────────────
+
+const CHANNEL_ICONS: Record<string, string> = {
+  call: '📞', whatsapp: '💬', email: '📧', meeting: '🤝', note: '📝'
+};
+const OUTCOME_COLORS: Record<string, string> = {
+  connected: 'text-emerald-400', no_answer: 'text-slate-400', busy: 'text-amber-400',
+  switched_off: 'text-slate-400', wrong_number: 'text-red-400',
+  interested: 'text-indigo-400', not_interested: 'text-red-400'
+};
+
+function ContactHistoryPanel({ opportunityId }: { opportunityId: string }) {
+  const { data: actData } = useQuery({
+    queryKey: ['activities', opportunityId],
+    queryFn: () => getActivities(opportunityId),
+    enabled: !!opportunityId
+  });
+
+  const { data: fuData } = useQuery({
+    queryKey: ['followups', 'opportunity', opportunityId],
+    queryFn: () => getFollowupsByOpportunity(opportunityId),
+    enabled: !!opportunityId
+  });
+
+  // Sort activities oldest → newest for ordinal numbering
+  const activities: any[] = [...(actData?.activities ?? [])].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+
+  // Next Contact Date = earliest SCHEDULED (not completed/missed) followup
+  const scheduledFollowups: any[] = (fuData?.followups ?? []).filter(
+    (f: any) => f.status === 'scheduled' && new Date(f.dueAt) > new Date()
+  );
+  scheduledFollowups.sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime());
+  const nextFollowup = scheduledFollowups[0] ?? null;
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* ── Next Contact Date (callout card) ── */}
+      <div className={`rounded-2xl border p-5 flex flex-col gap-2 ${
+        nextFollowup
+          ? 'border-indigo-500/30 bg-indigo-500/5'
+          : 'border-slate-800 bg-slate-900/40'
+      }`}>
+        <div className="flex items-center gap-2">
+          <Calendar className={`w-4 h-4 ${nextFollowup ? 'text-indigo-400' : 'text-slate-500'}`} />
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            Next Contact Date
+          </p>
+        </div>
+        {nextFollowup ? (
+          <>
+            <p className="text-lg font-extrabold text-indigo-300 leading-tight">
+              {shortOrdinalDate(nextFollowup.dueAt)}
+            </p>
+            {nextFollowup.purpose && (
+              <p className="text-xs text-slate-400 font-medium">{nextFollowup.purpose}</p>
+            )}
+            <p className="text-[10px] text-slate-500 font-mono">
+              Assigned to: {nextFollowup.owner?.name ?? 'Unassigned'}
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-slate-500 italic font-medium mt-1">
+            Not scheduled yet
+          </p>
+        )}
+      </div>
+
+      {/* ── Contact History (takes 2 cols) ── */}
+      <div className="lg:col-span-2 rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Phone className="w-4 h-4 text-slate-500" />
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            Contact History
+          </p>
+          {activities.length > 0 && (
+            <span className="ml-auto text-[10px] font-bold bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full border border-slate-700">
+              {activities.length} contact{activities.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+
+        {activities.length === 0 ? (
+          <p className="text-xs text-slate-600 italic py-4 text-center">
+            No contact attempts recorded yet.
+          </p>
+        ) : (
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+            {activities.map((act: any, index: number) => (
+              <div key={act._id}
+                className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-800/40 border border-slate-800 hover:border-slate-700 transition-colors"
+              >
+                {/* Ordinal badge */}
+                <span className="text-[10px] font-black text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-700 shrink-0 whitespace-nowrap">
+                  {ordinalNum(index + 1)}
+                </span>
+
+                {/* Channel icon */}
+                <span className="text-base shrink-0">
+                  {CHANNEL_ICONS[act.channel] ?? '📌'}
+                </span>
+
+                {/* Date */}
+                <span className="text-xs font-semibold text-slate-300 shrink-0">
+                  {ordinalDate(act.createdAt)}
+                </span>
+
+                {/* Outcome */}
+                <span className={`text-[11px] font-bold capitalize ml-auto shrink-0 ${OUTCOME_COLORS[act.outcome] ?? 'text-slate-400'}`}>
+                  {act.outcome?.replace('_', ' ')}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export default function OpportunityDetail() {
   const { id } = useParams<{ id: string }>();
@@ -317,13 +443,16 @@ export default function OpportunityDetail() {
               </CardContent>
             </Card>
 
+            {/* ── Contact History + Next Contact Date Panel ─────────────────── */}
+            <ContactHistoryPanel opportunityId={id!} />
+
             {/* Tabs Shell */}
             <Tabs defaultValue="activities">
               <TabsList>
                 <TabsTrigger value="activities">Activity Timeline</TabsTrigger>
                 <TabsTrigger value="log">Log Activity</TabsTrigger>
                 <TabsTrigger value="siteVisits">🏡 Site Visits</TabsTrigger>
-                <TabsTrigger value="followups">Follow-ups</TabsTrigger>
+                <TabsTrigger value="followups">Follow-up</TabsTrigger>
               </TabsList>
 
               <TabsContent value="activities">
@@ -362,7 +491,7 @@ export default function OpportunityDetail() {
               <TabsContent value="followups">
                 <Card className="border-slate-800 bg-slate-900/60 backdrop-blur-xl">
                   <CardHeader>
-                    <CardTitle className="text-base">Scheduled Follow-ups</CardTitle>
+                    <CardTitle className="text-base">Follow-up</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-slate-500 italic">

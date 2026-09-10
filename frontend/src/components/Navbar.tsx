@@ -203,7 +203,7 @@ export default function Navbar() {
           <NavLink to="/leads" className={({ isActive }) => topNavLinkClass({ isActive: isActive && !location.pathname.startsWith('/leads/') })}>Leads</NavLink>
           <NavLink to="/customers" className={({ isActive }) => topNavLinkClass({ isActive: isActive && !location.pathname.startsWith('/customers/') })}>Customers</NavLink>
           <NavLink to="/pipeline" className={topNavLinkClass}>Pipeline</NavLink>
-          <NavLink to="/followups" className={topNavLinkClass}>Follow-ups</NavLink>
+          <NavLink to="/followups" className={topNavLinkClass}>Follow-up</NavLink>
 
           {/* MORE ▾ MEGA-MENU DROPDOWN TRIGGER */}
           <div className="relative inline-block text-left" ref={moreDropdownRef}>
@@ -653,7 +653,7 @@ export default function Navbar() {
                 <NavLink to="/leads" onClick={() => setIsMobileMenuOpen(false)} className={topNavLinkClass}>Leads</NavLink>
                 <NavLink to="/customers" onClick={() => setIsMobileMenuOpen(false)} className={topNavLinkClass}>Customers</NavLink>
                 <NavLink to="/pipeline" onClick={() => setIsMobileMenuOpen(false)} className={topNavLinkClass}>Pipeline</NavLink>
-                <NavLink to="/followups" onClick={() => setIsMobileMenuOpen(false)} className={topNavLinkClass}>Follow-ups</NavLink>
+                <NavLink to="/followups" onClick={() => setIsMobileMenuOpen(false)} className={topNavLinkClass}>Follow-up</NavLink>
               </div>
             </div>
 

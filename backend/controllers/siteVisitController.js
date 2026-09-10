@@ -1,5 +1,43 @@
 const SiteVisit = require('../models/SiteVisit');
+const VisitReminder = require('../models/VisitReminder');
 const Opportunity = require('../models/Opportunity');
+
+/**
+ * Compute the 3 reminder fire-times for a given site visit scheduledAt.
+ *
+ * PRODUCTION offsets:
+ *   day_before    = scheduledAt - 24 hours
+ *   morning_of    = 08:00 AM on the same calendar day as scheduledAt (local time)
+ *   final_reminder = scheduledAt - 1 hour
+ *
+ * TEST mode (TEST_REMINDER_OFFSETS=true in .env):
+ *   day_before    = scheduledAt - 30 seconds  (for testing)
+ *   morning_of    = scheduledAt - 60 seconds  (for testing)
+ *   final_reminder = scheduledAt - 120 seconds (for testing)
+ */
+function computeReminderTimes(scheduledAt) {
+  const t = new Date(scheduledAt).getTime();
+  const isTest = process.env.TEST_REMINDER_OFFSETS === 'true';
+
+  if (isTest) {
+    return {
+      day_before:     new Date(t - 30 * 1000),          // 30s before
+      morning_of:     new Date(t - 60 * 1000),          // 60s before
+      final_reminder: new Date(t - 120 * 1000)          // 2min before
+    };
+  }
+
+  // Production: morning_of = 08:00 AM on the day of the visit
+  const visitDay = new Date(scheduledAt);
+  const morningOf = new Date(visitDay);
+  morningOf.setHours(8, 0, 0, 0);
+
+  return {
+    day_before:     new Date(t - 24 * 60 * 60 * 1000), // 24h before
+    morning_of:     morningOf,                          // 8:00 AM day-of
+    final_reminder: new Date(t - 60 * 60 * 1000)       // 1h before
+  };
+}
 
 // @desc    Schedule a new site visit for an opportunity
 // @route   POST /api/opportunities/:id/site-visits
@@ -21,7 +59,6 @@ const scheduleSiteVisit = async (req, res, next) => {
     }
 
     // NOTE: Denormalizing owner directly onto SiteVisit for fast query filtering without extra joins.
-    // If an opportunity is reassigned later, historical SiteVisit.owner records will preserve creation owner unless explicitly synced.
     const siteVisit = await SiteVisit.create({
       opportunity: opportunity._id,
       scheduledBy: req.user._id,
@@ -30,6 +67,16 @@ const scheduleSiteVisit = async (req, res, next) => {
       status: 'planned',
       feedback: { notes: notes || '' }
     });
+
+    // Auto-generate 3 alarm reminders for this site visit
+    const reminderTimes = computeReminderTimes(siteVisit.scheduledAt);
+    await VisitReminder.insertMany([
+      { siteVisit: siteVisit._id, type: 'day_before',     scheduledFor: reminderTimes.day_before     },
+      { siteVisit: siteVisit._id, type: 'morning_of',     scheduledFor: reminderTimes.morning_of     },
+      { siteVisit: siteVisit._id, type: 'final_reminder', scheduledFor: reminderTimes.final_reminder }
+    ]);
+
+    console.log(`[VisitReminders] Auto-generated 3 reminders for SiteVisit ${siteVisit._id} (TEST_MODE=${process.env.TEST_REMINDER_OFFSETS === 'true'})`);
 
     // Auto-advance opportunity stage to 'site_visit' if active
     if (opportunity.isActive && opportunity.stage !== 'won' && opportunity.stage !== 'lost') {

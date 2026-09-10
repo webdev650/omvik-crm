@@ -31,6 +31,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ForceChangePassword from './pages/ForceChangePassword';
 import MustChangePasswordModal from './components/MustChangePasswordModal';
 import NudgeMascot from './components/NudgeMascot';
+import AlarmModal from './components/AlarmModal';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
@@ -41,6 +42,8 @@ export default function App() {
 
   return (
     <div className="w-full min-h-screen bg-[#0b0f19] relative">
+      {/* Site Visit Alarm Modal — mounts at root so it appears on any page */}
+      {user && <AlarmModal />}
       <GlowCursor
         color="#15B0F8"
         secondaryColor="#0131B9"

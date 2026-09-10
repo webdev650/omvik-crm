@@ -1,20 +1,9 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getActivities } from '../../api/activities';
+import { ordinalNum, relativeOrOrdinal, shortDateTime } from '../../utils/dateFormat';
 
-// ── helpers ────────────────────────────────────────────────────────────────
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-}
+// ── channel / outcome meta ────────────────────────────────────────────────────
 
 const CHANNEL_META: Record<string, { icon: string; label: string; color: string }> = {
   call:      { icon: '📞', label: 'Phone Call',  color: 'text-blue-400'   },
@@ -34,7 +23,7 @@ const OUTCOME_META: Record<string, { label: string; color: string }> = {
   not_interested:  { label: 'Not Interested',  color: 'bg-red-500/10     border-red-500/30     text-red-400'     },
 };
 
-// ── component ───────────────────────────────────────────────────────────────
+// ── component ────────────────────────────────────────────────────────────────
 
 interface Props {
   opportunityId: string;
@@ -47,7 +36,11 @@ export default function ActivityTimeline({ opportunityId }: Props) {
     enabled: !!opportunityId
   });
 
-  const activities: any[] = data?.activities ?? [];
+  // Sort oldest → newest for correct ordinal numbering (1st Contact = first chronologically)
+  const rawActivities: any[] = data?.activities ?? [];
+  const activities = [...rawActivities].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
 
   // ── loading ──
   if (isLoading) {
@@ -88,13 +81,14 @@ export default function ActivityTimeline({ opportunityId }: Props) {
     );
   }
 
-  // ── timeline ──
+  // ── timeline (oldest first = chronological contact history) ──
   return (
     <ol className="relative space-y-0">
       {activities.map((act: any, index: number) => {
         const ch = CHANNEL_META[act.channel] ?? { icon: '📌', label: act.channel, color: 'text-slate-400' };
         const oc = OUTCOME_META[act.outcome] ?? { label: act.outcome, color: 'bg-slate-700/60 border-slate-600 text-slate-400' };
         const isLast = index === activities.length - 1;
+        const contactLabel = `${ordinalNum(index + 1)} Contact`;
 
         return (
           <li key={act._id} className="flex gap-4">
@@ -109,9 +103,14 @@ export default function ActivityTimeline({ opportunityId }: Props) {
             </div>
 
             {/* Content */}
-            <div className={`flex-1 pb-6 ${isLast ? '' : ''}`}>
+            <div className="flex-1 pb-6">
               {/* Header row */}
               <div className="flex flex-wrap items-center gap-2 mb-2">
+                {/* Ordinal contact label */}
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-800/60 px-2 py-0.5 rounded-full border border-slate-700">
+                  {contactLabel}
+                </span>
+
                 <span className={`text-xs font-bold uppercase tracking-wider ${ch.color}`}>
                   {ch.label}
                 </span>
@@ -121,7 +120,7 @@ export default function ActivityTimeline({ opportunityId }: Props) {
                 </span>
 
                 <span className="ml-auto text-[11px] text-slate-500 font-mono whitespace-nowrap">
-                  {timeAgo(act.createdAt)}
+                  {relativeOrOrdinal(act.createdAt)}
                 </span>
               </div>
 
@@ -135,16 +134,14 @@ export default function ActivityTimeline({ opportunityId }: Props) {
                 <p className="text-xs text-slate-600 italic">No notes recorded.</p>
               )}
 
-              {/* Footer: who logged it */}
+              {/* Footer: who logged it + full readable date */}
               <p className="text-[11px] text-slate-500 mt-2">
                 Logged by{' '}
                 <span className="font-semibold text-slate-400">
                   {act.user?.name ?? 'Unknown'}
                 </span>
                 {' · '}
-                {new Date(act.createdAt).toLocaleString('en-IN', {
-                  day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-                })}
+                {shortDateTime(act.createdAt)}
               </p>
             </div>
           </li>

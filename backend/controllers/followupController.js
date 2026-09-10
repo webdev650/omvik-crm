@@ -68,7 +68,29 @@ const completeFollowup = async (req, res, next) => {
   }
 };
 
+// @desc    Get all followups for a specific opportunity
+// @route   GET /api/followups/opportunity/:opportunityId
+// @access  Private
+const getFollowupsByOpportunity = async (req, res, next) => {
+  try {
+    const { opportunityId } = req.params;
+
+    const followups = await Followup.find({ opportunity: opportunityId })
+      .sort({ dueAt: 1 })
+      .populate('owner', 'name email role');
+
+    res.json({
+      success: true,
+      count: followups.length,
+      followups
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getMyFollowups,
-  completeFollowup
+  completeFollowup,
+  getFollowupsByOpportunity
 };

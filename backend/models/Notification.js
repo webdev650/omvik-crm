@@ -18,17 +18,31 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['sla_breach', 'assignment', 'activity', 'general'],
-      default: 'sla_breach'
+      enum: ['sla_breach', 'assignment', 'activity', 'general', 'visit_reminder'],
+      default: 'general'
     },
     isRead: {
       type: Boolean,
       default: false
+    },
+    // HIGH priority triggers AlarmModal interruption on the frontend
+    priority: {
+      type: String,
+      enum: ['normal', 'high'],
+      default: 'normal'
+    },
+    // Set when user taps "Dismiss" on the AlarmModal — prevents re-showing
+    acknowledgedAt: {
+      type: Date,
+      default: null
     }
   },
   {
     timestamps: true
   }
 );
+
+// Index for efficient polling: high-priority unacknowledged notifications
+notificationSchema.index({ user: 1, priority: 1, acknowledgedAt: 1 });
 
 module.exports = mongoose.model('Notification', notificationSchema);

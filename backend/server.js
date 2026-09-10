@@ -14,13 +14,15 @@ process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 // Connect to database
 connectDB();
 
-// Start SLA, Followup & Daily Digest Cron Jobs
+// Start SLA, Followup, Daily Digest & Visit Reminder Cron Jobs
 const { startSlaCron } = require('./jobs/slaSweep');
 const { startFollowupCron } = require('./jobs/followupSweep');
 const { startDailyDigestCron } = require('./jobs/dailyDigest');
+const { startVisitReminderCron } = require('./jobs/visitReminderSweep');
 startSlaCron();
 startFollowupCron();
 startDailyDigestCron();
+startVisitReminderCron();
 
 const app = express();
 
@@ -88,6 +90,7 @@ app.use('/api/upload', require('./routes/uploadRoutes'));
 app.use('/api/daily-reports', require('./routes/dailyReportRoutes'));
 app.use('/api/leave', require('./routes/leaveRoutes'));
 app.use('/api/bookings', require('./routes/bookingRoutes'));
+app.use('/api/visit-reminders', require('./routes/visitReminderRoutes'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok_v4', db: 'omvik-crm', loginActivity: true, nodeEnv: process.env.NODE_ENV }));
 app.get('/api/health', (req, res) => res.json({ status: 'ok_v4', db: 'omvik-crm', loginActivity: true, nodeEnv: process.env.NODE_ENV }));

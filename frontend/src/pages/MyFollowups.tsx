@@ -163,7 +163,7 @@ export default function MyFollowups() {
               <span>Touchpoint Task Queue</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-              My Scheduled Follow-ups
+              My Follow-up
             </h1>
             <p className="text-xs sm:text-sm text-slate-400">
               Scheduled, overdue, and completed actions across all your assigned leads.

@@ -1,11 +1,24 @@
 const Notification = require('../models/Notification');
 
 // @desc    Get current user's notifications (newest first)
+//          Supports query filters: ?priority=high, ?acknowledged=false
 // @route   GET /api/notifications
 // @access  Private
 const getNotifications = async (req, res, next) => {
   try {
-    const notifications = await Notification.find({ user: req.user._id })
+    const filter = { user: req.user._id };
+
+    // Optional filter: only high-priority
+    if (req.query.priority === 'high') {
+      filter.priority = 'high';
+    }
+
+    // Optional filter: only unacknowledged (acknowledgedAt is null)
+    if (req.query.acknowledged === 'false') {
+      filter.acknowledgedAt = null;
+    }
+
+    const notifications = await Notification.find(filter)
       .sort({ createdAt: -1 });
 
     const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -87,9 +100,39 @@ const markAllAsRead = async (req, res, next) => {
   }
 };
 
+// @desc    Acknowledge a high-priority notification (sets acknowledgedAt, marks read)
+//          Used by AlarmModal "Dismiss" button — prevents notification from re-showing.
+// @route   PATCH /api/notifications/:id/acknowledge
+// @access  Private
+const acknowledgeNotification = async (req, res, next) => {
+  try {
+    const notification = await Notification.findOne({
+      _id: req.params.id,
+      user: req.user._id
+    });
+
+    if (!notification) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    notification.acknowledgedAt = new Date();
+    notification.isRead = true;
+    await notification.save();
+
+    res.json({
+      success: true,
+      message: 'Notification acknowledged',
+      notification
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getNotifications,
   getUnreadCount,
   markAsRead,
-  markAllAsRead
+  markAllAsRead,
+  acknowledgeNotification
 };

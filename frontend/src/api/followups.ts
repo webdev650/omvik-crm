@@ -10,3 +10,8 @@ export async function completeFollowup(id: string) {
   const response = await api.patch(`/followups/${id}/complete`);
   return response.data;
 }
+
+export async function getFollowupsByOpportunity(opportunityId: string) {
+  const response = await api.get(`/followups/opportunity/${opportunityId}`);
+  return response.data;
+}
