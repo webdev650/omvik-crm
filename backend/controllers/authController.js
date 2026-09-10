@@ -213,20 +213,6 @@ const changePassword = async (req, res, next) => {
       }
     }
 
-    if (newPassword.length < 7) {
-      return res.status(400).json({ message: 'Password must be at least 7 characters long.' });
-    }
-
-    const hasUpper = /[A-Z]/.test(newPassword);
-    const hasLower = /[a-z]/.test(newPassword);
-    const hasNumber = /[0-9]/.test(newPassword);
-    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
-
-    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
-      return res.status(400).json({
-        message: 'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (e.g. Omvik@1).'
-      });
-    }
 
     user.password = await bcrypt.hash(newPassword, 10);
     user.mustChangePassword = false;
