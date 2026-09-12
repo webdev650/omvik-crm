@@ -42,7 +42,6 @@ import {
 
 import Navbar from '../components/Navbar';
 import useAuth from '../hooks/useAuth';
-import ExecutiveDashboardView from '../components/ExecutiveDashboardView';
 import { getDashboardSummary } from '../api/dashboard';
 import api from '../api/axios';
 import { Button } from '../components/ui/button';
@@ -130,7 +129,6 @@ export default function DirectorDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [dashboardTab, setDashboardTab] = useState<'kpis' | 'analytics'>('kpis');
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   // Deep-Dive Filter State
@@ -276,59 +274,26 @@ export default function DirectorDashboard() {
           </div>
         </div>
 
-        {/* VIEW NAVIGATION TABS */}
-        <div className="flex items-center gap-2 bg-[#131c31] border border-slate-800/80 p-1.5 rounded-2xl">
-          <button
-            onClick={() => setDashboardTab('kpis')}
-            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 ${
-              dashboardTab === 'kpis'
-                ? 'bg-[#0131B9] text-white shadow-md border border-[#15B0F8]/40'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <BarChart className="w-4 h-4 text-[#15B0F8]" />
-            <span>Executive Main View (21 KPIs)</span>
-          </button>
-
-          <button
-            onClick={() => setDashboardTab('analytics')}
-            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 ${
-              dashboardTab === 'analytics'
-                ? 'bg-[#0131B9] text-white shadow-md border border-[#15B0F8]/40'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <PieIcon className="w-4 h-4 text-[#FBB040]" />
-            <span>Project Deep Dive & Charts</span>
-          </button>
-        </div>
-
-        {dashboardTab === 'kpis' && (
-          <ExecutiveDashboardView hideHeader />
+        {/* LOADING & ERROR STATES */}
+        {isLoading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div key={i} className="h-32 bg-[#131c31] border border-slate-800/80 rounded-2xl animate-pulse" />
+            ))}
+          </div>
         )}
 
-        {dashboardTab === 'analytics' && (
-          <>
-            {/* LOADING & ERROR STATES */}
-            {isLoading && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                  <div key={i} className="h-32 bg-[#131c31] border border-slate-800/80 rounded-2xl animate-pulse" />
-                ))}
-              </div>
-            )}
-
-            {isError && (
-              <div className="p-8 border border-red-500/20 bg-red-500/5 rounded-2xl text-center space-y-3">
-                <p className="text-red-400 text-sm font-semibold">Failed to load executive dashboard summary.</p>
-                <button
-                  onClick={() => refetch()}
-                  className="px-4 py-2 bg-slate-800 text-slate-200 text-xs font-semibold rounded-xl hover:bg-slate-700 transition-colors"
-                >
-                  Retry
-                </button>
-              </div>
-            )}
+        {isError && (
+          <div className="p-8 border border-red-500/20 bg-red-500/5 rounded-2xl text-center space-y-3">
+            <p className="text-red-400 text-sm font-semibold">Failed to load executive dashboard summary.</p>
+            <button
+              onClick={() => refetch()}
+              className="px-4 py-2 bg-slate-800 text-slate-200 text-xs font-semibold rounded-xl hover:bg-slate-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
             {/* ── SECTION 1: 8 STAT CARDS IN 2 ROWS WITH UNIFORM ALIGNMENT & ANIMATION ── */}
             {stats && (
@@ -880,8 +845,6 @@ export default function DirectorDashboard() {
             </div>
           </div>
         )}
-      </>
-      )}
       </main>
 
       {/* ── STAT CARD DRILL-DOWN MODALS ─────────────────────────────────────────── */}
