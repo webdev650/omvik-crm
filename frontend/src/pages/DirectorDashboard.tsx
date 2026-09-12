@@ -304,7 +304,7 @@ export default function DirectorDashboard() {
         </div>
 
         {dashboardTab === 'kpis' && (
-          <ExecutiveDashboardView />
+          <ExecutiveDashboardView hideHeader />
         )}
 
         {dashboardTab === 'analytics' && (
