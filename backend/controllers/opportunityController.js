@@ -270,6 +270,9 @@ const updateStage = async (req, res, next) => {
     if (CLOSED_STAGES.includes(stage)) {
       opportunity.isActive = false;
       opportunity.closedAt = new Date();
+    } else {
+      opportunity.isActive = true;
+      opportunity.closedAt = null;
     }
 
     if (stage === 'lost') {

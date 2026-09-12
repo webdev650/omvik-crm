@@ -256,6 +256,14 @@ const getExecutiveKpis = async (req, res, next) => {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
+    // Build flexible period filter for createdAt (supports both BSON Date objects and ISO strings)
+    const periodDateFilter = {
+      $or: [
+        { createdAt: { $gte: start, $lte: end } },
+        { createdAt: { $gte: start.toISOString(), $lte: end.toISOString() } }
+      ]
+    };
+
     // Execute queries concurrently
     const [
       totalLeads,
@@ -277,8 +285,8 @@ const getExecutiveKpis = async (req, res, next) => {
       projectAgg,
       sourceAgg
     ] = await Promise.all([
-      // 1 & 2: Total Leads & New Leads created in period
-      Opportunity.countDocuments({ createdAt: { $gte: start, $lte: end } }),
+      // 1 & 2: Total Leads & New Leads created in period (NO isActive filter)
+      Opportunity.countDocuments(periodDateFilter),
 
       // 3: Active Leads (current snapshot)
       Opportunity.countDocuments({ isActive: true }),
@@ -295,13 +303,20 @@ const getExecutiveKpis = async (req, res, next) => {
       // 7: Site Visits Scheduled in period (status in planned, confirmed)
       SiteVisit.countDocuments({
         status: { $in: ['planned', 'confirmed'] },
-        $or: [{ scheduledAt: { $gte: start, $lte: end } }, { createdAt: { $gte: start, $lte: end } }]
+        $or: [
+          { scheduledAt: { $gte: start, $lte: end } },
+          { createdAt: { $gte: start, $lte: end } },
+          { createdAt: { $gte: start.toISOString(), $lte: end.toISOString() } }
+        ]
       }),
 
       // 8: Site Visits Completed in period
       SiteVisit.countDocuments({
         status: 'completed',
-        $or: [{ scheduledAt: { $gte: start, $lte: end } }, { updatedAt: { $gte: start, $lte: end } }]
+        $or: [
+          { scheduledAt: { $gte: start, $lte: end } },
+          { updatedAt: { $gte: start, $lte: end } }
+        ]
       }),
 
       // 9: Negotiations (stage = negotiation AND isActive = true, current snapshot)
@@ -309,13 +324,19 @@ const getExecutiveKpis = async (req, res, next) => {
 
       // 10: Bookings created in period
       Booking.countDocuments({
-        $or: [{ bookingDate: { $gte: start, $lte: end } }, { createdAt: { $gte: start, $lte: end } }]
+        $or: [
+          { bookingDate: { $gte: start, $lte: end } },
+          { createdAt: { $gte: start, $lte: end } }
+        ]
       }),
 
       // 11: Lost Leads moved to lost in period
       Opportunity.countDocuments({
         stage: 'lost',
-        $or: [{ closedAt: { $gte: start, $lte: end } }, { updatedAt: { $gte: start, $lte: end } }]
+        $or: [
+          { closedAt: { $gte: start, $lte: end } },
+          { updatedAt: { $gte: start, $lte: end } }
+        ]
       }),
 
       // 14: Booking Value aggregate
@@ -331,7 +352,7 @@ const getExecutiveKpis = async (req, res, next) => {
       ]),
 
       // 17: Opportunities created in period (to check Activity presence)
-      Opportunity.find({ createdAt: { $gte: start, $lte: end } }).select('_id').lean(),
+      Opportunity.find(periodDateFilter).select('_id').lean(),
 
       // 18: Followups with dueAt in period
       Followup.countDocuments({ dueAt: { $gte: start, $lte: end } }),
