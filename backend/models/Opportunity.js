@@ -35,6 +35,10 @@ const opportunitySchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
+    estimatedValue: {
+      type: Number,
+      default: 0
+    },
     source: {
       type: String,
       default: 'DIRECT'
