@@ -238,6 +238,9 @@ function getDateWindow(period = 'this_month', from, to) {
   return { start, end };
 }
 
+// ============================================================================
+// EXECUTIVE KPIS CONTROLLER (GET /api/reports/executive-kpis)
+// ============================================================================
 // @desc    Get 21 Executive Dashboard KPIs for main management view
 // @route   GET /api/reports/executive-kpis
 // @access  Private (super_admin, director, admin, team_lead)
