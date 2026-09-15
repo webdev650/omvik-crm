@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import {
   User,
   BarChart3,
@@ -22,16 +23,29 @@ import {
   CopyCheck,
   FileWarning,
   KeyRound,
-  ChevronRight
+  ChevronRight,
+  Clock,
+  CheckCircle2,
+  ClipboardList
 } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 import NotificationBell from './NotificationBell';
 import { searchGlobal } from '../api/search';
+import { getTodayReport } from '../api/dailyReports';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const { data: eodData } = useQuery({
+    queryKey: ['todayDailyReport'],
+    queryFn: getTodayReport,
+    enabled: !!user,
+    staleTime: 10000
+  });
+
+  const hasSubmittedEOD = !!eodData?.report;
 
   // Navigation & Dropdown State
   const [isMoreOpen, setIsMoreOpen] = useState(false);
@@ -512,6 +526,24 @@ export default function Navbar() {
                           </NavLink>
 
                           <NavLink
+                            to="/admin/team-eod"
+                            onClick={() => setIsMoreOpen(false)}
+                            className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-800/80 transition-all group"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                              <ClipboardList className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors">
+                                Team EOD Overview
+                              </div>
+                              <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
+                                Full team EOD submission status & figures
+                              </div>
+                            </div>
+                          </NavLink>
+
+                          <NavLink
                             to="/admin/flagged-reports"
                             onClick={() => setIsMoreOpen(false)}
                             className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-800/80 transition-all group"
@@ -543,9 +575,35 @@ export default function Navbar() {
           </div>
         </nav>
 
-        {/* RIGHT: Notifications, Subtle Super Admin Indicator & Compact Profile Menu */}
+        {/* RIGHT: EOD Status Pill, Notifications, Subtle Super Admin Indicator & Compact Profile Menu */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
-          
+
+          {/* Persistent EOD Status Indicator Pill for Logged-In Telecallers & Staff */}
+          {user && (
+            <button
+              type="button"
+              onClick={() => navigate('/daily-report')}
+              title="Click to open today's EOD Daily Activity Report submission"
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border transition-all cursor-pointer ${
+                hasSubmittedEOD
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 shadow-sm'
+                  : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20 animate-pulse'
+              }`}
+            >
+              {hasSubmittedEOD ? (
+                <>
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                  <span>EOD Submitted ✓</span>
+                </>
+              ) : (
+                <>
+                  <Clock className="w-3 h-3 text-amber-400 shrink-0" />
+                  <span>EOD Pending</span>
+                </>
+              )}
+            </button>
+          )}
+
           {/* Subtle SUPER ADMIN / ADMIN Indicator */}
           {isSuperAdmin && (
             <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-extrabold uppercase tracking-wider">

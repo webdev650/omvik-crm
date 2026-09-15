@@ -23,6 +23,7 @@ import CustomersPage from './pages/CustomersPage';
 import CustomerDetail from './pages/CustomerDetail';
 import DailyReportPage from './pages/DailyReport';
 import FlaggedReportsPage from './pages/admin/FlaggedReportsPage';
+import TeamEODOverviewPage from './pages/admin/TeamEODOverviewPage';
 import AdminEmployeeHistory from './pages/admin/AdminEmployeeHistory';
 import LoginActivityPage from './pages/admin/LoginActivityPage';
 import LeavePage from './pages/LeavePage';
@@ -239,6 +240,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director']}>
                 <FlaggedReportsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/team-eod"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director', 'team_lead']}>
+                <TeamEODOverviewPage />
               </ProtectedRoute>
             }
           />

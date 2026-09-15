@@ -2,6 +2,8 @@ const DailyReport = require('../models/DailyReport');
 const Activity = require('../models/Activity');
 const Followup = require('../models/Followup');
 const SiteVisit = require('../models/SiteVisit');
+const Opportunity = require('../models/Opportunity');
+const Booking = require('../models/Booking');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const sendAdminAlert = require('../utils/sendAdminAlert');
@@ -11,11 +13,25 @@ const sendAdminAlert = require('../utils/sendAdminAlert');
 // @access  Private (all logged-in users)
 const submitDailyReport = async (req, res, next) => {
   try {
-    const { claimedCalls = 0, claimedFollowups = 0, claimedSiteVisits = 0, notes = '' } = req.body;
+    const {
+      claimedCalls = 0,
+      whatsappMessages = 0,
+      connectedCalls = 0,
+      claimedFollowups = 0,
+      claimedSiteVisits = 0,
+      bookingsToday = 0,
+      notes = ''
+    } = req.body;
 
     const numCalls = Math.max(0, parseInt(claimedCalls) || 0);
+    const numWhatsapp = Math.max(0, parseInt(whatsappMessages) || 0);
+    const numConnected = Math.max(0, parseInt(connectedCalls) || 0);
     const numFollowups = Math.max(0, parseInt(claimedFollowups) || 0);
     const numVisits = Math.max(0, parseInt(claimedSiteVisits) || 0);
+    const numBookings = Math.max(0, parseInt(bookingsToday) || 0);
+
+    // Auto-compute leadsAssigned server-side (read-only active leads assigned to user)
+    const leadsAssigned = await Opportunity.countDocuments({ owner: req.user._id, isActive: true });
 
     // Calculate today's start and end timestamps
     const now = new Date();
@@ -24,9 +40,22 @@ const submitDailyReport = async (req, res, next) => {
     const startOfDay = new Date(now.setHours(0, 0, 0, 0));
     const endOfDay = new Date(now.setHours(23, 59, 59, 999));
 
-    // Independently query REAL logged activities, followups, and site visits created/completed today
+    // Independently query REAL logged activities, followups, site visits, and bookings created today
     const systemActivityCount = await Activity.countDocuments({
       user: req.user._id,
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    const systemWhatsappCount = await Activity.countDocuments({
+      user: req.user._id,
+      channel: 'whatsapp',
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    const systemConnectedCallsCount = await Activity.countDocuments({
+      user: req.user._id,
+      channel: 'call',
+      outcome: 'connected',
       createdAt: { $gte: startOfDay, $lte: endOfDay }
     });
 
@@ -42,22 +71,51 @@ const submitDailyReport = async (req, res, next) => {
       updatedAt: { $gte: startOfDay, $lte: endOfDay }
     });
 
-    // Check discrepancy threshold (e.g. claimed > system * 1.5 + 5)
+    const userOppIds = await Opportunity.find({ owner: req.user._id }).distinct('_id');
+    const systemBookingsCount = await Booking.countDocuments({
+      $or: [
+        { opportunity: { $in: userOppIds } },
+        { assignedTo: req.user._id },
+        { createdBy: req.user._id }
+      ],
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    // Check discrepancy threshold across all metrics
     let discrepancyFlag = false;
-    let discrepancyNote = '';
+    const discrepancyParts = [];
 
-    const callDiff = numCalls - systemActivityCount;
-    const followupDiff = numFollowups - systemFollowupCount;
-    const visitDiff = numVisits - systemSiteVisitCount;
-
-    if (
-      numCalls > (systemActivityCount * 1.5 + 5) ||
-      numFollowups > (systemFollowupCount * 1.5 + 5) ||
-      numVisits > (systemSiteVisitCount * 1.5 + 3)
-    ) {
+    if (numCalls > (systemActivityCount * 1.5 + 5)) {
       discrepancyFlag = true;
-      discrepancyNote = `Claimed ${numCalls} calls (system shows ${systemActivityCount}), ${numFollowups} follow-ups (system shows ${systemFollowupCount}), ${numVisits} visits (system shows ${systemSiteVisitCount}).`;
+      discrepancyParts.push(`Calls: claimed ${numCalls} vs ${systemActivityCount} logged`);
     }
+
+    if (numWhatsapp > (systemWhatsappCount * 1.5 + 5)) {
+      discrepancyFlag = true;
+      discrepancyParts.push(`WhatsApp: claimed ${numWhatsapp} vs ${systemWhatsappCount} logged`);
+    }
+
+    if (numConnected > (systemConnectedCallsCount * 1.5 + 5)) {
+      discrepancyFlag = true;
+      discrepancyParts.push(`Connected Calls: claimed ${numConnected} vs ${systemConnectedCallsCount} logged`);
+    }
+
+    if (numFollowups > (systemFollowupCount * 1.5 + 5)) {
+      discrepancyFlag = true;
+      discrepancyParts.push(`Follow-ups: claimed ${numFollowups} vs ${systemFollowupCount} logged`);
+    }
+
+    if (numVisits > (systemSiteVisitCount * 1.5 + 3)) {
+      discrepancyFlag = true;
+      discrepancyParts.push(`Visits: claimed ${numVisits} vs ${systemSiteVisitCount} logged`);
+    }
+
+    if (numBookings > (systemBookingsCount + 2)) {
+      discrepancyFlag = true;
+      discrepancyParts.push(`Bookings: claimed ${numBookings} vs ${systemBookingsCount} logged`);
+    }
+
+    const discrepancyNote = discrepancyFlag ? discrepancyParts.join('; ') : '';
 
     // Save or update today's report
     const report = await DailyReport.findOneAndUpdate(
@@ -66,12 +124,19 @@ const submitDailyReport = async (req, res, next) => {
         user: req.user._id,
         date: todayStr,
         claimedCalls: numCalls,
+        whatsappMessages: numWhatsapp,
+        connectedCalls: numConnected,
         claimedFollowups: numFollowups,
         claimedSiteVisits: numVisits,
+        bookingsToday: numBookings,
+        leadsAssigned,
         notes: notes ? notes.trim() : '',
         systemActivityCount,
+        systemWhatsappCount,
+        systemConnectedCallsCount,
         systemFollowupCount,
         systemSiteVisitCount,
+        systemBookingsCount,
         discrepancyFlag,
         discrepancyNote
       },
@@ -100,10 +165,7 @@ const submitDailyReport = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: discrepancyFlag
-        ? 'Report saved. Your figures differ from system activity logs — an admin has been notified for review.'
-        : 'Daily report submitted successfully!',
-      discrepancyFlag,
+      message: 'Daily report submitted successfully!',
       report
     });
   } catch (error) {
@@ -118,7 +180,13 @@ const getTodayReport = async (req, res, next) => {
   try {
     const todayStr = new Date().toISOString().split('T')[0];
     const report = await DailyReport.findOne({ user: req.user._id, date: todayStr });
-    res.json({ success: true, report: report || null });
+    const leadsAssigned = await Opportunity.countDocuments({ owner: req.user._id, isActive: true });
+
+    res.json({
+      success: true,
+      report: report || null,
+      leadsAssigned
+    });
   } catch (error) {
     next(error);
   }
@@ -143,8 +211,57 @@ const getFlaggedReports = async (req, res, next) => {
   }
 };
 
+// @desc    Get full team EOD overview for a selected date
+// @route   GET /api/daily-reports/team-overview
+// @access  Private (admin, super_admin, director, team_lead)
+const getTeamOverview = async (req, res, next) => {
+  try {
+    const targetDate = req.query.date ? req.query.date.toString().trim() : new Date().toISOString().split('T')[0];
+
+    // Fetch all active telecallers / sales staff
+    const activeEmployees = await User.find({ isActive: true })
+      .select('name email role employeeId')
+      .sort({ name: 1 });
+
+    const overviewList = await Promise.all(
+      activeEmployees.map(async (emp) => {
+        const report = await DailyReport.findOne({ user: emp._id, date: targetDate });
+        const currentLeadsAssigned = await Opportunity.countDocuments({ owner: emp._id, isActive: true });
+
+        return {
+          user: emp,
+          submitted: !!report,
+          report: report || null,
+          currentLeadsAssigned
+        };
+      })
+    );
+
+    // Sort: NOT-YET-SUBMITTED employees appear FIRST, then alphabetically by name
+    overviewList.sort((a, b) => {
+      if (a.submitted === b.submitted) {
+        return a.user.name.localeCompare(b.user.name);
+      }
+      return a.submitted ? 1 : -1;
+    });
+
+    res.json({
+      success: true,
+      date: targetDate,
+      count: overviewList.length,
+      submittedCount: overviewList.filter((item) => item.submitted).length,
+      pendingCount: overviewList.filter((item) => !item.submitted).length,
+      overview: overviewList
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   submitDailyReport,
   getTodayReport,
-  getFlaggedReports
+  getFlaggedReports,
+  getTeamOverview
 };
+

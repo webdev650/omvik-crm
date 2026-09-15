@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, RefreshCw, FileWarning } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { RefreshCw, FileWarning, ClipboardList } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import { getFlaggedReports } from '../../api/dailyReports';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/table';
@@ -8,6 +9,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 
 export default function FlaggedReportsPage() {
+  const navigate = useNavigate();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['flaggedReports'],
     queryFn: getFlaggedReports
@@ -35,14 +37,25 @@ export default function FlaggedReportsPage() {
             </p>
           </div>
 
-          <Button
-            onClick={() => refetch()}
-            variant="outline"
-            className="h-11 px-4 border-slate-800 bg-[#0b0f19] text-xs text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl gap-2 min-h-[44px]"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Refresh Log</span>
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => navigate('/admin/team-eod')}
+              variant="outline"
+              className="h-11 px-4 border-slate-800 bg-[#0b0f19] text-xs font-bold text-indigo-300 hover:bg-slate-800 hover:text-white rounded-xl gap-2 min-h-[44px]"
+            >
+              <ClipboardList className="w-4 h-4 text-indigo-400" />
+              <span>Full Team Overview</span>
+            </Button>
+
+            <Button
+              onClick={() => refetch()}
+              variant="outline"
+              className="h-11 px-4 border-slate-800 bg-[#0b0f19] text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl gap-2 min-h-[44px]"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Refresh Log</span>
+            </Button>
+          </div>
         </div>
 
         {/* Flagged Reports Table */}
@@ -66,51 +79,84 @@ export default function FlaggedReportsPage() {
               ✨ No EOD activity report discrepancies flagged. All self-reported numbers match system activity logs!
             </div>
           ) : (
-            <Table>
-              <TableHeader className="bg-[#0b0f19]">
-                <TableRow className="border-b border-slate-800">
-                  <TableHead className="text-slate-400 font-semibold text-xs">Employee</TableHead>
-                  <TableHead className="text-slate-400 font-semibold text-xs">Date</TableHead>
-                  <TableHead className="text-slate-400 font-semibold text-xs text-right">Claimed Calls vs Actual</TableHead>
-                  <TableHead className="text-slate-400 font-semibold text-xs text-right">Claimed Follow-ups</TableHead>
-                  <TableHead className="text-slate-400 font-semibold text-xs text-right">Claimed Visits</TableHead>
-                  <TableHead className="text-slate-400 font-semibold text-xs">Discrepancy Note</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {reports.map((r: any) => (
-                  <TableRow key={r._id} className="border-b border-slate-800/40 hover:bg-slate-800/40">
-                    <TableCell className="font-bold text-white text-xs">
-                      <div>
-                        <p>{r.user?.name || 'Employee'}</p>
-                        <p className="text-[10px] text-indigo-400 font-mono">{r.user?.employeeId || 'EMP'}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-mono text-slate-300 text-xs">{r.date}</TableCell>
-                    <TableCell className="text-right font-mono text-xs">
-                      <span className="text-amber-400 font-bold">{r.claimedCalls}</span>
-                      <span className="text-slate-500"> / {r.systemActivityCount} logged</span>
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-xs">
-                      <span className="text-amber-400 font-bold">{r.claimedFollowups}</span>
-                      <span className="text-slate-500"> / {r.systemFollowupCount} logged</span>
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-xs">
-                      <span className="text-amber-400 font-bold">{r.claimedSiteVisits}</span>
-                      <span className="text-slate-500"> / {r.systemSiteVisitCount} logged</span>
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-300">
-                      <div className="space-y-1">
-                        <Badge variant="destructive" className="text-[10px]">
-                          FLAGGED
-                        </Badge>
-                        <p className="text-slate-400">{r.notes ? `"${r.notes}"` : 'No additional note provided'}</p>
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-[#0b0f19]">
+                  <TableRow className="border-b border-slate-800">
+                    <TableHead className="text-slate-400 font-semibold text-xs">Employee</TableHead>
+                    <TableHead className="text-slate-400 font-semibold text-xs">Date</TableHead>
+                    <TableHead className="text-slate-400 font-semibold text-xs text-center">WhatsApp</TableHead>
+                    <TableHead className="text-slate-400 font-semibold text-xs text-center">Calls</TableHead>
+                    <TableHead className="text-slate-400 font-semibold text-xs text-center">Connected</TableHead>
+                    <TableHead className="text-slate-400 font-semibold text-xs text-center">Visits</TableHead>
+                    <TableHead className="text-slate-400 font-semibold text-xs text-center">Bookings</TableHead>
+                    <TableHead className="text-slate-400 font-semibold text-xs">Discrepancy Detail & Remarks</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {reports.map((r: any) => (
+                    <TableRow key={r._id} className="border-b border-slate-800/40 hover:bg-slate-800/40">
+                      <TableCell className="font-bold text-white text-xs">
+                        <div>
+                          <p>{r.user?.name || 'Employee'}</p>
+                          <p className="text-[10px] text-indigo-400 font-mono">{r.user?.employeeId || 'EMP'}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-mono text-slate-300 text-xs">{r.date}</TableCell>
+
+                      {/* WhatsApp */}
+                      <TableCell className="text-center font-mono text-xs">
+                        <span className="text-amber-400 font-bold">{r.whatsappMessages ?? 0}</span>
+                        <span className="text-slate-500 block text-[10px]">/ {r.systemWhatsappCount ?? 0} logged</span>
+                      </TableCell>
+
+                      {/* Total Calls */}
+                      <TableCell className="text-center font-mono text-xs">
+                        <span className="text-amber-400 font-bold">{r.claimedCalls ?? 0}</span>
+                        <span className="text-slate-500 block text-[10px]">/ {r.systemActivityCount ?? 0} logged</span>
+                      </TableCell>
+
+                      {/* Connected Calls */}
+                      <TableCell className="text-center font-mono text-xs">
+                        <span className="text-amber-400 font-bold">{r.connectedCalls ?? 0}</span>
+                        <span className="text-slate-500 block text-[10px]">/ {r.systemConnectedCallsCount ?? 0} logged</span>
+                      </TableCell>
+
+                      {/* Visits */}
+                      <TableCell className="text-center font-mono text-xs">
+                        <span className="text-amber-400 font-bold">{r.claimedSiteVisits ?? 0}</span>
+                        <span className="text-slate-500 block text-[10px]">/ {r.systemSiteVisitCount ?? 0} logged</span>
+                      </TableCell>
+
+                      {/* Bookings */}
+                      <TableCell className="text-center font-mono text-xs">
+                        <span className="text-amber-400 font-bold">{r.bookingsToday ?? 0}</span>
+                        <span className="text-slate-500 block text-[10px]">/ {r.systemBookingsCount ?? 0} logged</span>
+                      </TableCell>
+
+                      {/* Discrepancy Note */}
+                      <TableCell className="text-xs text-slate-300">
+                        <div className="space-y-1 max-w-sm">
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="destructive" className="text-[10px]">
+                              FLAGGED ⚠️
+                            </Badge>
+                          </div>
+                          {r.discrepancyNote && (
+                            <p className="text-[11px] text-amber-300 font-medium leading-tight">
+                              {r.discrepancyNote}
+                            </p>
+                          )}
+                          <p className="text-slate-400 text-[11px]">
+                            {r.notes ? `Remarks: "${r.notes}"` : 'No additional remarks provided'}
+                          </p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </div>
       </main>

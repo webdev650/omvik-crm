@@ -16,6 +16,16 @@ const dailyReportSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Claimed calls cannot be negative']
     },
+    whatsappMessages: {
+      type: Number,
+      default: 0,
+      min: [0, 'WhatsApp messages cannot be negative']
+    },
+    connectedCalls: {
+      type: Number,
+      default: 0,
+      min: [0, 'Connected calls cannot be negative']
+    },
     claimedFollowups: {
       type: Number,
       default: 0,
@@ -26,6 +36,16 @@ const dailyReportSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Claimed site visits cannot be negative']
     },
+    bookingsToday: {
+      type: Number,
+      default: 0,
+      min: [0, 'Bookings today cannot be negative']
+    },
+    leadsAssigned: {
+      type: Number,
+      default: 0,
+      min: [0, 'Leads assigned cannot be negative']
+    },
     notes: {
       type: String,
       trim: true,
@@ -35,11 +55,23 @@ const dailyReportSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    systemWhatsappCount: {
+      type: Number,
+      default: 0
+    },
+    systemConnectedCallsCount: {
+      type: Number,
+      default: 0
+    },
     systemFollowupCount: {
       type: Number,
       default: 0
     },
     systemSiteVisitCount: {
+      type: Number,
+      default: 0
+    },
+    systemBookingsCount: {
       type: Number,
       default: 0
     },

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import useAuth from '../hooks/useAuth';
 import { getMyPerformance } from '../api/reports';
+import { getTodayReport } from '../api/dailyReports';
 
 export default function NudgeMascot() {
   const { user } = useAuth();
@@ -13,6 +14,13 @@ export default function NudgeMascot() {
   const { data } = useQuery({
     queryKey: ['myPerformance'],
     queryFn: getMyPerformance,
+    enabled: !!user && user.nudgesEnabled !== false
+  });
+
+  // Fetch today's EOD daily report status
+  const { data: eodData } = useQuery({
+    queryKey: ['todayDailyReport'],
+    queryFn: getTodayReport,
     enabled: !!user && user.nudgesEnabled !== false
   });
 
@@ -45,6 +53,16 @@ export default function NudgeMascot() {
     }
 
     const checkAndShowNudge = () => {
+      const currentHour = new Date().getHours();
+      const hasSubmittedEOD = !!eodData?.report;
+
+      // Priority 1: After 5 PM local time, remind telecallers to submit today's EOD if pending
+      if (currentHour >= 17 && !hasSubmittedEOD) {
+        setMessage("📋 Don't forget to submit today's EOD report before you log off!");
+        setIsVisible(true);
+        return;
+      }
+
       const perf = data?.performance || {};
       const uncontacted = perf.uncontactedLeads || perf.slaBreachedCount || perf.followupsOverdue || 0;
       const won = perf.opportunitiesWon || 0;
@@ -71,7 +89,7 @@ export default function NudgeMascot() {
       clearTimeout(initialTimer);
       clearInterval(intervalTimer);
     };
-  }, [user, data]);
+  }, [user, data, eodData]);
 
   // Listen for dynamic Mascot Nudge Events
   useEffect(() => {

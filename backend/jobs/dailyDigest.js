@@ -37,6 +37,7 @@ async function sendDailyDigest() {
     .sort({ name: 1 });
 
   const rows = [];
+  const unsubmittedEmployees = [];
 
   for (const emp of activeEmployees) {
     const [
@@ -53,13 +54,15 @@ async function sendDailyDigest() {
       DailyReport.findOne({ user: emp._id, date: todayStr })
     ]);
 
-    let reportStatusHtml = '<span style="color: #94a3b8;">Pending</span>';
+    let reportStatusHtml = '<span style="color: #ef4444; font-weight: bold;">Pending</span>';
     if (dailyReport) {
       if (dailyReport.discrepancyFlag) {
         reportStatusHtml = '<span style="color: #f59e0b; font-weight: bold;">⚠️ Flagged</span>';
       } else {
         reportStatusHtml = '<span style="color: #10b981; font-weight: bold;">✓ Submitted</span>';
       }
+    } else {
+      unsubmittedEmployees.push(emp);
     }
 
     rows.push(`
@@ -77,11 +80,41 @@ async function sendDailyDigest() {
     `);
   }
 
+  // Build unsubmitted alert notice if any employees missed EOD submission
+  let unsubmittedBannerHtml = '';
+  if (unsubmittedEmployees.length > 0) {
+    const unsubmittedNames = unsubmittedEmployees.map((e) => e.name).join(', ');
+    unsubmittedBannerHtml = `
+      <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 14px; margin-bottom: 20px; border-radius: 8px; font-size: 13px; color: #991b1b;">
+        <strong>⚠️ ${unsubmittedEmployees.length} employee${unsubmittedEmployees.length > 1 ? 's have' : ' has'} not submitted today's EOD:</strong> ${unsubmittedNames}.
+      </div>
+    `;
+
+    // Also dispatch in-app notifications to admins
+    try {
+      const Notification = require('../models/Notification');
+      const adminUsers = await User.find({ role: { $in: ['admin', 'super_admin', 'director'] } });
+      const notifications = adminUsers.map((admin) => ({
+        user: admin._id,
+        title: '⚠️ Unsubmitted Daily EOD Reports',
+        message: `${unsubmittedEmployees.length} employee(s) have not submitted today's EOD: ${unsubmittedNames}.`,
+        type: 'sla_breach'
+      }));
+      if (notifications.length > 0) {
+        await Notification.insertMany(notifications);
+      }
+    } catch (notifErr) {
+      console.error('[Daily Digest Job Error] Failed to insert admin notifications:', notifErr.message);
+    }
+  }
+
   const htmlBody = `
     <div style="font-family: Arial, sans-serif; padding: 24px; color: #0f172a; max-width: 680px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
       <h2 style="color: #4f46e5; margin-top: 0; font-size: 20px;">Omvik CRM — Daily Performance Digest</h2>
       <p style="font-size: 13px; color: #64748b; margin-top: 4px;">Summary report for <strong>${formattedDateStr}</strong></p>
       
+      ${unsubmittedBannerHtml}
+
       <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px;">
         <thead>
           <tr style="background-color: #f8fafc; border-bottom: 2px solid #cbd5e1; text-align: left; font-size: 11px; text-transform: uppercase; color: #475569;">
