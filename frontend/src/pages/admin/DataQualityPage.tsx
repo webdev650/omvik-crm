@@ -28,10 +28,10 @@ export default function DataQualityPage() {
           <div className="space-y-1">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[11px] font-bold uppercase tracking-wider">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Admin Data Governance</span>
+              <span>Invalid / Missing Data Governance</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-              Data Quality Centre
+              Invalid / Missing Data
             </h1>
             <p className="text-xs sm:text-sm text-slate-400">
               Audit missing owners, invalid contacts, next-action rule violations, and stale pipeline leads.

@@ -17,11 +17,11 @@ export default function NudgeMascot() {
     enabled: !!user && user.nudgesEnabled !== false
   });
 
-  // Fetch today's EOD daily report status
+  // Fetch today's EOD daily report status (ONLY for telecaller role)
   const { data: eodData } = useQuery({
     queryKey: ['todayDailyReport'],
     queryFn: getTodayReport,
-    enabled: !!user && user.nudgesEnabled !== false
+    enabled: !!user && user.role === 'telecaller' && user.nudgesEnabled !== false
   });
 
   useEffect(() => {
@@ -55,29 +55,38 @@ export default function NudgeMascot() {
     const checkAndShowNudge = () => {
       const currentHour = new Date().getHours();
       const hasSubmittedEOD = !!eodData?.report;
+      const isSalesRep = ['telecaller', 'team_lead'].includes(user?.role || '');
 
-      // Priority 1: After 5 PM local time, remind telecallers to submit today's EOD if pending
-      if (currentHour >= 17 && !hasSubmittedEOD) {
+      // Priority 1: After 5 PM local time, remind telecallers ONLY to submit today's EOD if pending
+      if (currentHour >= 17 && !hasSubmittedEOD && user?.role === 'telecaller') {
         setMessage("📋 Don't forget to submit today's EOD report before you log off!");
         setIsVisible(true);
         return;
       }
 
-      const perf = data?.performance || {};
-      const uncontacted = perf.uncontactedLeads || perf.slaBreachedCount || perf.followupsOverdue || 0;
-      const won = perf.opportunitiesWon || 0;
+      // Priority 2: Workload & SLA nudges (ONLY for sales reps / telecallers)
+      if (isSalesRep) {
+        const perf = data?.performance || {};
+        const uncontacted = perf.uncontactedLeads || perf.slaBreachedCount || perf.followupsOverdue || 0;
+        const won = perf.opportunitiesWon || 0;
 
-      if (uncontacted > 0) {
-        setMessage(`📞 You still have ${uncontacted} lead${uncontacted > 1 ? 's' : ''} to contact today!`);
-        setIsVisible(true);
-      } else if (won > 0) {
-        setMessage(`🎉 Great progress! You have closed ${won} deal${won > 1 ? 's' : ''} won. Keep it up!`);
-        setIsVisible(true);
+        if (uncontacted > 0) {
+          setMessage(`📞 You still have ${uncontacted} lead${uncontacted > 1 ? 's' : ''} to contact today!`);
+          setIsVisible(true);
+        } else if (won > 0) {
+          setMessage(`🎉 Great progress! You have closed ${won} deal${won > 1 ? 's' : ''} won. Keep it up!`);
+          setIsVisible(true);
+        } else {
+          setMessage('✨ Fantastic job! Your daily action inbox is clean today.');
+          setIsVisible(true);
+        }
       } else {
-        setMessage('✨ Fantastic job! Your daily action inbox is clean today.');
+        // Executive / Admin Management Tier: No personal workload/leave nagging
+        setMessage('✨ Welcome back! Executive management panel active.');
         setIsVisible(true);
       }
     };
+
 
     // Initial nudge trigger after 8 seconds
     const initialTimer = setTimeout(checkAndShowNudge, 8000);

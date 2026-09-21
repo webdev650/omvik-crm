@@ -15,6 +15,9 @@ export async function createUser(data: {
   email: string;
   password?: string;
   role?: string;
+  jobRole?: string;
+  phone?: string;
+  employeeId?: string;
   teamId?: string;
 }) {
   const response = await api.post('/users', data);
@@ -27,6 +30,9 @@ export async function updateUser(
     name?: string;
     email?: string;
     role?: string;
+    jobRole?: string;
+    phone?: string;
+    employeeId?: string;
     teamId?: string;
     isActive?: boolean;
     password?: string;

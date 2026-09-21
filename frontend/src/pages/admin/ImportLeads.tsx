@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { FileSpreadsheet, Upload, CheckCircle2, ArrowRight, Database, Tag } from 'lucide-react';
 import Navbar from '../../components/Navbar';
@@ -16,17 +16,46 @@ import {
   TableHeader,
   TableRow
 } from '../../components/ui/table';
+import { getProjects } from '../../api/projects';
+import { formatProjectName } from '../../utils/formatProjectName';
+
+const getYYMMDDStr = () => {
+  const d = new Date();
+  const yy = String(d.getFullYear()).slice(-2);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yy}${mm}${dd}`;
+};
+
 
 export default function ImportLeadsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [batchName, setBatchName] = useState<string>('');
+  const [isCustomBatchName, setIsCustomBatchName] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'valid' | 'duplicates' | 'invalid'>('valid');
   const [previewResult, setPreviewResult] = useState<any>(null);
   const [importSummary, setImportSummary] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Fetch Projects for Target Project selector
+  const { data: projectsData } = useQuery({
+    queryKey: ['projects', 'flat'],
+    queryFn: () => getProjects({ flat: true })
+  });
+  const projects = projectsData?.projects || [];
+
+  const updateSheetCodeForProject = (projId: string) => {
+    setSelectedProjectId(projId);
+    if (projId && !isCustomBatchName) {
+      const proj = projects.find((p: any) => p._id === projId);
+      const code = (proj?.projectCode || proj?.code || 'PRJ').toUpperCase();
+      setBatchName(`NEW_${code}_${getYYMMDDStr()}`);
+    }
+  };
 
   // Preview Mutation
   const previewMutation = useMutation({
@@ -69,9 +98,9 @@ export default function ImportLeadsPage() {
       const file = e.target.files[0];
       setSelectedFile(file);
       if (!batchName) {
-        // Auto-fill batch name based on filename without extension
-        const baseName = file.name.replace(/\.[^/.]+$/, "");
-        setBatchName(baseName || `Sheet-${Date.now()}`);
+        const selectedProj = projects.find((p: any) => p._id === selectedProjectId);
+        const code = (selectedProj?.projectCode || selectedProj?.code || 'DDV').toUpperCase();
+        setBatchName(`NEW_${code}_${getYYMMDDStr()}`);
       }
       setPreviewResult(null);
       setImportSummary(null);
@@ -89,8 +118,9 @@ export default function ImportLeadsPage() {
       const file = e.dataTransfer.files[0];
       setSelectedFile(file);
       if (!batchName) {
-        const baseName = file.name.replace(/\.[^/.]+$/, "");
-        setBatchName(baseName || `Sheet-${Date.now()}`);
+        const selectedProj = projects.find((p: any) => p._id === selectedProjectId);
+        const code = (selectedProj?.projectCode || selectedProj?.code || 'DDV').toUpperCase();
+        setBatchName(`NEW_${code}_${getYYMMDDStr()}`);
       }
       setPreviewResult(null);
       setImportSummary(null);
@@ -110,7 +140,7 @@ export default function ImportLeadsPage() {
     setErrorMessage(null);
     confirmMutation.mutate({
       validLeads: previewResult.valid,
-      name: batchName.trim() || `Sheet-${Date.now()}`
+      name: batchName.trim() || `NEW_DDV_${getYYMMDDStr()}`
     });
   };
 
@@ -160,7 +190,7 @@ export default function ImportLeadsPage() {
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-emerald-400 flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                <span>Bulk Import Complete — Batch Tagged: "{importSummary.importBatchId}"</span>
+                <span>Bulk Import Complete — Sheet Code Tagged: "{importSummary.importBatchId}"</span>
               </h3>
               <div className="flex items-center gap-3">
                 <Button
@@ -188,21 +218,47 @@ export default function ImportLeadsPage() {
         {/* Step 1: Upload Zone */}
         <div className="rounded-2xl border border-slate-800/80 bg-[#131c31] shadow-sm p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-2 border-b border-slate-800/60">
+            {/* Target Project Selector */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <Database className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Target Real-Estate Project</span>
+              </Label>
+              <select
+                value={selectedProjectId}
+                onChange={(e) => updateSheetCodeForProject(e.target.value)}
+                className="w-full h-10 bg-[#0b0f19] border border-slate-700 text-slate-200 text-xs font-semibold rounded-xl px-3 focus:border-indigo-500"
+              >
+                <option value="">Select Target Project (Auto-suggest Sheet Code)</option>
+                {projects.map((proj: any) => (
+                  <option key={proj._id} value={proj._id}>
+                    {formatProjectName(proj)} ({proj.projectCode || proj.code || 'NO CODE'})
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-slate-400">Selecting a project auto-generates the pre-filled Sheet Code.</p>
+            </div>
+
+            {/* Batch Name / Sheet Code Input */}
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Batch Name / Source Tag</span>
+                <span>Sheet Code (Batch Tag)</span>
               </Label>
               <Input
                 type="text"
-                placeholder="e.g. Sheet 1, Sheet 2, Facebook Leads July"
+                placeholder="e.g. NEW_DDV_260916"
                 value={batchName}
-                onChange={(e) => setBatchName(e.target.value)}
-                className="bg-[#0b0f19] border-slate-700 text-slate-200 text-xs rounded-xl focus:border-indigo-500"
+                onChange={(e) => {
+                  setBatchName(e.target.value);
+                  setIsCustomBatchName(true);
+                }}
+                className="bg-[#0b0f19] border-slate-700 text-slate-200 text-xs rounded-xl focus:border-indigo-500 font-mono font-bold"
               />
-              <p className="text-[11px] text-slate-400">Custom label to identify this bulk import run in dashboard analytics.</p>
+              <p className="text-[11px] text-slate-400">Format: [PROJECT_CODE]_[YYMMDD] (e.g. NEW_DDV_260916). Pre-filled but editable.</p>
             </div>
           </div>
+
 
           <form onSubmit={handlePreviewSubmit} className="space-y-4">
             <div

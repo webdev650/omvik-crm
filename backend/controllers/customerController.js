@@ -78,12 +78,11 @@ const getCustomerById = async (req, res, next) => {
       .populate('project', 'name code location')
       .populate('owner', 'name email role employeeId');
 
-    // Scope check: If caller is not admin/director, verify they own at least one opportunity for this customer
-    const isAdmin = ['super_admin', 'admin', 'director'].includes(req.user.role);
-    const ownsAnyOpportunity = allOpportunities.some(o => o.owner?._id?.toString() === req.user._id.toString());
+    // Permission check: Access to Customer 360 is restricted to admin/leadership roles
+    const isPrivileged = ['super_admin', 'admin', 'director', 'team_lead'].includes(req.user.role);
 
-    if (!isAdmin && !ownsAnyOpportunity) {
-      return res.status(403).json({ message: 'Forbidden: You do not have permission to view this customer profile' });
+    if (!isPrivileged) {
+      return res.status(403).json({ message: 'Forbidden: You do not have permission to view Customer 360 profiles' });
     }
 
     // Fetch related follow-ups, site visits and bookings

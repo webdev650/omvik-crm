@@ -110,12 +110,36 @@ const getSiteVisits = async (req, res, next) => {
 
     const siteVisits = await SiteVisit.find({ opportunity: opportunityId })
       .populate('scheduledBy', 'name email role')
+      .populate('owner', 'name email role')
+      .populate({
+        path: 'opportunity',
+        populate: [
+          { path: 'customer', select: 'name primaryMobile email address city' },
+          { path: 'project', select: 'name location' }
+        ]
+      })
       .sort({ scheduledAt: -1 });
+
+    const siteVisitsWithDetails = siteVisits.map((sv) => {
+      const svObj = sv.toObject ? sv.toObject() : sv;
+      const cust = svObj.opportunity?.customer;
+      const proj = svObj.opportunity?.project;
+
+      const custLocation = [cust?.address, cust?.city].filter(Boolean).join(', ');
+      const location = custLocation || proj?.location || 'N/A';
+      const customerName = cust?.name || svObj.opportunity?.rawName || 'Lead Opportunity';
+
+      return {
+        ...svObj,
+        customerName,
+        location
+      };
+    });
 
     res.json({
       success: true,
-      count: siteVisits.length,
-      siteVisits
+      count: siteVisitsWithDetails.length,
+      siteVisits: siteVisitsWithDetails
     });
   } catch (error) {
     next(error);
@@ -135,6 +159,11 @@ const updateSiteVisit = async (req, res, next) => {
     }
 
     const targetStatus = status || siteVisit.status;
+
+    // Set completedAt when status becomes 'completed'
+    if (targetStatus === 'completed' && !siteVisit.completedAt) {
+      siteVisit.completedAt = new Date();
+    }
 
     // MANDATORY COMPLETION FEEDBACK ENFORCEMENT (Section AE Compliance)
     if (targetStatus === 'completed') {
@@ -212,16 +241,32 @@ const getMySiteVisits = async (req, res, next) => {
       .populate({
         path: 'opportunity',
         populate: [
-          { path: 'customer', select: 'name primaryMobile email' },
+          { path: 'customer', select: 'name primaryMobile email address city' },
           { path: 'project', select: 'name location' }
         ]
       })
       .sort({ scheduledAt: 1 }); // Sorted by scheduledAt ascending
 
+    const siteVisitsWithDetails = siteVisits.map((sv) => {
+      const svObj = sv.toObject ? sv.toObject() : sv;
+      const cust = svObj.opportunity?.customer;
+      const proj = svObj.opportunity?.project;
+
+      const custLocation = [cust?.city, cust?.address].filter(Boolean).join(', ');
+      const location = custLocation || proj?.location || 'N/A';
+      const customerName = cust?.name || svObj.opportunity?.rawName || 'Lead Opportunity';
+
+      return {
+        ...svObj,
+        customerName,
+        location
+      };
+    });
+
     res.json({
       success: true,
-      count: siteVisits.length,
-      siteVisits
+      count: siteVisitsWithDetails.length,
+      siteVisits: siteVisitsWithDetails
     });
   } catch (error) {
     next(error);

@@ -32,22 +32,19 @@ const globalSearch = async (req, res, next) => {
     const scopedOppsAll = await Opportunity.find(scopeFilter).select('customer').lean();
     const allowedCustomerIds = [...new Set(scopedOppsAll.map(o => o.customer?.toString()).filter(Boolean))];
 
-    const customerMatchQuery = {
-      $or: [
-        { name: regex },
-        { primaryMobile: regex },
-        { alternateMobile: regex },
-        { email: regex }
-      ]
-    };
-
-    // If caller is non-admin, filter customers strictly by allowed IDs
-    const isAdmin = ['super_admin', 'admin', 'director'].includes(req.user.role);
-    if (!isAdmin) {
-      customerMatchQuery._id = { $in: allowedCustomerIds };
+    // 2. Customers: Only search and return Customer 360 results for privileged admin/leadership roles
+    const isPrivileged = ['super_admin', 'admin', 'director', 'team_lead'].includes(req.user.role);
+    let customers = [];
+    if (isPrivileged) {
+      customers = await Customer.find({
+        $or: [
+          { name: regex },
+          { primaryMobile: regex },
+          { alternateMobile: regex },
+          { email: regex }
+        ]
+      }).limit(10).lean();
     }
-
-    const customers = await Customer.find(customerMatchQuery).limit(10).lean();
 
     // 3. Format into unified results array
     const results = [];

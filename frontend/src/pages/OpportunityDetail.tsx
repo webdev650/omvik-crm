@@ -287,14 +287,21 @@ export default function OpportunityDetail() {
                   {/* Left: Customer & Project Info */}
                   <div className="space-y-4">
                     <div>
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                        Customer
-                      </p>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                          Customer
+                        </p>
+                        {opp.leadCode && (
+                          <span className="px-2.5 py-0.5 rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-mono text-xs font-black tracking-wide">
+                            🔖 {opp.leadCode}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex flex-wrap items-center gap-3">
                         <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
                           {opp.customer?.name}
                         </h1>
-                        {opp.customer?._id && (
+                        {opp.customer?._id && isPrivilegedRole && (
                           <Button
                             onClick={() => navigate(`/customers/${opp.customer._id}`)}
                             variant="outline"
@@ -308,6 +315,7 @@ export default function OpportunityDetail() {
                         {opp.customer?.primaryMobile}
                       </p>
                     </div>
+
 
                     <div className="grid grid-cols-2 gap-6">
                       <div>

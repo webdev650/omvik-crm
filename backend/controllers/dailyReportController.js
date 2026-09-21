@@ -218,7 +218,7 @@ const getTeamOverview = async (req, res, next) => {
   try {
     const targetDate = req.query.date ? req.query.date.toString().trim() : new Date().toISOString().split('T')[0];
 
-    // Fetch all active telecallers / sales staff
+    // Fetch all active employees
     const activeEmployees = await User.find({ isActive: true })
       .select('name email role employeeId')
       .sort({ name: 1 });
@@ -227,30 +227,45 @@ const getTeamOverview = async (req, res, next) => {
       activeEmployees.map(async (emp) => {
         const report = await DailyReport.findOne({ user: emp._id, date: targetDate });
         const currentLeadsAssigned = await Opportunity.countDocuments({ owner: emp._id, isActive: true });
+        
+        // EOD daily activity report submission is strictly required for telecallers/sales reps
+        const isRequiredSubmitter = ['telecaller', 'team_lead'].includes(emp.role);
 
         return {
           user: emp,
           submitted: !!report,
+          isRequiredSubmitter,
           report: report || null,
           currentLeadsAssigned
         };
       })
     );
 
-    // Sort: NOT-YET-SUBMITTED employees appear FIRST, then alphabetically by name
+    // Required submitters summary counts
+    const requiredSubmitters = overviewList.filter((item) => item.isRequiredSubmitter);
+    const submittedCount = overviewList.filter((item) => item.submitted).length;
+    const pendingCount = requiredSubmitters.filter((item) => !item.submitted).length;
+
+    // Sort: NOT-YET-SUBMITTED telecallers appear FIRST, then submitted/exempt, then alphabetically by name
     overviewList.sort((a, b) => {
-      if (a.submitted === b.submitted) {
-        return a.user.name.localeCompare(b.user.name);
+      const aPending = a.isRequiredSubmitter && !a.submitted;
+      const bPending = b.isRequiredSubmitter && !b.submitted;
+      if (aPending !== bPending) {
+        return aPending ? -1 : 1;
       }
-      return a.submitted ? 1 : -1;
+      if (a.submitted !== b.submitted) {
+        return a.submitted ? 1 : -1;
+      }
+      return a.user.name.localeCompare(b.user.name);
     });
 
     res.json({
       success: true,
       date: targetDate,
       count: overviewList.length,
-      submittedCount: overviewList.filter((item) => item.submitted).length,
-      pendingCount: overviewList.filter((item) => !item.submitted).length,
+      requiredCount: requiredSubmitters.length,
+      submittedCount,
+      pendingCount,
       overview: overviewList
     });
   } catch (error) {

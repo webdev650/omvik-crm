@@ -119,29 +119,29 @@ export default function DailyReportPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {/* Field 1: Date */}
+                  {/* Field 1: Date(Day-Month-Year) */}
                   <div className="p-4 rounded-xl bg-[#0b0f19] border border-slate-800/80 space-y-1">
                     <Label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                       <Calendar className="w-3 h-3 text-indigo-400" />
-                      <span>Date</span>
+                      <span>1. Date (Day-Month-Year)</span>
                     </Label>
                     <p className="font-mono text-base font-bold text-white">{formattedTodayDate}</p>
                   </div>
 
-                  {/* Field 2: Telesales Executive Name */}
+                  {/* Field 2: Name of Telesales Executive */}
                   <div className="p-4 rounded-xl bg-[#0b0f19] border border-slate-800/80 space-y-1">
                     <Label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                       <UserIcon className="w-3 h-3 text-indigo-400" />
-                      <span>Telesales Executive Name</span>
+                      <span>2. Name of Telesales Executive</span>
                     </Label>
                     <p className="text-base font-bold text-white truncate">{user?.name || 'Telesales Executive'}</p>
                   </div>
 
-                  {/* Field 3: Leads Assigned (Auto-Computed) */}
+                  {/* Field 3: Number of Leads Assigned */}
                   <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/30 space-y-1">
                     <Label className="block text-[10px] font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
                       <Layers className="w-3 h-3 text-indigo-400" />
-                      <span>Leads Assigned (Current Total)</span>
+                      <span>3. Number of Leads Assigned</span>
                     </Label>
                     <p className="font-mono text-xl font-black text-indigo-400">{leadsAssignedCount}</p>
                   </div>
@@ -152,16 +152,16 @@ export default function DailyReportPage() {
               <div className="space-y-4 pt-2 border-t border-slate-800/60">
                 <div className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5" />
-                  <span>2. Self-Reported Accomplishments</span>
+                  <span>Self-Reported Accomplishments Checklist</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   
-                  {/* Field 4: WhatsApp Messages Sent */}
+                  {/* Field 4: Number of Whatsapp Msgs */}
                   <div className="space-y-2 p-4 rounded-xl bg-[#0b0f19] border border-slate-800">
                     <Label htmlFor="whatsappMessages" className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                       <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>WhatsApp Messages Sent</span>
+                      <span>4. Number of Whatsapp Msgs</span>
                     </Label>
                     <Input
                       id="whatsappMessages"
@@ -178,7 +178,7 @@ export default function DailyReportPage() {
                   <div className="space-y-2 p-4 rounded-xl bg-[#0b0f19] border border-slate-800">
                     <Label htmlFor="calls" className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                       <Phone className="w-3.5 h-3.5 text-blue-400" />
-                      <span>Number of Calls</span>
+                      <span>5. Number of Calls</span>
                     </Label>
                     <Input
                       id="calls"
@@ -191,11 +191,11 @@ export default function DailyReportPage() {
                     />
                   </div>
 
-                  {/* Field 6: Number of Connected Calls */}
+                  {/* Field 6: Number of Connected calls */}
                   <div className="space-y-2 p-4 rounded-xl bg-[#0b0f19] border border-slate-800">
                     <Label htmlFor="connectedCalls" className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                       <PhoneCall className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Number of Connected Calls</span>
+                      <span>6. Number of Connected calls</span>
                     </Label>
                     <Input
                       id="connectedCalls"
@@ -212,7 +212,7 @@ export default function DailyReportPage() {
                   <div className="space-y-2 p-4 rounded-xl bg-[#0b0f19] border border-slate-800">
                     <Label htmlFor="siteVisits" className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5 text-purple-400" />
-                      <span>Number of Visits</span>
+                      <span>7. Number of Visits</span>
                     </Label>
                     <Input
                       id="siteVisits"
@@ -225,11 +225,11 @@ export default function DailyReportPage() {
                     />
                   </div>
 
-                  {/* Field 8: Number of Bookings */}
+                  {/* Field 8: Number of Booking */}
                   <div className="space-y-2 p-4 rounded-xl bg-[#0b0f19] border border-slate-800 sm:col-span-2 lg:col-span-1">
                     <Label htmlFor="bookingsToday" className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                       <BookmarkCheck className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Number of Bookings</span>
+                      <span>8. Number of Booking</span>
                     </Label>
                     <Input
                       id="bookingsToday"
@@ -248,7 +248,7 @@ export default function DailyReportPage() {
               {/* SECTION 3: NOTES & REMARKS */}
               <div className="space-y-2 pt-2 border-t border-slate-800/60">
                 <Label htmlFor="notes" className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  💬 Daily Summary & Notes / Remarks (Optional)
+                  💬 Daily Notes and Remarks (OPTIONAL)
                 </Label>
                 <textarea
                   id="notes"

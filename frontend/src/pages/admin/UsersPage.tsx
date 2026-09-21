@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,12 +36,16 @@ const createUserSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Temporary password must be at least 6 characters'),
   role: z.string().min(1, 'Please select a role'),
+  jobRole: z.string().optional(),
+  phone: z.string().optional(),
+  employeeId: z.string().optional(),
   teamId: z.string().optional()
 });
 
 type CreateUserFormValues = z.infer<typeof createUserSchema>;
 
 export default function UsersPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
   const isSuperAdmin = currentUser?.role === 'super_admin';
@@ -87,6 +92,9 @@ export default function UsersPage() {
       email: '',
       password: '',
       role: 'telecaller',
+      jobRole: '',
+      phone: '',
+      employeeId: '',
       teamId: ''
     }
   });
@@ -103,6 +111,7 @@ export default function UsersPage() {
     },
     onError: (error: any) => {
       const msg = error.response?.data?.message || 'Failed to create user.';
+      setFormError(null);
       setFormError(msg);
     }
   });
@@ -184,12 +193,22 @@ export default function UsersPage() {
             </p>
           </div>
 
-          <Button
-            onClick={() => setIsAddOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs h-11 px-5 rounded-xl shadow-md shadow-indigo-600/20 min-h-[44px]"
-          >
-            <span>+ Add User</span>
-          </Button>
+          <div className="flex items-center gap-3 shrink-0 flex-wrap">
+            <Button
+              onClick={() => navigate('/admin/projects?tab=teams')}
+              variant="outline"
+              className="border-slate-700 text-slate-200 hover:bg-slate-800 font-bold text-xs h-11 px-4 rounded-xl min-h-[44px] flex items-center gap-2"
+            >
+              <span>🛡️ Projects & Teams</span>
+            </Button>
+
+            <Button
+              onClick={() => setIsAddOpen(true)}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs h-11 px-5 rounded-xl shadow-md shadow-indigo-600/20 min-h-[44px]"
+            >
+              <span>+ Add User</span>
+            </Button>
+          </div>
         </div>
 
         {/* Users Container */}
@@ -231,12 +250,18 @@ export default function UsersPage() {
                         )}
                       </TableCell>
                       <TableCell className="font-mono text-xs text-slate-300 whitespace-nowrap">
-                        {u.email}
+                        <div>{u.email}</div>
+                        {u.phone && <div className="text-[11px] text-slate-400 font-normal">📱 {u.phone}</div>}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
-                        <Badge variant={getRoleBadgeVariant(u.role)} className="text-[10px] uppercase font-bold">
-                          {u.role}
-                        </Badge>
+                        <div className="space-y-0.5">
+                          <Badge variant={getRoleBadgeVariant(u.role)} className="text-[10px] uppercase font-bold">
+                            {u.role}
+                          </Badge>
+                          {u.jobRole && (
+                            <p className="text-[10px] text-indigo-300 font-semibold">{u.jobRole}</p>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-xs text-slate-300 whitespace-nowrap">
                         {u.teamId?.name || <span className="text-slate-500 italic">Unassigned</span>}
@@ -298,6 +323,7 @@ export default function UsersPage() {
                         {u._id === currentUser?._id && <span className="text-[10px] text-indigo-400">(You)</span>}
                       </h4>
                       <p className="text-xs font-mono text-indigo-400">{u.employeeId || 'SYS'}</p>
+                      {u.jobRole && <p className="text-xs text-indigo-300 font-semibold">{u.jobRole}</p>}
                     </div>
                     <Badge variant={getRoleBadgeVariant(u.role)} className="text-[10px] uppercase font-bold">
                       {u.role}
@@ -306,6 +332,7 @@ export default function UsersPage() {
 
                   <div className="text-xs text-slate-300 space-y-1 font-mono">
                     <p className="truncate">📧 {u.email}</p>
+                    {u.phone && <p className="text-slate-400">📱 {u.phone}</p>}
                     <p className="text-slate-400">🛡️ Pod: {u.teamId?.name || 'Unassigned'}</p>
                   </div>
 
@@ -404,7 +431,31 @@ export default function UsersPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="role" className="text-xs text-slate-300">Role</Label>
+                <Label htmlFor="employeeId" className="text-xs text-slate-300">
+                  Employee ID <span className="text-slate-500 font-normal text-[10px]">(Optional - Custom ID)</span>
+                </Label>
+                <Input
+                  id="employeeId"
+                  placeholder="e.g. OMVR-E26-SBD001"
+                  {...register('employeeId')}
+                  className="bg-[#0b0f19] border-slate-800 text-xs h-11 rounded-xl font-mono text-indigo-300"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="phone" className="text-xs text-slate-300">Phone Number (Optional)</Label>
+                <Input
+                  id="phone"
+                  placeholder="e.g. +91 9876543210"
+                  {...register('phone')}
+                  className="bg-[#0b0f19] border-slate-800 text-xs h-11 rounded-xl font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="role" className="text-xs text-slate-300">System Access Role</Label>
                 <select
                   id="role"
                   {...register('role')}
@@ -425,20 +476,30 @@ export default function UsersPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="teamId" className="text-xs text-slate-300">Assigned Team (Optional)</Label>
-                <select
-                  id="teamId"
-                  {...register('teamId')}
-                  className="flex h-11 w-full rounded-xl border border-slate-800 bg-[#0b0f19] px-3 text-xs text-slate-100 focus:border-indigo-500 focus:outline-none"
-                >
-                  <option value="">No Team (Unassigned)</option>
-                  {teams.map((t: any) => (
-                    <option key={t._id} value={t._id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
+                <Label htmlFor="jobRole" className="text-xs text-slate-300">Job Role / Title</Label>
+                <Input
+                  id="jobRole"
+                  placeholder="e.g. Presales Executive / Relationship Manager"
+                  {...register('jobRole')}
+                  className="bg-[#0b0f19] border-slate-800 text-xs h-11 rounded-xl"
+                />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="teamId" className="text-xs text-slate-300">Assigned Team (Optional)</Label>
+              <select
+                id="teamId"
+                {...register('teamId')}
+                className="flex h-11 w-full rounded-xl border border-slate-800 bg-[#0b0f19] px-3 text-xs text-slate-100 focus:border-indigo-500 focus:outline-none"
+              >
+                <option value="">No Team (Unassigned)</option>
+                {teams.map((t: any) => (
+                  <option key={t._id} value={t._id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <DialogFooter className="pt-4 border-t border-slate-800/80">

@@ -84,12 +84,31 @@ const opportunitySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Opportunity',
       default: null
+    },
+    leadCode: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true
     }
   },
   {
     timestamps: true
   }
 );
+
+// Pre-validate hook: Auto-generate leadCode if missing
+opportunitySchema.pre('validate', async function (next) {
+  if (!this.leadCode && this.project) {
+    try {
+      const { generateLeadCode } = require('../utils/generateLeadCode');
+      this.leadCode = await generateLeadCode(this.project, this.createdAt || new Date());
+    } catch (err) {
+      console.error('Error in Opportunity leadCode auto-generation pre-validate hook:', err);
+    }
+  }
+  if (typeof next === 'function') next();
+});
 
 // Pre-save hook: Normalize source string (trim & uppercase)
 opportunitySchema.pre('save', function (next) {
@@ -110,3 +129,4 @@ opportunitySchema.index(
 );
 
 module.exports = mongoose.model('Opportunity', opportunitySchema);
+

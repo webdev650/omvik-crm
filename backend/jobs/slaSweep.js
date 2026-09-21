@@ -78,7 +78,11 @@ async function runSlaSweep(tier1Hours = 48, tier2Hours = 72, tier3Hours = 96) {
       await opp.save();
       processedCount++;
 
-      if (opp.owner?._id) {
+      const ownerRole = opp.owner?.role || '';
+      const isSalesRep = ['telecaller', 'team_lead'].includes(ownerRole);
+
+      // Only send personal nagging notification & email if owner is a sales rep (telecaller / team_lead)
+      if (opp.owner?._id && isSalesRep) {
         // Create In-App Notification
         await Notification.create({
           user: opp.owner._id,
@@ -87,7 +91,7 @@ async function runSlaSweep(tier1Hours = 48, tier2Hours = 72, tier3Hours = 96) {
           type: 'sla_breach'
         });
 
-        // Collect for batched email email dispatch
+        // Collect for batched email dispatch
         const empIdStr = opp.owner._id.toString();
         if (!employeeBreachesMap.has(empIdStr)) {
           employeeBreachesMap.set(empIdStr, {
@@ -98,6 +102,7 @@ async function runSlaSweep(tier1Hours = 48, tier2Hours = 72, tier3Hours = 96) {
         employeeBreachesMap.get(empIdStr).leads.push(opp);
       }
     }
+
 
     // ── TIER 2: 72h + Leave (Manager SLA Alert) ────────────────────────────
     if (opp.escalationLevel === 'employee' && oppAgeHours >= adjustedTier2) {

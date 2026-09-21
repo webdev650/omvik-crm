@@ -83,7 +83,7 @@ export default function App() {
           <Route
             path="/customers"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director', 'team_lead']}>
                 <CustomersPage />
               </ProtectedRoute>
             }
@@ -91,7 +91,7 @@ export default function App() {
           <Route
             path="/customers/:id"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director', 'team_lead']}>
                 <CustomerDetail />
               </ProtectedRoute>
             }

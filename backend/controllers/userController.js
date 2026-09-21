@@ -77,7 +77,7 @@ const getUserById = async (req, res, next) => {
 // @access  Private (super_admin, admin)
 const createUser = async (req, res, next) => {
   try {
-    const { name, email, password, role, teamId, projectIds } = req.body;
+    const { name, email, password, role, jobRole, phone, employeeId, teamId, projectIds } = req.body;
 
     if (!name || !email) {
       return res.status(400).json({ message: 'Name and email are required' });
@@ -95,22 +95,37 @@ const createUser = async (req, res, next) => {
       return res.status(400).json({ message: 'User already exists with this email address' });
     }
 
+    if (employeeId && employeeId.trim()) {
+      const existingEmpId = await User.findOne({ employeeId: employeeId.trim() });
+      if (existingEmpId) {
+        return res.status(400).json({ message: `Employee ID '${employeeId.trim()}' is already assigned to another user.` });
+      }
+    }
+
     // Generate random server-side temporary password if not explicitly supplied
     const crypto = require('crypto');
     const sendEmail = require('../utils/sendEmail');
     const tempPassword = password && password.trim() ? password.trim() : `Omvik#${crypto.randomBytes(4).toString('hex')}`;
     const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
-    const user = await User.create({
+    const userData = {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password: hashedPassword,
       role: role || 'telecaller',
+      jobRole: jobRole ? jobRole.trim() : '',
+      phone: phone ? phone.trim() : '',
       teamId: teamId || null,
       projectIds: projectIds || [],
       isActive: true,
       mustChangePassword: true
-    });
+    };
+
+    if (employeeId && employeeId.trim()) {
+      userData.employeeId = employeeId.trim();
+    }
+
+    const user = await User.create(userData);
 
     // If user is assigned to a team, update team's memberIds list
     if (teamId) {
@@ -169,7 +184,7 @@ const createUser = async (req, res, next) => {
 const updateUser = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, email, role, teamId, isActive, password, projectIds } = req.body;
+    const { name, email, role, jobRole, phone, employeeId, teamId, isActive, password, projectIds } = req.body;
 
     const user = await User.findById(id);
     if (!user) {
@@ -187,6 +202,9 @@ const updateUser = async (req, res, next) => {
     if (name !== undefined) updates.name = name.trim();
     if (email !== undefined) updates.email = email.toLowerCase().trim();
     if (role !== undefined) updates.role = role;
+    if (jobRole !== undefined) updates.jobRole = jobRole.trim();
+    if (phone !== undefined) updates.phone = phone.trim();
+    if (employeeId !== undefined && employeeId.trim()) updates.employeeId = employeeId.trim();
     if (isActive !== undefined) updates.isActive = isActive;
     if (projectIds !== undefined) updates.projectIds = projectIds;
 

@@ -158,13 +158,14 @@ export default function TeamEODOverviewPage() {
                     const emp = item.user;
                     const report = item.report;
                     const isSubmitted = item.submitted;
+                    const isRequired = item.isRequiredSubmitter ?? ['telecaller', 'team_lead'].includes(emp.role);
                     const isDiscrepant = report?.discrepancyFlag;
 
                     return (
                       <TableRow
                         key={emp._id}
                         className={`border-b border-slate-800/40 transition-colors ${
-                          !isSubmitted
+                          !isSubmitted && isRequired
                             ? 'bg-amber-500/5 hover:bg-amber-500/10'
                             : isDiscrepant
                             ? 'bg-red-500/5 hover:bg-red-500/10'
@@ -189,9 +190,15 @@ export default function TeamEODOverviewPage() {
                         {/* Status Badge */}
                         <TableCell className="text-center">
                           {!isSubmitted ? (
-                            <Badge className="bg-amber-500/15 text-amber-300 border-amber-500/30 text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-1">
-                              Pending
-                            </Badge>
+                            isRequired ? (
+                              <Badge className="bg-amber-500/15 text-amber-300 border-amber-500/30 text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-1">
+                                Pending
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-slate-800 text-slate-400 border-slate-700 text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5">
+                                N/A (Exempt)
+                              </Badge>
+                            )
                           ) : isDiscrepant ? (
                             <Badge variant="destructive" className="text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-1 gap-1">
                               <span>Flagged ⚠️</span>
@@ -281,8 +288,10 @@ export default function TeamEODOverviewPage() {
                                 {report.notes ? `"${report.notes}"` : 'No remarks'}
                               </p>
                             </div>
-                          ) : (
+                          ) : isRequired ? (
                             <span className="text-amber-400/80 text-[11px] italic font-semibold">Report not submitted yet</span>
+                          ) : (
+                            <span className="text-slate-500 text-[11px] italic">Exempt from EOD submission</span>
                           )}
                         </TableCell>
                       </TableRow>

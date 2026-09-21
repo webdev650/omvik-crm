@@ -235,6 +235,7 @@ export default function LeadsList() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-b border-slate-800/80 bg-[#0b0f19]">
+                      <TableHead className="text-slate-400 text-xs font-bold uppercase">Lead Code</TableHead>
                       <TableHead className="text-slate-400 text-xs font-bold uppercase">Customer</TableHead>
                       <TableHead className="text-slate-400 text-xs font-bold uppercase">Mobile</TableHead>
                       <TableHead className="text-slate-400 text-xs font-bold uppercase">Project</TableHead>
@@ -253,9 +254,14 @@ export default function LeadsList() {
                         onClick={() => navigate(`/leads/${opp._id}`)}
                         className="cursor-pointer hover:bg-slate-800/40 border-b border-slate-800/40 transition-colors"
                       >
+                        <TableCell className="font-mono text-indigo-400 text-xs font-bold whitespace-nowrap">
+                          {opp.leadCode || '—'}
+                        </TableCell>
+
                         <TableCell className="font-semibold text-slate-100">
                           {opp.customer?.name || 'N/A'}
                         </TableCell>
+
 
                         <TableCell className="font-mono text-slate-400 text-xs">
                           {opp.customer?.primaryMobile || 'N/A'}

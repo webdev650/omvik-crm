@@ -54,16 +54,18 @@ async function sendDailyDigest() {
       DailyReport.findOne({ user: emp._id, date: todayStr })
     ]);
 
-    let reportStatusHtml = '<span style="color: #ef4444; font-weight: bold;">Pending</span>';
+    let reportStatusHtml = '<span style="color: #94a3b8;">N/A</span>';
     if (dailyReport) {
       if (dailyReport.discrepancyFlag) {
         reportStatusHtml = '<span style="color: #f59e0b; font-weight: bold;">⚠️ Flagged</span>';
       } else {
         reportStatusHtml = '<span style="color: #10b981; font-weight: bold;">✓ Submitted</span>';
       }
-    } else {
+    } else if (emp.role === 'telecaller') {
+      reportStatusHtml = '<span style="color: #ef4444; font-weight: bold;">Pending</span>';
       unsubmittedEmployees.push(emp);
     }
+
 
     rows.push(`
       <tr style="border-bottom: 1px solid #e2e8f0;">

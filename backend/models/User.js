@@ -30,6 +30,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: ''
     },
+    jobRole: {
+      type: String,
+      trim: true,
+      default: ''
+    },
     role: {
       type: String,
       enum: [

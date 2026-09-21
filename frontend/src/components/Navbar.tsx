@@ -41,9 +41,10 @@ export default function Navbar() {
   const { data: eodData } = useQuery({
     queryKey: ['todayDailyReport'],
     queryFn: getTodayReport,
-    enabled: !!user,
+    enabled: !!user && user.role === 'telecaller',
     staleTime: 10000
   });
+
 
   const hasSubmittedEOD = !!eodData?.report;
 
@@ -216,7 +217,9 @@ export default function Navbar() {
         <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5 shrink-0">
           <NavLink to="/dashboard" className={topNavLinkClass}>Dashboard</NavLink>
           <NavLink to="/leads" className={({ isActive }) => topNavLinkClass({ isActive: isActive && !location.pathname.startsWith('/leads/') })}>Leads</NavLink>
-          <NavLink to="/customers" className={({ isActive }) => topNavLinkClass({ isActive: isActive && !location.pathname.startsWith('/customers/') })}>Customers</NavLink>
+          {isPrivilegedRole && (
+            <NavLink to="/customers" className={({ isActive }) => topNavLinkClass({ isActive: isActive && !location.pathname.startsWith('/customers/') })}>Customers</NavLink>
+          )}
           <NavLink to="/pipeline" className={topNavLinkClass}>Pipeline</NavLink>
           <NavLink to="/followups" className={topNavLinkClass}>Follow-up</NavLink>
 
@@ -463,28 +466,10 @@ export default function Navbar() {
                             </div>
                             <div>
                               <div className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors">
-                                Real-Estate Projects
+                                Projects & Teams
                               </div>
                               <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
-                                Real estate inventory & pricing
-                              </div>
-                            </div>
-                          </NavLink>
-
-                          <NavLink
-                            to="/admin/teams"
-                            onClick={() => setIsMoreOpen(false)}
-                            className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-800/80 transition-all group"
-                          >
-                            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-amber-600 group-hover:text-white transition-colors">
-                              <ShieldCheck className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors">
-                                Teams & Sales Pods
-                              </div>
-                              <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
-                                Sales structure & pod leads
+                                Real estate inventory & sales pods
                               </div>
                             </div>
                           </NavLink>
@@ -499,10 +484,10 @@ export default function Navbar() {
                             </div>
                             <div>
                               <div className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors">
-                                Data Quality Centre
+                                Invalid / Missing Data
                               </div>
                               <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
-                                Audit missing fields & hygiene
+                                Audit missing owners, phones & lead hygiene
                               </div>
                             </div>
                           </NavLink>
@@ -578,8 +563,8 @@ export default function Navbar() {
         {/* RIGHT: EOD Status Pill, Notifications, Subtle Super Admin Indicator & Compact Profile Menu */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
 
-          {/* Persistent EOD Status Indicator Pill for Logged-In Telecallers & Staff */}
-          {user && (
+          {/* Persistent EOD Status Indicator Pill for Logged-In Telecallers */}
+          {user && user.role === 'telecaller' && (
             <button
               type="button"
               onClick={() => navigate('/daily-report')}
@@ -603,6 +588,7 @@ export default function Navbar() {
               )}
             </button>
           )}
+
 
           {/* Subtle SUPER ADMIN / ADMIN Indicator */}
           {isSuperAdmin && (
@@ -728,7 +714,9 @@ export default function Navbar() {
               <div className="grid grid-cols-2 gap-1.5">
                 <NavLink to="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className={topNavLinkClass}>Dashboard</NavLink>
                 <NavLink to="/leads" onClick={() => setIsMobileMenuOpen(false)} className={topNavLinkClass}>Leads</NavLink>
-                <NavLink to="/customers" onClick={() => setIsMobileMenuOpen(false)} className={topNavLinkClass}>Customers</NavLink>
+                {isPrivilegedRole && (
+                  <NavLink to="/customers" onClick={() => setIsMobileMenuOpen(false)} className={topNavLinkClass}>Customers</NavLink>
+                )}
                 <NavLink to="/pipeline" onClick={() => setIsMobileMenuOpen(false)} className={topNavLinkClass}>Pipeline</NavLink>
                 <NavLink to="/followups" onClick={() => setIsMobileMenuOpen(false)} className={topNavLinkClass}>Follow-up</NavLink>
               </div>
@@ -803,15 +791,11 @@ export default function Navbar() {
                 </NavLink>
                 <NavLink to="/admin/projects" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded-xl">
                   <Building2 className="w-4 h-4 text-amber-400" />
-                  <span>Real-Estate Projects</span>
-                </NavLink>
-                <NavLink to="/admin/teams" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded-xl">
-                  <ShieldCheck className="w-4 h-4 text-amber-400" />
-                  <span>Teams & Sales Pods</span>
+                  <span>Projects & Teams</span>
                 </NavLink>
                 <NavLink to="/admin/data-quality" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded-xl">
                   <Layers className="w-4 h-4 text-amber-400" />
-                  <span>Data Quality Centre</span>
+                  <span>Invalid / Missing Data</span>
                 </NavLink>
                 <NavLink to="/admin/flagged-reports" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded-xl">
                   <FileWarning className="w-4 h-4 text-amber-400" />

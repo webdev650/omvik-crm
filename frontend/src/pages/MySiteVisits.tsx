@@ -17,6 +17,30 @@ import {
   DialogFooter
 } from '../components/ui/dialog';
 
+// ── Date Formatting Helpers ─────────────────────────────────────────────────
+
+function formatDateDDMMYYYY(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) return '—';
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '—';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
+function formatDateTimeDDMMYYYYHHMM(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) return '—';
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '—';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${day}-${month}-${year}, ${hours}:${minutes}`;
+}
+
 // ── Site Visit Row Component ────────────────────────────────────────────────
 
 function SiteVisitRow({ visit, onComplete }: { visit: any; onComplete: (visit: any) => void }) {
@@ -25,6 +49,15 @@ function SiteVisitRow({ visit, onComplete }: { visit: any; onComplete: (visit: a
     : visit.opportunity;
 
   const isCompleted = visit.status === 'completed';
+
+  const name = visit.customerName || visit.opportunity?.customer?.name || visit.opportunity?.rawName || 'Lead Opportunity';
+
+  const custLoc = [visit.opportunity?.customer?.address, visit.opportunity?.customer?.city].filter(Boolean).join(', ');
+  const location = visit.location || custLoc || visit.opportunity?.project?.location || 'N/A';
+
+  const dateValue = isCompleted
+    ? formatDateTimeDDMMYYYYHHMM(visit.completedAt || visit.updatedAt || visit.scheduledAt)
+    : formatDateDDMMYYYY(visit.scheduledAt);
 
   return (
     <div
@@ -52,7 +85,7 @@ function SiteVisitRow({ visit, onComplete }: { visit: any; onComplete: (visit: a
               to={`/leads/${oppId}`}
               className="text-sm font-bold text-slate-100 hover:text-indigo-300 transition-colors truncate"
             >
-              {visit.opportunity?.customer?.name || visit.opportunity?.rawName || 'Lead Opportunity'}
+              {name}
             </Link>
 
             <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded border ${
@@ -64,15 +97,18 @@ function SiteVisitRow({ visit, onComplete }: { visit: any; onComplete: (visit: a
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-xs text-slate-400 font-mono">
-            <span>🏙️ {visit.opportunity?.project?.name || 'Project'}</span>
-            <span>📱 {visit.opportunity?.customer?.primaryMobile || 'N/A'}</span>
+          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 font-mono">
+            <span>📍 <strong>Location:</strong> {location}</span>
+            {visit.opportunity?.project?.name && (
+              <span>🏢 {visit.opportunity.project.name}</span>
+            )}
+            {visit.opportunity?.customer?.primaryMobile && (
+              <span>📱 {visit.opportunity.customer.primaryMobile}</span>
+            )}
           </div>
 
           <p className="text-xs font-semibold text-indigo-400 font-mono">
-            ⏰ {new Date(visit.scheduledAt).toLocaleString('en-IN', {
-              day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-            })}
+            ⏰ <strong>{isCompleted ? 'Visited On' : 'Probable Date of Visit'}:</strong> {dateValue}
           </p>
 
           {visit.feedback?.notes && (
@@ -117,8 +153,8 @@ function SiteVisitRow({ visit, onComplete }: { visit: any; onComplete: (visit: a
 
 function EmptyState({ status }: { status: string }) {
   const map: Record<string, { icon: string; text: string }> = {
-    planned: { icon: '🏡', text: 'No planned site visits scheduled.' },
-    completed: { icon: '🏆', text: 'No completed site visits yet.' }
+    planned: { icon: '🏡', text: 'No scheduled site visits.' },
+    completed: { icon: '🏆', text: 'No visited site visits yet.' }
   };
   const { icon, text } = map[status] ?? { icon: '📂', text: 'Nothing here.' };
   return (
@@ -215,17 +251,17 @@ export default function MySiteVisits() {
               My Site Visits
             </h1>
             <p className="text-xs sm:text-sm text-slate-400">
-              Planned tours and completed feedback for all your assigned leads.
+              Scheduled tours and visited feedback for all your assigned leads.
             </p>
           </div>
 
           {!isLoading && !isError && (
             <div className="flex items-center gap-2 flex-wrap shrink-0">
               <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/10 border border-indigo-500/30 text-indigo-400">
-                📅 {planned.length} Planned / Confirmed
+                📅 {planned.length} Visit Scheduled
               </span>
               <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                ✓ {completed.length} Completed
+                ✓ {completed.length} Visited
               </span>
             </div>
           )}
@@ -254,7 +290,7 @@ export default function MySiteVisits() {
             <Tabs defaultValue={planned.length > 0 ? 'planned' : 'completed'}>
               <TabsList className="bg-[#0b0f19] p-1 border border-slate-800 rounded-xl">
                 <TabsTrigger value="planned" className="text-xs font-bold">
-                  Planned
+                  Visit Scheduled
                   {planned.length > 0 && (
                     <span className="ml-2 px-1.5 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold">
                       {planned.length}
@@ -262,7 +298,7 @@ export default function MySiteVisits() {
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="completed" className="text-xs font-bold">
-                  Completed
+                  Visited
                   {completed.length > 0 && (
                     <span className="ml-2 px-1.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold">
                       {completed.length}
@@ -271,7 +307,7 @@ export default function MySiteVisits() {
                 </TabsTrigger>
               </TabsList>
 
-              {/* Planned Tab */}
+              {/* Visit Scheduled Tab */}
               <TabsContent value="planned" className="pt-3 space-y-3">
                 {planned.length === 0 ? (
                   <EmptyState status="planned" />
@@ -290,7 +326,7 @@ export default function MySiteVisits() {
                 )}
               </TabsContent>
 
-              {/* Completed Tab */}
+              {/* Visited Tab */}
               <TabsContent value="completed" className="pt-3 space-y-3">
                 {completed.length === 0 ? (
                   <EmptyState status="completed" />

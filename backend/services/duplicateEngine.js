@@ -3,6 +3,8 @@ const Opportunity = require('../models/Opportunity');
 const Lead = require('../models/Lead');
 const AuditLog = require('../models/AuditLog');
 const normalizePhone = require('../utils/normalizePhone');
+const { generateLeadCode } = require('../utils/generateLeadCode');
+
 
 /**
  * Process incoming lead and ensure race-condition safe duplicate management.
@@ -131,6 +133,7 @@ async function processIncomingLead(leadInput, submittingUser) {
 
   // 5. Attempt direct Opportunity creation (Atomic DB constraint enforcement)
   try {
+    const leadCode = await generateLeadCode(leadInput.project);
     let opportunity = await Opportunity.create({
       customer: customer._id,
       project: leadInput.project,
@@ -140,8 +143,10 @@ async function processIncomingLead(leadInput, submittingUser) {
       importBatchId: leadInput.importBatchId || null,
       intent: cleanIntent,
       stage: 'new',
-      isActive: true
+      isActive: true,
+      leadCode
     });
+
 
     // Run rule-based auto-assignment if no explicit owner was provided
     if (!opportunity.owner) {
@@ -257,6 +262,7 @@ async function overrideDuplicate(customerId, projectId, newOwnerId, reason, over
   }
 
   // 1. Create new opportunity
+  const leadCode = await generateLeadCode(projectId);
   const newOpportunity = await Opportunity.create({
     customer: customerId,
     project: projectId,
@@ -264,8 +270,10 @@ async function overrideDuplicate(customerId, projectId, newOwnerId, reason, over
     stage: 'new',
     isActive: true,
     supersedesOpportunity: existingOpportunity._id,
-    overrideReason: reason
+    overrideReason: reason,
+    leadCode
   });
+
 
   await newOpportunity.populate('owner', 'name email role');
   await newOpportunity.populate('project', 'name code');

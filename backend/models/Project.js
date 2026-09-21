@@ -15,6 +15,13 @@ const projectSchema = new mongoose.Schema(
       uppercase: true,
       trim: true
     },
+    projectCode: {
+      type: String,
+      unique: true,
+      uppercase: true,
+      trim: true,
+      sparse: true
+    },
     location: {
       type: String,
       trim: true
@@ -58,4 +65,15 @@ const projectSchema = new mongoose.Schema(
   }
 );
 
+projectSchema.pre('validate', function (next) {
+  if (!this.projectCode && this.code) {
+    this.projectCode = this.code;
+  }
+  if (!this.code && this.projectCode) {
+    this.code = this.projectCode;
+  }
+  if (typeof next === 'function') next();
+});
+
 module.exports = mongoose.model('Project', projectSchema);
+

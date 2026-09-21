@@ -37,12 +37,14 @@ import {
   Eye,
   FileSpreadsheet,
   ArrowUpRight,
-  PieChart as PieIcon
+  PieChart as PieIcon,
+  Scale
 } from 'lucide-react';
 
 import Navbar from '../components/Navbar';
 import useAuth from '../hooks/useAuth';
 import { getDashboardSummary } from '../api/dashboard';
+import { getDataQualityMetrics } from '../api/admin';
 import api from '../api/axios';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -175,6 +177,13 @@ export default function DirectorDashboard() {
     refetchInterval: 30_000
   });
 
+  // Fetch Invalid / Missing Data Governance Metrics
+  const { data: dqData } = useQuery({
+    queryKey: ['admin', 'dataQuality'],
+    queryFn: getDataQualityMetrics
+  });
+  const dq = dqData?.dataQuality || {};
+
   const stats = data?.stats;
   const projectsList = projectsData?.projects || [];
   const usersList = usersData?.users || [];
@@ -262,6 +271,14 @@ export default function DirectorDashboard() {
             >
               <FileSpreadsheet className="w-4 h-4 text-[#FBB040]" />
               <span>Import Leads</span>
+            </NavLink>
+
+            <NavLink
+              to="/leave?tab=sla-terms"
+              className="h-10 px-4 bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold rounded-xl transition-all border border-slate-700/60 flex items-center gap-2"
+            >
+              <Scale className="w-4 h-4 text-[#FBB040]" />
+              <span>SLA Terms & Rules</span>
             </NavLink>
 
             <NavLink
@@ -474,6 +491,65 @@ export default function DirectorDashboard() {
               </motion.div>
 
             </motion.div>
+
+            {/* ── SECTION: INVALID / MISSING DATA GOVERNANCE ──────────────────────────── */}
+            <div className="bg-[#131c31] border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/60 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-lg">
+                    ⚠️
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-extrabold text-white">Invalid / Missing Data</h3>
+                    <p className="text-xs text-slate-400">
+                      Audit missing lead owners, invalid contact numbers, next-action rule violations, and stale pipeline records.
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => navigate('/admin/data-quality')}
+                  variant="outline"
+                  className="border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 font-bold text-xs h-10 px-4 rounded-xl gap-1.5 shrink-0"
+                >
+                  <span>View Full Audit Details →</span>
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-4 rounded-xl bg-[#0b0f19] border border-slate-800 space-y-1">
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-red-400">
+                    🚫 Unassigned / No Owner
+                  </p>
+                  <p className="text-2xl font-black text-white font-mono">{dq.noOwnerCount || 0}</p>
+                  <p className="text-[11px] text-slate-500">Leads requiring owner assignment</p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#0b0f19] border border-slate-800 space-y-1">
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-amber-400">
+                    📱 Invalid / Missing Mobile
+                  </p>
+                  <p className="text-2xl font-black text-amber-400 font-mono">{dq.invalidMobileCount || 0}</p>
+                  <p className="text-[11px] text-slate-500">Customer records missing phone</p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#0b0f19] border border-slate-800 space-y-1">
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-400">
+                    ⚡ Missing Next Action
+                  </p>
+                  <p className="text-2xl font-black text-indigo-300 font-mono">{dq.noNextActionCount || 0}</p>
+                  <p className="text-[11px] text-slate-500">Active leads with no follow-up</p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#0b0f19] border border-slate-800 space-y-1">
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-cyan-400">
+                    ⏰ Stale Leads (14+ Days)
+                  </p>
+                  <p className="text-2xl font-black text-cyan-300 font-mono">{dq.stale14DaysCount || 0}</p>
+                  <p className="text-[11px] text-slate-500">No activity logged in 2 weeks</p>
+                </div>
+              </div>
+            </div>
 
             {/* ── SECTION 4: BEST EMPLOYEE / BEST PROJECT WIDGET ──────────────────── */}
             <div className="bg-[#131c31] border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-sm">

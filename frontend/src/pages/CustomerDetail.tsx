@@ -521,6 +521,14 @@ export default function CustomerDetail() {
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-3 pt-2 text-xs">
+                        {opp.leadCode && (
+                          <div className="flex items-center justify-between text-slate-400">
+                            <span>Lead Code:</span>
+                            <span className="font-mono text-indigo-300 font-extrabold bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                              🔖 {opp.leadCode}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex items-center justify-between text-slate-400">
                           <span>Assigned Rep:</span>
                           <span className="font-semibold text-slate-200">{opp.owner?.name || 'Unassigned'}</span>
@@ -529,6 +537,7 @@ export default function CustomerDetail() {
                           <span>Lead Source:</span>
                           <span className="font-mono text-indigo-400">{opp.source || 'website'}</span>
                         </div>
+
 
                         {/* CONVERT TO BOOKING BUTTON */}
                         {opp.stage === 'won' && (

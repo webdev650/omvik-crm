@@ -20,6 +20,10 @@ const siteVisitSchema = new mongoose.Schema(
       type: Date,
       required: [true, 'Site visit scheduled date/time is required']
     },
+    completedAt: {
+      type: Date,
+      default: null
+    },
     status: {
       type: String,
       enum: ['planned', 'confirmed', 'completed', 'no_show', 'cancelled'],

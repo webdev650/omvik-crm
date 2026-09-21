@@ -27,14 +27,15 @@ const requestLeave = async (req, res, next) => {
 
     const isAdmin = ['admin', 'super_admin', 'director'].includes(req.user.role);
 
-    // Admin logging on behalf of employee pre-approved
-    if (isAdmin && userId) {
-      targetUserId = userId;
+    // Admin logging leave (for self or another user) is auto-approved immediately
+    if (isAdmin) {
+      if (userId) targetUserId = userId;
       leaveStatus = status && ['approved', 'pending'].includes(status) ? status : 'approved';
       if (leaveStatus === 'approved') {
         approvedBy = req.user._id;
       }
     }
+
 
     const leave = await Leave.create({
       user: targetUserId,
