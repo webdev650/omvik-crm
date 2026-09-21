@@ -304,6 +304,9 @@ async function runAudit() {
 
     const probeUrl = `${PROD_URL}${probePath}`;
 
+    // Throttling delay (150ms) to respect rate limits
+    await new Promise(resolve => setTimeout(resolve, 150));
+
     let status = 0;
     let bodyMsg = '';
     try {
