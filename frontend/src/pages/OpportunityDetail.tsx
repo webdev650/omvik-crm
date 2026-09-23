@@ -659,6 +659,52 @@ export default function OpportunityDetail() {
                   </div>
                 </div>
 
+                {/* LIVE AUTO-UPDATING READ-ONLY CALCULATED FIELDS */}
+                {(() => {
+                  const formCost = Number(bookingForm.totalCost || bookingForm.finalPrice || 0);
+                  const formPaid = Number(bookingForm.totalPaid || 0);
+                  const liveRemaining = Math.max(0, formCost - formPaid);
+                  const livePct = formCost > 0 ? Number(((formPaid / formCost) * 100).toFixed(1)) : 0;
+
+                  const formattedRemaining = new Intl.NumberFormat('en-IN', {
+                    style: 'currency',
+                    currency: 'INR',
+                    maximumFractionDigits: 0
+                  }).format(liveRemaining);
+
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-800/80">
+                      <div className="space-y-1.5">
+                        <Label className="text-amber-400 font-semibold flex items-center justify-between text-[11px]">
+                          <span>Payment Remaining (₹)</span>
+                          <span className="text-[10px] text-slate-500 font-normal uppercase">(Auto-Calculated)</span>
+                        </Label>
+                        <div className="h-9 px-3 rounded-xl bg-slate-950/90 border border-slate-800/80 text-amber-400 font-mono text-xs font-bold flex items-center select-none cursor-not-allowed pointer-events-none">
+                          {formCost > 0 ? formattedRemaining : '—'}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-slate-300 font-semibold flex items-center justify-between text-[11px]">
+                          <span>% Payment Received</span>
+                          <span className="text-[10px] text-slate-500 font-normal uppercase">(Auto-Calculated)</span>
+                        </Label>
+                        <div className="h-9 px-3 rounded-xl bg-slate-950/90 border border-slate-800/80 text-slate-200 font-mono text-xs font-bold flex items-center select-none cursor-not-allowed pointer-events-none">
+                          <span className={`px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold border ${
+                            livePct >= 100
+                              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                              : livePct >= 50
+                              ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                              : 'bg-red-500/15 text-red-400 border-red-500/30'
+                          }`}>
+                            {formCost > 0 ? `${livePct}%` : '0%'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Customer Address */}
                   <div className="space-y-1.5">

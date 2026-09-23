@@ -14,6 +14,7 @@ import ProjectTeamPanel from './ProjectTeamPanel';
 export default function LeadsList() {
   const navigate = useNavigate();
   const { user: currentUser } = useAuthStore();
+  const [activeTab, setActiveTab] = useState<'all' | 'did_not_pick' | 'visit_scheduled' | 'visited' | 'date'>('all');
   const [selectedStage, setSelectedStage] = useState<string>('');
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [fromDate, setFromDate] = useState<string>('');
@@ -21,6 +22,24 @@ export default function LeadsList() {
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const canExport = !!currentUser;
+
+  // Handle Tab Change
+  const handleTabChange = (tabKey: 'all' | 'did_not_pick' | 'visit_scheduled' | 'visited' | 'date') => {
+    setActiveTab(tabKey);
+    if (tabKey === 'all') {
+      setSelectedStage('');
+    } else if (tabKey === 'did_not_pick') {
+      setSelectedStage('contacted');
+    } else if (tabKey === 'visit_scheduled') {
+      setSelectedStage('site_visit');
+    } else if (tabKey === 'visited') {
+      setSelectedStage('negotiation');
+    } else if (tabKey === 'date') {
+      const today = new Date().toISOString().split('T')[0];
+      setFromDate(today);
+      setToDate(today);
+    }
+  };
 
   // Fetch Projects for Filter Dropdown (flat list with hierarchy labels)
   const { data: projectsData } = useQuery({
@@ -103,6 +122,33 @@ export default function LeadsList() {
                 </Button>
               )}
             </div>
+          </div>
+
+          {/* 5 CRM Lead Views Tabs Bar */}
+          <div className="flex items-center gap-1.5 p-1.5 bg-[#0b0f19] border border-slate-800 rounded-xl overflow-x-auto">
+            {[
+              { id: 'all', label: 'All Lead', icon: '📋' },
+              { id: 'did_not_pick', label: 'Did Not Pick', icon: '📞' },
+              { id: 'visit_scheduled', label: 'Visit Scheduled', icon: '📅' },
+              { id: 'visited', label: 'Visited', icon: '🏰' },
+              { id: 'date', label: 'Date', icon: '⏰' }
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id as any)}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                    isActive
+                      ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <span>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Filter Row */}
