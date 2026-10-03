@@ -4,3 +4,9 @@ export async function getDashboardSummary(params: Record<string, any> = {}) {
   const response = await api.get('/dashboard/summary', { params });
   return response.data;
 }
+
+export async function getEmployeeSummary() {
+  const response = await api.get('/dashboard/employee-summary');
+  return response.data;
+}
+

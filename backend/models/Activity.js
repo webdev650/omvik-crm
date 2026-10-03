@@ -20,13 +20,20 @@ const activitySchema = new mongoose.Schema(
     outcome: {
       type: String,
       enum: [
+        // Legacy values (kept for backward compatibility with existing data)
         'connected',
         'no_answer',
         'busy',
-        'switched_off',
         'wrong_number',
         'interested',
-        'not_interested'
+        'not_interested',
+        // Realigned values (current standard)
+        'not_done',
+        'didnt_pick',
+        'not_incoming',
+        'done',
+        'callback_needed',
+        'switched_off'
       ],
       required: [true, 'Activity outcome is required']
     },

@@ -13,12 +13,21 @@ import {
   Bot,
   Sparkles,
   X,
-  ChevronRight
+  ChevronRight,
+  PhoneMissed,
+  Phone,
+  ClipboardList,
+  Palmtree,
+  Building2,
+  Eye,
+  UserX,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 
 import Navbar from '../components/Navbar';
 import useAuth from '../hooks/useAuth';
-import { getDashboardSummary } from '../api/dashboard';
+import { getDashboardSummary, getEmployeeSummary } from '../api/dashboard';
 import { getMyFollowups } from '../api/followups';
 import { getOpportunities } from '../api/opportunities';
 import { Badge, getStageBadgeVariant } from '../components/ui/badge';
@@ -29,7 +38,7 @@ import { Button } from '../components/ui/button';
 interface PriorityItem {
   id: string;
   opportunityId: string;
-  priorityLevel: 1 | 2 | 3; // 1: Urgent (Overdue/SLA Breach), 2: Hot Deal, 3: Scheduled
+  priorityLevel: 1 | 2 | 3;
   typeLabel: string;
   badgeColor: string;
   customerName: string;
@@ -40,6 +49,53 @@ interface PriorityItem {
   dueText?: string;
 }
 
+// ── Stat Card Component ────────────────────────────────────────────────────
+
+interface StatCardProps {
+  label: string;
+  value: number | string;
+  icon: React.ReactNode;
+  color: string;
+  subtitle?: string;
+  onClick?: () => void;
+  accent?: string;
+  isLoading?: boolean;
+}
+
+function StatCard({ label, value, icon, color, subtitle, onClick, accent, isLoading }: StatCardProps) {
+  const base =
+    'p-5 rounded-2xl bg-[#131c31] border border-slate-800/80 shadow-sm relative overflow-hidden group transition-all';
+  const hover = onClick ? 'hover:border-slate-600 cursor-pointer hover:shadow-md' : 'hover:border-slate-700';
+  const accentBar = accent ? `before:absolute before:top-0 before:left-0 before:h-0.5 before:w-full before:${accent}` : '';
+
+  return (
+    <div
+      className={`${base} ${hover} ${accentBar}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+    >
+      <div className="flex items-center justify-between">
+        <span className={`text-[11px] font-bold uppercase tracking-wider ${color}`}>{label}</span>
+        <div className={`${color} opacity-60`}>{icon}</div>
+      </div>
+      <div className="mt-3 flex items-baseline gap-2">
+        {isLoading ? (
+          <div className="h-8 w-12 bg-slate-800 rounded-lg animate-pulse" />
+        ) : (
+          <span className="text-2xl sm:text-3xl font-black text-white tracking-tight">{value}</span>
+        )}
+      </div>
+      {subtitle && <p className="text-[11px] text-slate-400 mt-1">{subtitle}</p>}
+      {onClick && (
+        <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-all">
+          <ChevronRight className="w-4 h-4 text-slate-400" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function RepDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -47,33 +103,33 @@ export default function RepDashboard() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'p1' | 'p2' | 'p3'>('all');
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
-  // Fetch Summary Stats
-  const { data: summaryData } = useQuery({
-    queryKey: ['dashboard', 'summary'],
-    queryFn: getDashboardSummary
+  // ── Employee Summary (all the new stat cards) ──────────────────────────
+  const { data: summaryData, isLoading: loadingSummary } = useQuery({
+    queryKey: ['employeeSummary'],
+    queryFn: getEmployeeSummary
   });
-  const stats = summaryData?.stats;
+  const emp = summaryData?.data;
 
-  // Fetch Follow-ups
+  // ── Follow-ups (for priority queue) ───────────────────────────────────
   const { data: followupsData, isLoading: loadingFollowups } = useQuery({
     queryKey: ['followups', 'me'],
     queryFn: () => getMyFollowups()
   });
   const followups: any[] = followupsData?.followups || [];
 
-  // Fetch Opportunities
+  // ── Opportunities (for priority queue) ────────────────────────────────
   const { data: oppsData, isLoading: loadingOpps } = useQuery({
     queryKey: ['opportunities'],
     queryFn: () => getOpportunities()
   });
   const opps: any[] = oppsData?.opportunities || [];
 
-  // Construct and Sort Unified Priority Queue
+  // ── Construct and Sort Unified Priority Queue ──────────────────────────
   const priorityQueue: PriorityItem[] = useMemo(() => {
     const items: PriorityItem[] = [];
     const processedOppIds = new Set<string>();
 
-    // 1. Process Overdue / Missed Follow-ups (Priority 1)
+    // 1. Overdue / Missed Follow-ups (Priority 1)
     followups.forEach((f) => {
       if (f.status === 'overdue' || f.status === 'missed') {
         const oppId = typeof f.opportunity === 'object' ? f.opportunity?._id : f.opportunity;
@@ -90,12 +146,19 @@ export default function RepDashboard() {
           projectName: f.opportunity?.project?.name || 'Project',
           stage: f.opportunity?.stage || 'contacted',
           actionText: f.purpose || 'Follow-up call overdue',
-          dueText: f.dueAt ? new Date(f.dueAt).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : undefined
+          dueText: f.dueAt
+            ? new Date(f.dueAt).toLocaleString('en-IN', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            : undefined
         });
       }
     });
 
-    // 2. Process SLA Breached Opportunities (Priority 1)
+    // 2. SLA Breached Opportunities (Priority 1)
     opps.forEach((o) => {
       if (o.slaBreached && !processedOppIds.has(o._id)) {
         processedOppIds.add(o._id);
@@ -114,7 +177,7 @@ export default function RepDashboard() {
       }
     });
 
-    // 3. Process Hot Opportunities in Negotiation / Site Visit (Priority 2)
+    // 3. Hot Opportunities — Negotiation / Site Visit (Priority 2)
     opps.forEach((o) => {
       if ((o.stage === 'negotiation' || o.stage === 'site_visit') && !processedOppIds.has(o._id)) {
         processedOppIds.add(o._id);
@@ -133,7 +196,7 @@ export default function RepDashboard() {
       }
     });
 
-    // 4. Process Scheduled Follow-ups for Today / Active (Priority 3)
+    // 4. Scheduled Follow-ups (Priority 3)
     followups.forEach((f) => {
       if (f.status === 'scheduled') {
         const oppId = typeof f.opportunity === 'object' ? f.opportunity?._id : f.opportunity;
@@ -150,17 +213,22 @@ export default function RepDashboard() {
             projectName: f.opportunity?.project?.name || 'Project',
             stage: f.opportunity?.stage || 'contacted',
             actionText: f.purpose || 'Scheduled follow-up call',
-            dueText: f.dueAt ? new Date(f.dueAt).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : undefined
+            dueText: f.dueAt
+              ? new Date(f.dueAt).toLocaleString('en-IN', {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+              : undefined
           });
         }
       }
     });
 
-    // Sort Queue: Priority 1 first, then Priority 2, then Priority 3
     return items.sort((a, b) => a.priorityLevel - b.priorityLevel);
   }, [followups, opps]);
 
-  // Filtered items based on tab selection
   const filteredQueue = useMemo(() => {
     if (activeFilter === 'p1') return priorityQueue.filter((i) => i.priorityLevel === 1);
     if (activeFilter === 'p2') return priorityQueue.filter((i) => i.priorityLevel === 2);
@@ -168,45 +236,60 @@ export default function RepDashboard() {
     return priorityQueue;
   }, [priorityQueue, activeFilter]);
 
-  // Personal Performance Metrics
-  const perfMetrics = useMemo(() => {
-    const totalDeals = opps.length;
-    const wonDeals = opps.filter((o) => o.stage === 'won').length;
-    const conversionRate = totalDeals > 0 ? Math.round((wonDeals / totalDeals) * 100) : 0;
-    const siteVisits = opps.filter((o) => ['site_visit', 'negotiation', 'won'].includes(o.stage)).length;
-    const completedFollowups = followups.filter((f) => f.status === 'completed').length;
-
-    return {
-      totalDeals,
-      wonDeals,
-      conversionRate,
-      siteVisits,
-      completedFollowups
-    };
-  }, [opps, followups]);
-
   const isLoading = loadingFollowups || loadingOpps;
+
+  // ── Attendance banner ──────────────────────────────────────────────────
+  const attendance = emp?.attendance;
+  const formatLoginTime = (ts: string | null) => {
+    if (!ts) return null;
+    return new Date(ts).toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  // ── Leave display ──────────────────────────────────────────────────────
+  const leaveLabel = () => {
+    const u = emp?.leave;
+    if (!u) return '—';
+    if (u.upcomingApproved) {
+      const start = new Date(u.upcomingApproved.startDate).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short'
+      });
+      return `✅ Approved from ${start}`;
+    }
+    if (u.pendingCount > 0) return `${u.pendingCount} pending`;
+    return 'None';
+  };
+
+  const leaveValue = () => {
+    const u = emp?.leave;
+    if (!u) return '—';
+    if (u.upcomingApproved) return '✓';
+    return u.pendingCount ?? 0;
+  };
+
+  const firstName = user?.name?.split(' ')[0] || 'there';
 
   return (
     <div className="min-h-screen bg-[#0b0f19] text-slate-100 font-sans selection:bg-indigo-600 selection:text-white pb-16">
-      
-      {/* TOP NAVIGATION BAR */}
       <Navbar />
 
-      {/* MAIN CONTENT AREA */}
       <main className="max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        
-        {/* DASHBOARD HERO HEADING SECTION */}
+
+        {/* ── HEADER ──────────────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#131c31] border border-slate-800/80 p-5 sm:p-6 rounded-2xl shadow-sm">
           <div className="space-y-1">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-bold uppercase tracking-wider">
-              <span>Sales Rep Action Workstation</span>
+              <span>Sales Workspace</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-              Hello, {user?.name || 'Aparna Tripathy'}
+              Hello, {firstName}
             </h1>
             <p className="text-xs sm:text-sm text-slate-400">
-              Your prioritized list of required next actions. Overdue & breached items are listed first.
+              Your workday, sales activities and employee updates at a glance.
             </p>
           </div>
 
@@ -221,98 +304,177 @@ export default function RepDashboard() {
           </div>
         </div>
 
-        {/* KPI ACTION SUMMARY CARDS ROW */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
-          <div className="p-5 rounded-2xl bg-[#131c31] border border-slate-800/80 shadow-sm relative overflow-hidden group hover:border-slate-700 transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                Total Active
-              </span>
-              <div className="w-2 h-2 rounded-full bg-blue-500 shadow-sm" />
+        {/* ── ATTENDANCE BANNER ───────────────────────────────────────────── */}
+        {loadingSummary ? (
+          <div className="h-14 rounded-2xl bg-[#131c31] animate-pulse border border-slate-800/80" />
+        ) : (
+          <div
+            className={`flex items-center gap-4 px-5 py-3.5 rounded-2xl border shadow-sm ${
+              attendance?.checkedIn
+                ? 'bg-emerald-500/5 border-emerald-500/25'
+                : 'bg-amber-500/5 border-amber-500/25'
+            }`}
+          >
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                attendance?.checkedIn ? 'bg-emerald-500/20' : 'bg-amber-500/20'
+              }`}
+            >
+              {attendance?.checkedIn ? (
+                <Wifi className="w-4 h-4 text-emerald-400" />
+              ) : (
+                <WifiOff className="w-4 h-4 text-amber-400" />
+              )}
             </div>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                {stats?.totalActive ?? opps.length}
-              </span>
-              <Users className="w-4 h-4 text-blue-400 opacity-60" />
+            <div>
+              <p className={`text-sm font-bold ${attendance?.checkedIn ? 'text-emerald-300' : 'text-amber-300'}`}>
+                {attendance?.checkedIn
+                  ? `✅ Checked in at ${formatLoginTime(attendance.loginTime)}`
+                  : '⚠️ Not checked in yet today'}
+              </p>
+              <p className="text-[11px] text-slate-400">
+                {attendance?.checkedIn
+                  ? 'Your login was recorded. Have a productive day!'
+                  : 'Your attendance will be marked the moment you log in.'}
+              </p>
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">Assigned leads</p>
           </div>
+        )}
 
-          <div className="p-5 rounded-2xl bg-[#131c31] border border-slate-800/80 shadow-sm relative overflow-hidden group hover:border-slate-700 transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-red-400">
-                P1: Urgent Action
-              </span>
-              <div className="w-2 h-2 rounded-full bg-red-500 shadow-sm" />
-            </div>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-2xl sm:text-3xl font-black text-red-400 tracking-tight">
-                {priorityQueue.filter((i) => i.priorityLevel === 1).length}
-              </span>
-              <AlertTriangle className="w-4 h-4 text-red-400 opacity-60" />
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">Overdue & SLA Breached</p>
-          </div>
+        {/* ── STAT CARDS GRID ─────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
 
-          <div className="p-5 rounded-2xl bg-[#131c31] border border-slate-800/80 shadow-sm relative overflow-hidden group hover:border-slate-700 transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">
-                P2: Hot Deals
-              </span>
-              <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-sm" />
-            </div>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-2xl sm:text-3xl font-black text-indigo-300 tracking-tight">
-                {priorityQueue.filter((i) => i.priorityLevel === 2).length}
-              </span>
-              <Flame className="w-4 h-4 text-indigo-400 opacity-60" />
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">Site Visit & Negotiation</p>
-          </div>
+          {/* 2. My Leads (Total) */}
+          <StatCard
+            label="My Leads (Total)"
+            value={emp?.myLeads ?? 0}
+            icon={<Users className="w-4 h-4" />}
+            color="text-blue-400"
+            subtitle="Active assigned leads"
+            isLoading={loadingSummary}
+            accent="bg-blue-500/40"
+          />
 
-          <div className="p-5 rounded-2xl bg-[#131c31] border border-slate-800/80 shadow-sm relative overflow-hidden group hover:border-slate-700 transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
-                P3: Scheduled
-              </span>
-              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm" />
-            </div>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-2xl sm:text-3xl font-black text-emerald-400 tracking-tight">
-                {priorityQueue.filter((i) => i.priorityLevel === 3).length}
-              </span>
-              <Calendar className="w-4 h-4 text-emerald-400 opacity-60" />
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">Pending follow-ups</p>
-          </div>
+          {/* 3. Positive Leads */}
+          <StatCard
+            label="Positive Leads"
+            value={emp?.positiveLeads ?? 0}
+            icon={<TrendingUp className="w-4 h-4" />}
+            color="text-emerald-400"
+            subtitle="High intent & active"
+            isLoading={loadingSummary}
+            accent="bg-emerald-500/40"
+          />
+
+          {/* 4. Inactive / Negative */}
+          <StatCard
+            label="Inactive / Negative"
+            value={emp?.negativeLeads ?? 0}
+            icon={<UserX className="w-4 h-4" />}
+            color="text-slate-400"
+            subtitle="Low intent or inactive"
+            isLoading={loadingSummary}
+          />
+
+          {/* 5. Follow-ups To Do */}
+          <StatCard
+            label="Follow-ups To Do"
+            value={emp?.followupsToBeDone ?? 0}
+            icon={<Calendar className="w-4 h-4" />}
+            color="text-cyan-400"
+            subtitle="Scheduled follow-ups"
+            isLoading={loadingSummary}
+            accent="bg-cyan-500/40"
+          />
+
+          {/* 6. Uncontacted Leads */}
+          <StatCard
+            label="Uncontacted Leads"
+            value={emp?.uncontactedLeads ?? 0}
+            icon={<Eye className="w-4 h-4" />}
+            color="text-amber-400"
+            subtitle="Zero activity logged"
+            isLoading={loadingSummary}
+            accent="bg-amber-500/40"
+          />
+
+          {/* 7. Site Visits Scheduled */}
+          <StatCard
+            label="Site Visits Sched."
+            value={emp?.siteVisitsScheduled ?? 0}
+            icon={<Building2 className="w-4 h-4" />}
+            color="text-violet-400"
+            subtitle="Planned & confirmed"
+            isLoading={loadingSummary}
+          />
+
+          {/* 8. Site Visits Done */}
+          <StatCard
+            label="Site Visits Done"
+            value={emp?.siteVisitsDone ?? 0}
+            icon={<CheckCircle2 className="w-4 h-4" />}
+            color="text-emerald-400"
+            subtitle="Completed visits"
+            isLoading={loadingSummary}
+          />
+
+          {/* 9. Overdue Action */}
+          <StatCard
+            label="Overdue Action"
+            value={emp?.overdueAction ?? 0}
+            icon={<AlertTriangle className="w-4 h-4" />}
+            color={emp?.overdueAction > 0 ? 'text-red-400' : 'text-slate-400'}
+            subtitle="Overdue followups + SLA"
+            isLoading={loadingSummary}
+            accent={emp?.overdueAction > 0 ? 'bg-red-500/40' : undefined}
+          />
+
+          {/* 10. Didn't Pick */}
+          <StatCard
+            label="Didn't Pick"
+            value={emp?.didntPick ?? 0}
+            icon={<PhoneMissed className="w-4 h-4" />}
+            color="text-rose-400"
+            subtitle="No answer from leads"
+            isLoading={loadingSummary}
+          />
+
+          {/* 11. Calls Received */}
+          <StatCard
+            label="Calls Received"
+            value={emp?.callsReceived ?? 0}
+            icon={<Phone className="w-4 h-4" />}
+            color="text-sky-400"
+            subtitle="Inbound source leads"
+            isLoading={loadingSummary}
+          />
+
+          {/* 12. Tasks — clickable */}
+          <StatCard
+            label="Pending Tasks"
+            value={emp?.pendingTasks ?? 0}
+            icon={<ClipboardList className="w-4 h-4" />}
+            color="text-indigo-400"
+            subtitle="Click to view tasks"
+            isLoading={loadingSummary}
+            accent="bg-indigo-500/40"
+            onClick={() => navigate('/tasks')}
+          />
+
+          {/* 13. Leave — clickable to /leave */}
+          <StatCard
+            label="Leave"
+            value={leaveValue()}
+            icon={<Palmtree className="w-4 h-4" />}
+            color="text-orange-400"
+            subtitle={leaveLabel()}
+            isLoading={loadingSummary}
+            onClick={() => navigate('/leave')}
+          />
+
         </div>
 
-        {/* PERSONAL PERFORMANCE BANNER */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 rounded-2xl bg-[#131c31] border border-slate-800/80 shadow-sm">
-          <div className="space-y-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">My Conversion Rate</p>
-            <p className="text-2xl font-black text-white">{perfMetrics.conversionRate}%</p>
-            <p className="text-[11px] text-slate-400">{perfMetrics.wonDeals} deals closed won</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Site Visits Driven</p>
-            <p className="text-2xl font-black text-emerald-300">{perfMetrics.siteVisits}</p>
-            <p className="text-[11px] text-slate-400">Total qualified visits</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Completed Calls</p>
-            <p className="text-2xl font-black text-cyan-300">{perfMetrics.completedFollowups}</p>
-            <p className="text-[11px] text-slate-400">Logged touchpoints</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Assigned Pipeline</p>
-            <p className="text-2xl font-black text-amber-300">{perfMetrics.totalDeals}</p>
-            <p className="text-[11px] text-slate-400">Active assigned leads</p>
-          </div>
-        </div>
-
-        {/* PRIORITY ACTION QUEUE TABLE */}
+        {/* ── PRIORITY ACTION QUEUE ────────────────────────────────────────── */}
         <div className="bg-[#131c31] border border-slate-800/80 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/60 pb-4">
             <div>
@@ -373,7 +535,8 @@ export default function RepDashboard() {
                 <div className="text-3xl">🎉</div>
                 <h4 className="text-sm font-bold text-slate-200">No Priority Actions Pending</h4>
                 <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                  You have completed all urgent follow-ups and SLA touchpoints. Check the Pipeline Kanban board to move deals forward!
+                  You have completed all urgent follow-ups and SLA touchpoints. Check the Pipeline Kanban board to
+                  move deals forward!
                 </p>
               </div>
             ) : (
@@ -429,7 +592,7 @@ export default function RepDashboard() {
 
       </main>
 
-      {/* ── INTEGRATED OMVIK SALES ASSISTANT FLOATING WIDGET ─────────────────────── */}
+      {/* ── OMVIK SALES ASSISTANT FLOATING WIDGET ──────────────────────────── */}
       <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end">
         {isAssistantOpen && (
           <div className="mb-3 w-80 sm:w-96 rounded-2xl bg-[#0d1322] border border-slate-800 shadow-2xl backdrop-blur-2xl p-4 text-xs space-y-3 animate-in fade-in slide-in-from-bottom-5 duration-200">
@@ -443,10 +606,7 @@ export default function RepDashboard() {
                   <p className="text-[10px] text-emerald-400 font-semibold">● Active Nudge Engine</p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsAssistantOpen(false)}
-                className="text-slate-400 hover:text-white p-1"
-              >
+              <button onClick={() => setIsAssistantOpen(false)} className="text-slate-400 hover:text-white p-1">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -457,14 +617,21 @@ export default function RepDashboard() {
                 <span>Daily Action Summary</span>
               </div>
               <p className="text-[11px] leading-relaxed">
-                Fantastic job! Your daily action inbox is clean today. No immediate SLA escalations required.
+                {emp?.overdueAction > 0
+                  ? `You have ${emp.overdueAction} overdue action${emp.overdueAction > 1 ? 's' : ''}. Address these immediately to stay SLA-compliant.`
+                  : 'Fantastic job! Your daily action inbox is clean today. No immediate SLA escalations required.'}
               </p>
             </div>
 
             <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
-              <span>SLA Health: <strong className="text-emerald-400">Optimal</strong></span>
+              <span>
+                SLA Health:{' '}
+                <strong className={emp?.overdueAction > 0 ? 'text-red-400' : 'text-emerald-400'}>
+                  {emp?.overdueAction > 0 ? 'Action Needed' : 'Optimal'}
+                </strong>
+              </span>
               <NavLink to="/followups" className="text-indigo-400 hover:underline font-bold">
-                View Tasks →
+                View Follow-ups →
               </NavLink>
             </div>
           </div>
@@ -478,7 +645,6 @@ export default function RepDashboard() {
           <span className="hidden sm:inline">OMVIK ASSISTANT</span>
         </button>
       </div>
-
     </div>
   );
 }

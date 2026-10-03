@@ -7,13 +7,20 @@ const logActivitySchema = z
     }),
     outcome: z.enum(
       [
+        // Legacy values
         'connected',
         'no_answer',
         'busy',
-        'switched_off',
         'wrong_number',
         'interested',
-        'not_interested'
+        'not_interested',
+        // Realigned values (current standard)
+        'not_done',
+        'didnt_pick',
+        'not_incoming',
+        'done',
+        'callback_needed',
+        'switched_off'
       ],
       { required_error: 'Outcome is required' }
     ),
@@ -39,8 +46,9 @@ const logActivitySchema = z
   })
   .refine(
     (data) => {
+      const CLOSING_OUTCOMES = ['not_interested', 'not_done'];
       const isClosed =
-        data.outcome === 'not_interested' ||
+        CLOSING_OUTCOMES.includes(data.outcome) ||
         data.stage === 'won' ||
         data.stage === 'lost';
 
@@ -57,7 +65,7 @@ const logActivitySchema = z
     },
     {
       message:
-        "Next follow-up date (nextFollowup.dueAt) is required unless outcome is 'not_interested' or stage is 'won'/'lost'",
+        "Next follow-up date (nextFollowup.dueAt) is required unless outcome is 'not_interested'/'not_done' or stage is 'won'/'lost'",
       path: ['nextFollowup']
     }
   );

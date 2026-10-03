@@ -27,6 +27,7 @@ import TeamEODOverviewPage from './pages/admin/TeamEODOverviewPage';
 import AdminEmployeeHistory from './pages/admin/AdminEmployeeHistory';
 import LoginActivityPage from './pages/admin/LoginActivityPage';
 import LeavePage from './pages/LeavePage';
+import MyTasksPage from './pages/MyTasksPage';
 import ResetPassword from './pages/ResetPassword';
 import ForgotPassword from './pages/ForgotPassword';
 import ForceChangePassword from './pages/ForceChangePassword';
@@ -280,6 +281,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <LeavePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tasks"
+            element={
+              <ProtectedRoute>
+                <MyTasksPage />
               </ProtectedRoute>
             }
           />

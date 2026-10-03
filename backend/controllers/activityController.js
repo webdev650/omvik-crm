@@ -38,14 +38,16 @@ const logActivity = async (req, res, next) => {
     opportunity.lastContactedAt = new Date();
 
     // 3. Handle Stage and Active Status Changes
+    // 'not_interested' (legacy) and 'not_done' (realigned) both indicate disinterest → close
+    const CLOSING_OUTCOMES = ['not_interested', 'not_done'];
     const isClosing =
-      outcome === 'not_interested' || stage === 'won' || stage === 'lost';
+      CLOSING_OUTCOMES.includes(outcome) || stage === 'won' || stage === 'lost';
 
     if (isClosing) {
       opportunity.isActive = false;
       if (stage) {
         opportunity.stage = stage;
-      } else if (outcome === 'not_interested') {
+      } else if (CLOSING_OUTCOMES.includes(outcome)) {
         opportunity.stage = 'lost';
       }
     } else if (stage) {
