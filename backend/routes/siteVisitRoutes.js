@@ -18,7 +18,9 @@ opportunitySiteVisitRouter.get('/:id/site-visits', applyDataScope, getSiteVisits
 const siteVisitRouter = express.Router();
 siteVisitRouter.use(protect);
 siteVisitRouter.get('/me', applyDataScope, getMySiteVisits);
-siteVisitRouter.patch('/:id', updateSiteVisit);
+// SECURITY: applyDataScope enforces row-level ownership on update \u2014
+// telecaller can only modify their own visits, team_lead their team's, admin/super_admin any.
+siteVisitRouter.patch('/:id', applyDataScope, updateSiteVisit);
 
 module.exports = {
   opportunitySiteVisitRouter,

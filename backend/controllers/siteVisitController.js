@@ -153,9 +153,13 @@ const updateSiteVisit = async (req, res, next) => {
   try {
     const { status, feedback, nextAction } = req.body;
 
-    const siteVisit = await SiteVisit.findById(req.params.id);
+    // SECURITY: dataScope (set by applyDataScope middleware) enforces row-level ownership.
+    // A telecaller can only update site visits where they are owner/assignedTo/createdBy.
+    // If the visit is not found within their scope, return 403 to avoid leaking record existence.
+    const scopeFilter = req.dataScope || {};
+    const siteVisit = await SiteVisit.findOne({ _id: req.params.id, ...scopeFilter });
     if (!siteVisit) {
-      return res.status(404).json({ message: 'Site visit not found' });
+      return res.status(403).json({ message: 'Site visit not found or you do not have permission to modify it.' });
     }
 
     const targetStatus = status || siteVisit.status;

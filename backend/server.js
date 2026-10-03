@@ -11,6 +11,14 @@ const connectDB = require('./config/db');
 dotenv.config();
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
+// === SECURITY: Fail fast on missing JWT_SECRET — never silently fall back to a hardcoded value ===
+if (!process.env.JWT_SECRET) {
+  throw new Error(
+    'FATAL: JWT_SECRET environment variable is not set. ' +
+    'Set it in your .env file (local) or Render environment variables (production) before starting the server.'
+  );
+}
+
 // Connect to database
 connectDB();
 
@@ -91,6 +99,7 @@ app.use('/api/daily-reports', require('./routes/dailyReportRoutes'));
 app.use('/api/leave', require('./routes/leaveRoutes'));
 app.use('/api/bookings', require('./routes/bookingRoutes'));
 app.use('/api/visit-reminders', require('./routes/visitReminderRoutes'));
+app.use('/api/tasks', require('./routes/taskRoutes'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok_v4', db: 'omvik-crm', loginActivity: true, nodeEnv: process.env.NODE_ENV }));
 app.get('/api/health', (req, res) => res.json({ status: 'ok_v4', db: 'omvik-crm', loginActivity: true, nodeEnv: process.env.NODE_ENV }));

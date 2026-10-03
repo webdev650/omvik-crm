@@ -77,8 +77,8 @@ const login = async (req, res, next) => {
     const cleanInput = email.toLowerCase().trim();
     const escapedInput = escapeRegExp(cleanInput);
 
-    // Flexible query: check email OR match name (case-insensitive) OR omvikrealcon master email
-    let user = await User.findOne({
+    // Flexible query: check email OR match name (case-insensitive) OR employeeId
+    const user = await User.findOne({
       $or: [
         { email: cleanInput },
         { employeeId: new RegExp(`^${escapedInput}$`, 'i') },
@@ -86,10 +86,10 @@ const login = async (req, res, next) => {
       ]
     }).select('+password');
 
-    // If master email omvikrealcon@gmail.com is used, match super_admin account
-    if (!user && cleanInput === 'omvikrealcon@gmail.com') {
-      user = await User.findOne({ email: 'aparna@omvikrealcon.com' }).select('+password');
-    }
+    // SECURITY NOTE: Hardcoded master-email backdoor was REMOVED.
+    // Previously, logging in as omvikrealcon@gmail.com silently redirected to aparna@omvikrealcon.com.
+    // This was an undocumented dev shortcut — not a business-approved feature.
+    // Aparna can now use her own credentials or the OTP password-reset flow.
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials. Please check your username or email and password.' });
@@ -309,7 +309,10 @@ const forgotPassword = async (req, res, next) => {
       </div>
     `;
 
-    console.log(`\n🔑 [PASSWORD RESET OTP GENERATED] Account: ${user.name} (${user.email}) -> Sent to Admin Inbox (${adminInboxRecipient}) -> OTP: ${otpCode}\n`);
+    // SECURITY: OTP value is intentionally NOT logged here. Anyone with access to server logs
+    // (e.g. Render log viewer) would be able to read every OTP ever issued. Log the event
+    // and the target user only — the OTP itself is sent exclusively to the admin email inbox.
+    console.log(`\n🔑 [PASSWORD RESET OTP GENERATED] Account: ${user.name} (${user.email}) -> Dispatched to Admin Inbox (${adminInboxRecipient})\n`);
 
     // Send OTP email DIRECTLY to admin inbox (not user's email)
     // Resend is on a sandbox plan — only verified addresses can receive.
@@ -377,13 +380,13 @@ const verifyOtp = async (req, res, next) => {
     await otpRecord.save();
 
     // Issue short-lived signed JWT reset token (~10 min expiry) authorizing NEXT step only
-    const jwtSecret = process.env.JWT_SECRET || 'omvik_jwt_secret_fallback_2026';
+    // JWT_SECRET is guaranteed present by the startup guard in server.js
     const resetToken = jwt.sign(
       {
         userId: otpRecord.user.toString(),
         scope: 'password_reset_authorization'
       },
-      jwtSecret,
+      process.env.JWT_SECRET,
       { expiresIn: '10m' }
     );
 
@@ -426,10 +429,10 @@ const resetPasswordWithToken = async (req, res, next) => {
     }
 
     // Verify reset token payload and expiration
+    // JWT_SECRET is guaranteed present by the startup guard in server.js
     let decoded;
     try {
-      const jwtSecret = process.env.JWT_SECRET || 'omvik_jwt_secret_fallback_2026';
-      decoded = jwt.verify(resetToken, jwtSecret);
+      decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
     } catch (jwtErr) {
       return res.status(400).json({ message: 'Invalid or expired password reset session. Please request a new OTP.' });
     }

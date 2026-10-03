@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middlewares/auth');
-const { applyDataScope } = require('../middlewares/rbac');
+const { applyDataScope, authorize } = require('../middlewares/rbac');
 
 router.get('/scope-check', protect, applyDataScope, (req, res) => {
   res.json({
@@ -22,7 +22,9 @@ const { runSlaSweep } = require('../jobs/slaSweep');
 
 const mongoose = require('mongoose');
 
-router.post('/backdate-sla', protect, async (req, res) => {
+// SECURITY: Restricted to super_admin only. These routes backdate DB records and trigger
+// production SLA sweeps — must never be callable by telecallers or any other non-admin role.
+router.post('/backdate-sla', protect, authorize('super_admin'), async (req, res) => {
   const { opportunityId, hoursAgo } = req.body;
   const backdated = new Date(Date.now() - (hoursAgo || 60) * 60 * 60 * 1000);
   await Opportunity.collection.updateOne(
@@ -32,7 +34,7 @@ router.post('/backdate-sla', protect, async (req, res) => {
   res.json({ success: true, opportunityId, createdAt: backdated });
 });
 
-router.post('/trigger-sla-sweep', protect, async (req, res) => {
+router.post('/trigger-sla-sweep', protect, authorize('super_admin'), async (req, res) => {
   const { cutoffHours } = req.body;
   const count = await runSlaSweep(cutoffHours || 36);
   res.json({ success: true, processedCount: count });
