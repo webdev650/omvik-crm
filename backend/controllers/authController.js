@@ -1,3 +1,5 @@
+'use strict';
+
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -8,7 +10,10 @@ const sendEmail = require('../utils/sendEmail');
 const { determineLoginCategory, getRandomMascotMessage } = require('../utils/mascotMessages');
 const { getOrCreateSettings } = require('../models/Settings');
 
-// Helper function to escape special regex characters
+// OTP constants
+const OTP_MAX_ATTEMPTS = 5;
+
+// Helper: escape special regex characters
 function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -77,7 +82,7 @@ const login = async (req, res, next) => {
     const cleanInput = email.toLowerCase().trim();
     const escapedInput = escapeRegExp(cleanInput);
 
-    // Flexible query: check email OR match name (case-insensitive) OR employeeId
+    // Flexible query: check email OR employeeId OR name (case-insensitive)
     const user = await User.findOne({
       $or: [
         { email: cleanInput },
@@ -85,11 +90,6 @@ const login = async (req, res, next) => {
         { name: new RegExp(`^${escapedInput}$`, 'i') }
       ]
     }).select('+password');
-
-    // SECURITY NOTE: Hardcoded master-email backdoor was REMOVED.
-    // Previously, logging in as omvikrealcon@gmail.com silently redirected to aparna@omvikrealcon.com.
-    // This was an undocumented dev shortcut — not a business-approved feature.
-    // Aparna can now use her own credentials or the OTP password-reset flow.
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials. Please check your username or email and password.' });
@@ -120,7 +120,7 @@ const login = async (req, res, next) => {
     const userObj = user.toObject();
     delete userObj.password;
 
-    // Mascot Greeting Category Determination
+    // Mascot greeting
     let greeting = null;
     if (user.nudgesEnabled !== false) {
       const settings = await getOrCreateSettings();
@@ -186,9 +186,9 @@ const changePassword = async (req, res, next) => {
     }
 
     // Password Complexity Check
-    const hasUpper = /[A-Z]/.test(newPassword);
-    const hasLower = /[a-z]/.test(newPassword);
-    const hasNumber = /[0-9]/.test(newPassword);
+    const hasUpper   = /[A-Z]/.test(newPassword);
+    const hasLower   = /[a-z]/.test(newPassword);
+    const hasNumber  = /[0-9]/.test(newPassword);
     const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
 
     if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
@@ -202,7 +202,7 @@ const changePassword = async (req, res, next) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Require current password check ONLY if user is not on first-login force change gate
+    // Require current password check ONLY if not on first-login force change gate
     if (!user.mustChangePassword) {
       if (!currentPassword) {
         return res.status(400).json({ message: 'Current password is required' });
@@ -212,7 +212,6 @@ const changePassword = async (req, res, next) => {
         return res.status(401).json({ message: 'Current password is incorrect' });
       }
     }
-
 
     user.password = await bcrypt.hash(newPassword, 10);
     user.mustChangePassword = false;
@@ -231,9 +230,11 @@ const changePassword = async (req, res, next) => {
   }
 };
 
-// @desc    Request password reset OTP (Admin-mediated design: ALL emails route to omvikrealcon@gmail.com)
+// @desc    Request password reset OTP
+//          ALL OTP emails route to OTP_RECIPIENT_EMAIL (admin inbox), not the user's email.
+//          The admin then relays the OTP to the requesting employee.
 // @route   POST /api/auth/forgot-password
-// @access  Public
+// @access  Public  (rate-limited at the route layer)
 const forgotPassword = async (req, res, next) => {
   try {
     const { identifier, email, employeeId } = req.body;
@@ -243,89 +244,131 @@ const forgotPassword = async (req, res, next) => {
       return res.status(400).json({ message: 'Please provide your Email Address or Employee ID' });
     }
 
-    const cleanInput = rawInput.toLowerCase();
-    const escapedInput = escapeRegExp(cleanInput);
+    // SECURITY: always return exactly the same generic response regardless of whether
+    // the account exists — prevents account enumeration attacks.
+    const GENERIC_OK = {
+      success: true,
+      message:
+        'If a matching active account exists, a 6-digit verification code has been dispatched ' +
+        'to the central administration inbox. Please contact your administrator to retrieve it.'
+    };
 
-    // Find real matching user by email, employeeId, or name
-    let user = await User.findOne({
+    const cleanInput    = rawInput.toLowerCase();
+    const escapedInput  = escapeRegExp(cleanInput);
+
+    // Resolve user by email, employeeId, or name
+    const user = await User.findOne({
       $or: [
         { email: cleanInput },
         { employeeId: new RegExp(`^${escapedInput}$`, 'i') },
-        { name: new RegExp(`^${escapedInput}$`, 'i') }
+        { name:       new RegExp(`^${escapedInput}$`, 'i') }
       ]
     });
 
-    // Uniform generic success response for security (avoids account enumeration)
-    const genericResponse = {
-      success: true,
-      message: 'If a matching active account exists, a 6-digit verification OTP code has been dispatched to the central administration inbox (omvikrealcon@gmail.com). Please contact your system administrator to retrieve your code.'
-    };
-
+    // Return generic response for non-existent or inactive accounts (no early-exit difference)
     if (!user || !user.isActive) {
-      return res.json(genericResponse);
+      return res.json(GENERIC_OK);
     }
 
-    // Generate random 6-digit numeric OTP code
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes short-lived expiry
-
-    // Save append-only PasswordResetOTP document to MongoDB
-    await PasswordResetOTP.create({
-      user: user._id,
-      otpCode,
-      expiresAt,
-      used: false
+    // Per-account rate limit: max 5 OTP requests in 15 minutes
+    const windowStart = new Date(Date.now() - 15 * 60 * 1000);
+    const recentCount = await PasswordResetOTP.countDocuments({
+      user:      user._id,
+      createdAt: { $gte: windowStart }
     });
 
-    // DELIBERATE INTENTIONAL DESIGN CHOICE:
-    // ALL password reset OTP emails route to the centralized administrator inbox.
-    // The recipient is controlled by the ADMIN_ALERT_EMAIL environment variable (set in Render /
-    // .env) so the target inbox can be changed via a config update, NOT a code change/redeploy.
-    // Falls back to the literal address only as a last-resort safety net.
-    const adminInboxRecipient =
-      process.env.ADMIN_ALERT_EMAIL || 'omvikrealcon@gmail.com';
+    if (recentCount >= 5) {
+      // Return generic — don't reveal that the limit was hit for this account
+      return res.json(GENERIC_OK);
+    }
+
+    // Generate crypto-random 6-digit OTP (cryptographically secure)
+    const otpCode  = String(crypto.randomInt(100000, 999999));
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10-minute expiry
+
+    // Hash OTP before storing — plaintext NEVER touches the database
+    const otpHash = await bcrypt.hash(otpCode, 10);
+
+    await PasswordResetOTP.create({
+      user:      user._id,
+      otpHash,
+      expiresAt,
+      used:      false,
+      attempts:  0
+    });
+
+    // ── Email routing ────────────────────────────────────────────
+    // OTP_RECIPIENT_EMAIL (env var) controls the destination inbox.
+    // Falls back to ADMIN_ALERT_EMAIL for backward compatibility.
+    // NEVER falls back to user's own email.
+    const recipientEmail =
+      process.env.OTP_RECIPIENT_EMAIL ||
+      process.env.ADMIN_ALERT_EMAIL   ||
+      'omvikrealcon@gmail.com';
+
     const empIdDisplay = user.employeeId || 'N/A';
 
-    const messageText = `Password reset requested for: ${user.name} (${user.email} / ID: ${empIdDisplay}) — OTP: ${otpCode}\n\nThis OTP is valid for 10 minutes.`;
+    // Build email — OTP is in the body/HTML so the admin can relay it.
+    // IMPORTANT: Do NOT include OTP in subject line (email providers log subjects server-side).
+    const subject = `OMVIK CRM — Password Reset Request for ${user.name} (${empIdDisplay})`;
 
     const htmlMessage = `
-      <div style="font-family: Arial, sans-serif; padding: 24px; color: #0f172a; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
-        <h2 style="color: #0131B9; font-size: 20px; margin-bottom: 8px;">OMVIK CRM Password Reset OTP Request</h2>
-        <p style="font-size: 14px; color: #334155; margin-top: 0;">A password reset was requested for the following user account:</p>
-        
-        <div style="background-color: #f8fafc; border-left: 4px solid #0131B9; padding: 14px; margin: 16px 0; font-size: 13px; color: #1e293b;">
-          <div><strong>User Name:</strong> ${user.name}</div>
-          <div><strong>Email Address:</strong> ${user.email}</div>
+      <div style="font-family: Arial, sans-serif; padding: 24px; color: #0f172a; max-width: 520px;
+                  margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; background: #ffffff;">
+        <h2 style="color: #0131B9; font-size: 20px; margin-bottom: 8px;">
+          OMVIK CRM — Password Reset Request
+        </h2>
+        <p style="font-size: 14px; color: #334155; margin-top: 0;">
+          A password reset was requested for the following user account:
+        </p>
+
+        <div style="background:#f8fafc; border-left:4px solid #0131B9; padding:14px;
+                    margin:16px 0; font-size:13px; color:#1e293b;">
+          <div><strong>Name:</strong> ${user.name}</div>
+          <div><strong>Email:</strong> ${user.email}</div>
           <div><strong>Employee ID:</strong> ${empIdDisplay}</div>
           <div><strong>Role:</strong> ${user.role}</div>
         </div>
 
-        <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 18px; border-radius: 12px; text-align: center; margin: 20px 0;">
-          <div style="font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">Verification OTP Code</div>
-          <span style="font-family: monospace; font-size: 38px; font-weight: bold; letter-spacing: 8px; color: #0131B9;">${otpCode}</span>
+        <div style="background:#f1f5f9; border:1px solid #cbd5e1; padding:18px;
+                    border-radius:12px; text-align:center; margin:20px 0;">
+          <div style="font-size:12px; font-weight:bold; color:#64748b;
+                      text-transform:uppercase; margin-bottom:4px;">
+            One-Time Verification Code (valid 10 minutes)
+          </div>
+          <span style="font-family:monospace; font-size:38px; font-weight:bold;
+                       letter-spacing:8px; color:#0131B9;">${otpCode}</span>
         </div>
 
-        <p style="font-size: 12px; color: #64748b;">This OTP code is valid for 10 minutes. Please relay this code to ${user.name} (${user.email}) to authorize their password reset.</p>
+        <p style="font-size:12px; color:#64748b;">
+          This code is valid for <strong>10 minutes</strong> and can only be used once.
+          Please relay it to <strong>${user.name}</strong> (${user.email}) to authorise their reset.
+        </p>
+        <p style="font-size:11px; color:#94a3b8;">
+          If you did not request this, no action is required — the code will expire automatically.
+        </p>
       </div>
     `;
 
-    // SECURITY: OTP value is intentionally NOT logged here. Anyone with access to server logs
-    // (e.g. Render log viewer) would be able to read every OTP ever issued. Log the event
-    // and the target user only — the OTP itself is sent exclusively to the admin email inbox.
-    console.log(`\n🔑 [PASSWORD RESET OTP GENERATED] Account: ${user.name} (${user.email}) -> Dispatched to Admin Inbox (${adminInboxRecipient})\n`);
+    // SECURITY: Log the event (account + destination) but NEVER the OTP value or email body.
+    console.log(
+      `[OTP_REQUEST] account="${user.employeeId}" destination="${recipientEmail}" ` +
+      `ip="${req.ip || 'unknown'}"`
+    );
 
-    // Send OTP email DIRECTLY to admin inbox (not user's email)
-    // Resend is on a sandbox plan — only verified addresses can receive.
-    // The admin inbox (ADMIN_ALERT_EMAIL) is the verified address on file.
-    // The admin then relays the OTP to the requesting user.
+    // Fire-and-forget — response is already determined (GENERIC_OK)
     sendEmail({
-      email: adminInboxRecipient,
-      subject: `🔑 Password Reset OTP for ${user.name} (${user.email} / ${empIdDisplay}): ${otpCode}`,
-      message: messageText,
-      html: htmlMessage
-    }).catch(err => console.error('[Background OTP Email Error]', err.message));
+      email:   recipientEmail,
+      subject,
+      message: `Password reset requested for: ${user.name} (${user.email} / ID: ${empIdDisplay}). ` +
+               `Check the HTML version of this email for the one-time code.`,
+      html:    htmlMessage
+    }).catch((err) => {
+      // Log error type only — do NOT log err.message in case it echoes request body
+      console.error('[OTP_EMAIL_ERROR] Failed to send OTP notification email — check SMTP/Resend config.');
+    });
 
-    return res.json(genericResponse);
+    return res.json(GENERIC_OK);
   } catch (error) {
     next(error);
   }
@@ -337,54 +380,70 @@ const forgotPassword = async (req, res, next) => {
 const verifyOtp = async (req, res, next) => {
   try {
     const { identifier, email, employeeId, otpCode } = req.body;
+
     if (!otpCode) {
       return res.status(400).json({ message: '6-digit OTP code is required.' });
     }
 
-    const cleanOtp = otpCode.toString().trim();
-    const rawInput = (identifier || email || employeeId || '').toString().trim();
+    const cleanOtp  = otpCode.toString().trim();
+    const rawInput  = (identifier || email || employeeId || '').toString().trim();
 
-    let query = {
-      otpCode: cleanOtp,
-      used: false,
-      expiresAt: { $gt: new Date() }
-    };
-
-    // If identifier is provided, scope search to that specific user
+    // Resolve user (optional scope narrowing)
+    let targetUserId = null;
     if (rawInput) {
-      const cleanInput = rawInput.toLowerCase();
+      const cleanInput   = rawInput.toLowerCase();
       const escapedInput = escapeRegExp(cleanInput);
-
       const user = await User.findOne({
         $or: [
-          { email: cleanInput },
+          { email:      cleanInput },
           { employeeId: new RegExp(`^${escapedInput}$`, 'i') },
-          { name: new RegExp(`^${escapedInput}$`, 'i') }
+          { name:       new RegExp(`^${escapedInput}$`, 'i') }
         ]
       });
+      if (user) targetUserId = user._id;
+    }
 
-      if (user) {
-        query.user = user._id;
+    // Find recent, unused, unexpired OTP records for this user
+    const query = {
+      used:      false,
+      expiresAt: { $gt: new Date() },
+      attempts:  { $lt: OTP_MAX_ATTEMPTS }
+    };
+    if (targetUserId) query.user = targetUserId;
+
+    const candidates = await PasswordResetOTP.find(query)
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    if (!candidates.length) {
+      return res.status(400).json({ message: 'Invalid or expired verification code.' });
+    }
+
+    // bcrypt.compare against each candidate hash (latest first)
+    let matchedRecord = null;
+    for (const record of candidates) {
+      const isMatch = await bcrypt.compare(cleanOtp, record.otpHash);
+      if (isMatch) {
+        matchedRecord = record;
+        break;
       }
+      // Increment attempt counter on mismatches for this record
+      await PasswordResetOTP.findByIdAndUpdate(record._id, { $inc: { attempts: 1 } });
     }
 
-    // Find active, unused, unexpired PasswordResetOTP record
-    const otpRecord = await PasswordResetOTP.findOne(query).sort({ createdAt: -1 });
-
-    if (!otpRecord) {
-      return res.status(400).json({ message: 'Invalid or expired 6-digit OTP code.' });
+    if (!matchedRecord) {
+      return res.status(400).json({ message: 'Invalid or expired verification code.' });
     }
 
-    // Single-use enforcement: mark OTP as used immediately
-    otpRecord.used = true;
-    await otpRecord.save();
+    // Single-use enforcement: mark matched OTP as used immediately
+    matchedRecord.used = true;
+    await matchedRecord.save();
 
-    // Issue short-lived signed JWT reset token (~10 min expiry) authorizing NEXT step only
-    // JWT_SECRET is guaranteed present by the startup guard in server.js
+    // Issue a short-lived signed JWT reset token (~10 min expiry)
     const resetToken = jwt.sign(
       {
-        userId: otpRecord.user.toString(),
-        scope: 'password_reset_authorization'
+        userId: matchedRecord.user.toString(),
+        scope:  'password_reset_authorization'
       },
       process.env.JWT_SECRET,
       { expiresIn: '10m' }
@@ -392,9 +451,9 @@ const verifyOtp = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'OTP verification successful. You may now set your new password.',
+      message: 'Code verified. You may now set your new password.',
       resetToken,
-      userId: otpRecord.user
+      userId: matchedRecord.user
     });
   } catch (error) {
     next(error);
@@ -409,7 +468,7 @@ const resetPasswordWithToken = async (req, res, next) => {
     const { resetToken, newPassword } = req.body;
 
     if (!resetToken || !newPassword) {
-      return res.status(400).json({ message: 'Authorization reset token and new password are required.' });
+      return res.status(400).json({ message: 'Authorization token and new password are required.' });
     }
 
     if (newPassword.length < 7) {
@@ -417,9 +476,9 @@ const resetPasswordWithToken = async (req, res, next) => {
     }
 
     // Password Complexity Check
-    const hasUpper = /[A-Z]/.test(newPassword);
-    const hasLower = /[a-z]/.test(newPassword);
-    const hasNumber = /[0-9]/.test(newPassword);
+    const hasUpper   = /[A-Z]/.test(newPassword);
+    const hasLower   = /[a-z]/.test(newPassword);
+    const hasNumber  = /[0-9]/.test(newPassword);
     const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
 
     if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
@@ -428,17 +487,15 @@ const resetPasswordWithToken = async (req, res, next) => {
       });
     }
 
-    // Verify reset token payload and expiration
-    // JWT_SECRET is guaranteed present by the startup guard in server.js
     let decoded;
     try {
       decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
     } catch (jwtErr) {
-      return res.status(400).json({ message: 'Invalid or expired password reset session. Please request a new OTP.' });
+      return res.status(400).json({ message: 'Invalid or expired reset session. Please request a new code.' });
     }
 
     if (!decoded || decoded.scope !== 'password_reset_authorization' || !decoded.userId) {
-      return res.status(400).json({ message: 'Invalid or unauthorized password reset token.' });
+      return res.status(400).json({ message: 'Invalid or unauthorized reset token.' });
     }
 
     const user = await User.findById(decoded.userId);
@@ -446,14 +503,14 @@ const resetPasswordWithToken = async (req, res, next) => {
       return res.status(400).json({ message: 'User account not found or disabled.' });
     }
 
-    // Fast atomic password update
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await User.findByIdAndUpdate(user._id, {
-      password: hashedPassword,
+      password:          hashedPassword,
       mustChangePassword: false
     });
 
-    console.log(`✅ [PASSWORD RESET SUCCESSFUL] Account: ${user.name} (${user.email})`);
+    // Log success event — never log the new password
+    console.log(`[PASSWORD_RESET_OK] account="${user.employeeId}" email="${user.email}"`);
 
     res.json({
       success: true,

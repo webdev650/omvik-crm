@@ -12,3 +12,6 @@ reset_*.js
 cookies.txt
 sample_leads_*.csv
 sample_leads_*.xlsx
+
+# Local seed passwords — NEVER commit this file
+scripts/employee-passwords.json
