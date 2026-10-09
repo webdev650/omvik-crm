@@ -16,7 +16,6 @@ import ReportsPage from './pages/admin/ReportsPage';
 import ImportLeadsPage from './pages/admin/ImportLeads';
 import LeadBatchesPage from './pages/admin/LeadBatchesPage';
 import DataQualityPage from './pages/admin/DataQualityPage';
-import DuplicateMonitorPage from './pages/admin/DuplicateMonitorPage';
 import ProfilePage from './pages/ProfilePage';
 import MyPerformance from './pages/MyPerformance';
 import CustomersPage from './pages/CustomersPage';
@@ -171,14 +170,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/admin/duplicates"
-            element={
-              <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director']}>
-                <DuplicateMonitorPage />
-              </ProtectedRoute>
-            }
-          />
+
           <Route
             path="/admin/users"
             element={

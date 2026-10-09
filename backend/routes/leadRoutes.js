@@ -14,7 +14,7 @@ router.use(protect);
 router.get('/export', applyDataScope, exportLeads);
 router.post('/', submitLead);
 router.post('/override', authorize('super_admin'), overrideDuplicateLead);
-router.post('/import/preview', authorize('super_admin', 'admin', 'director'), upload.single('file'), previewImport);
-router.post('/import/confirm', authorize('super_admin', 'admin', 'director'), confirmImport);
+router.post('/import/preview', upload.single('file'), previewImport);
+router.post('/import/confirm', confirmImport);
 
 module.exports = router;
