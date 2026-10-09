@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Tag, Search, ArrowLeft, Users, Trophy, ChevronRight, Eye } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Tag, Search, ArrowLeft, Users, Trophy, ChevronRight, Eye, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import Navbar from '../../components/Navbar';
 import api from '../../api/axios';
 import { Button } from '../../components/ui/button';
@@ -16,9 +17,43 @@ import {
 } from '../../components/ui/table';
 
 export default function LeadBatchesPage() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [leadSearch, setLeadSearch] = useState('');
+  const [deletingBatchId, setDeletingBatchId] = useState<string | null>(null);
+
+  // Delete Batch Mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (batchId: string) => {
+      const res = await api.delete(`/admin/lead-batches/${encodeURIComponent(batchId)}`);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || 'Batch deleted successfully!');
+      setSelectedBatchId(null);
+      setDeletingBatchId(null);
+      queryClient.invalidateQueries({ queryKey: ['leadBatches'] });
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to delete batch.');
+      setDeletingBatchId(null);
+    }
+  });
+
+  const handleDeleteBatch = (batchId: string, leadCount: number) => {
+    if (batchId === 'MANUAL / WEBSITE' || batchId === 'manual') {
+      toast.error('Default manual or website leads batch cannot be deleted.');
+      return;
+    }
+
+    if (window.confirm(`⚠️ ARE YOU SURE YOU WANT TO DELETE THIS BATCH?\n\nBatch Name: "${batchId}"\nTotal Leads: ${leadCount}\n\nAll ${leadCount} leads in this spreadsheet will be permanently deleted from the CRM.`)) {
+      setDeletingBatchId(batchId);
+      deleteMutation.mutate(batchId);
+    }
+  };
 
   // Fetch batches list
   const { data: batchesData, isLoading: isLoadingBatches } = useQuery({
@@ -70,14 +105,27 @@ export default function LeadBatchesPage() {
           </div>
 
           {selectedBatchId && (
-            <Button
-              size="sm"
-              onClick={() => setSelectedBatchId(null)}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to All Batches</span>
-            </Button>
+            <div className="flex items-center gap-3">
+              {selectedBatchId !== 'MANUAL / WEBSITE' && selectedBatchId !== 'manual' && (
+                <Button
+                  size="sm"
+                  disabled={deletingBatchId === selectedBatchId}
+                  onClick={() => handleDeleteBatch(selectedBatchId, batchLeadsData?.total || 0)}
+                  className="bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white text-xs font-bold rounded-xl flex items-center gap-2 border border-red-500/30 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>{deletingBatchId === selectedBatchId ? 'Deleting Batch...' : 'Delete Batch & Rollback'}</span>
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={() => setSelectedBatchId(null)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to All Batches</span>
+              </Button>
+            </div>
           )}
         </div>
 
@@ -148,7 +196,7 @@ export default function LeadBatchesPage() {
                         <TableCell className="text-slate-400 text-xs">
                           {b.lastImportedAt ? new Date(b.lastImportedAt).toLocaleDateString() : '—'}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right flex items-center justify-end gap-2">
                           <Button
                             size="sm"
                             onClick={() => setSelectedBatchId(b.batchName)}
@@ -157,6 +205,18 @@ export default function LeadBatchesPage() {
                             <span>Drill Down</span>
                             <ChevronRight className="w-3.5 h-3.5 ml-1" />
                           </Button>
+
+                          {b.batchName !== 'MANUAL / WEBSITE' && b.batchName !== 'manual' && (
+                            <Button
+                              size="sm"
+                              disabled={deletingBatchId === b.batchName}
+                              onClick={() => handleDeleteBatch(b.batchName, b.totalLeads)}
+                              className="bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white text-xs font-bold rounded-xl h-8 px-2.5 border border-red-500/30 transition-colors"
+                              title="Delete / Rollback this Excel Batch"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))

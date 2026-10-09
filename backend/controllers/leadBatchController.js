@@ -100,7 +100,50 @@ const getBatchLeads = async (req, res, next) => {
   }
 };
 
+// @desc    Delete/Rollback an entire imported lead batch and its leads
+// @route   DELETE /api/admin/lead-batches/:batchId
+// @access  Private (admin, super_admin, director)
+const deleteLeadBatch = async (req, res, next) => {
+  try {
+    const { batchId } = req.params;
+
+    if (!batchId || batchId === 'MANUAL / WEBSITE' || batchId === 'manual') {
+      return res.status(400).json({ message: 'Cannot delete default manual or website leads batch' });
+    }
+
+    const Lead = require('../models/Lead');
+    const AuditLog = require('../models/AuditLog');
+
+    // 1. Delete all Opportunities under this batchId
+    const oppResult = await Opportunity.deleteMany({ importBatchId: batchId });
+
+    // 2. Delete all Lead records under this batchId
+    const leadResult = await Lead.deleteMany({ importBatchId: batchId });
+
+    // 3. Create Audit Log
+    await AuditLog.create({
+      action: 'DELETE_LEAD_BATCH',
+      actor: req.user._id,
+      targetModel: 'Opportunity',
+      details: {
+        batchId,
+        deletedOpportunities: oppResult.deletedCount,
+        deletedLeads: leadResult.deletedCount
+      }
+    });
+
+    res.json({
+      success: true,
+      message: `Successfully deleted lead batch "${batchId}" and removed ${oppResult.deletedCount} leads.`,
+      deletedCount: oppResult.deletedCount
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getLeadBatches,
-  getBatchLeads
+  getBatchLeads,
+  deleteLeadBatch
 };
