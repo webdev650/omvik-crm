@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { FileSpreadsheet, Upload, CheckCircle2, ArrowRight, Database, Tag } from 'lucide-react';
+import { FileSpreadsheet, Upload, CheckCircle2, ArrowRight, Database, Tag, UserCheck } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import { previewImportLeads, confirmImportLeads } from '../../api/opportunities';
 import { Button } from '../../components/ui/button';
@@ -17,6 +17,7 @@ import {
   TableRow
 } from '../../components/ui/table';
 import { getProjects } from '../../api/projects';
+import { getUsers } from '../../api/users';
 import { formatProjectName } from '../../utils/formatProjectName';
 
 const getYYMMDDStr = () => {
@@ -34,6 +35,7 @@ export default function ImportLeadsPage() {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [batchName, setBatchName] = useState<string>('');
   const [isCustomBatchName, setIsCustomBatchName] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'valid' | 'duplicates' | 'invalid'>('valid');
@@ -47,6 +49,13 @@ export default function ImportLeadsPage() {
     queryFn: () => getProjects({ flat: true })
   });
   const projects = projectsData?.projects || [];
+
+  // Fetch Users for Target Employee selector
+  const { data: usersData } = useQuery({
+    queryKey: ['users'],
+    queryFn: getUsers
+  });
+  const users = usersData?.users || [];
 
   const updateSheetCodeForProject = (projId: string) => {
     setSelectedProjectId(projId);
@@ -80,7 +89,7 @@ export default function ImportLeadsPage() {
 
   // Confirm Mutation
   const confirmMutation = useMutation({
-    mutationFn: ({ validLeads, name }: { validLeads: any[]; name?: string }) => confirmImportLeads(validLeads, name),
+    mutationFn: ({ validLeads, name, targetUserId }: { validLeads: any[]; name?: string; targetUserId?: string }) => confirmImportLeads(validLeads, name, targetUserId),
     onSuccess: (data) => {
       setImportSummary(data);
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
@@ -140,7 +149,8 @@ export default function ImportLeadsPage() {
     setErrorMessage(null);
     confirmMutation.mutate({
       validLeads: previewResult.valid,
-      name: batchName.trim() || `NEW_DDV_${getYYMMDDStr()}`
+      name: batchName.trim() || `NEW_DDV_${getYYMMDDStr()}`,
+      targetUserId: selectedUserId || undefined
     });
   };
 
@@ -217,7 +227,7 @@ export default function ImportLeadsPage() {
 
         {/* Step 1: Upload Zone */}
         <div className="rounded-2xl border border-slate-800/80 bg-[#131c31] shadow-sm p-6 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-2 border-b border-slate-800/60">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pb-2 border-b border-slate-800/60">
             {/* Target Project Selector */}
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
@@ -256,6 +266,27 @@ export default function ImportLeadsPage() {
                 className="bg-[#0b0f19] border-slate-700 text-slate-200 text-xs rounded-xl focus:border-indigo-500 font-mono font-bold"
               />
               <p className="text-[11px] text-slate-400">Format: [PROJECT_CODE]_[YYMMDD] (e.g. NEW_DDV_260916). Pre-filled but editable.</p>
+            </div>
+
+            {/* Target Employee Assignment Selector */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Target Employee Assignment</span>
+              </Label>
+              <select
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                className="w-full h-10 bg-[#0b0f19] border border-slate-700 text-slate-200 text-xs font-semibold rounded-xl px-3 focus:border-indigo-500"
+              >
+                <option value="">⚡ Auto Round-Robin (All Telecallers)</option>
+                {users.map((u: any) => (
+                  <option key={u._id} value={u._id}>
+                    👤 {u.name} ({u.employeeId || u.role})
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-slate-400">Assign sheet to a specific employee or auto round-robin.</p>
             </div>
           </div>
 

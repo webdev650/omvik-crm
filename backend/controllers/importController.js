@@ -200,7 +200,7 @@ const previewImport = async (req, res, next) => {
  */
 const confirmImport = async (req, res, next) => {
   try {
-    const { leads, batchName } = req.body;
+    const { leads, batchName, targetUserId } = req.body;
 
     if (!Array.isArray(leads) || leads.length === 0) {
       return res.status(400).json({ message: 'No valid leads array provided for confirmation' });
@@ -238,6 +238,7 @@ const confirmImport = async (req, res, next) => {
             project,
             source,
             intent,
+            owner: targetUserId || item.owner || null,
             importBatchId: assignedBatchId,
             allowDuplicate: item.allowDuplicate || false,
             reason: item.reason || 'Bulk import confirmation'
