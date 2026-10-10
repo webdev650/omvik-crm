@@ -91,114 +91,116 @@ const previewImport = async (req, res, next) => {
       const origRow = rawRows[i];
       const rowNum = i + 2; // Header is row 1
 
-      // Clean row object keys (strip BOM, quotes, control characters)
-      const row = {};
-      for (const [key, val] of Object.entries(origRow)) {
-        const cleanKey = String(key)
-          .replace(/^\uFEFF/, '')
-          .replace(/^["']|["']$/g, '')
-          .trim();
-        row[cleanKey] = val;
-      }
+      try {
+        // Clean row object keys (strip BOM, quotes, control characters)
+        const row = {};
+        for (const [key, val] of Object.entries(origRow)) {
+          const cleanKey = String(key)
+            .replace(/^\uFEFF/, '')
+            .replace(/^["']|["']$/g, '')
+            .trim();
+          row[cleanKey] = val;
+        }
 
-      let rawName = getRowValue(row, [
-        'name', 'full_name', 'fullname', 'customer_name', 'client_name', 'Name',
-        'Customer Name', 'CustomerName', 'client_name', 'customer', 'lead_name',
-        'lead', 'contact_name', 'person_name', 'applicant_name', 'party_name', 'client'
-      ]);
-      let rawMobile = getRowValue(row, [
-        'mobile', 'phone', 'primary_mobile', 'contact', 'Mobile', 'Phone', 'Contact',
-        'Mobile Number', 'MobileNumber', 'mobile_number', 'phone_number', 'phoneNumber',
-        'mobileNo', 'mobile_no', 'Contact Number', 'contact_number', 'cell', 'telephone',
-        'number', 'phone1', 'mobile1', 'primary_phone', 'contact_no', 'contactno'
-      ]);
-      const rawProject = getRowValue(row, [
-        'project', 'project_name', 'code', 'Project', 'ProjectCode',
-        'Project Name', 'ProjectName', 'project_code', 'projectcode'
-      ]);
-      const rawSource = getRowValue(row, [
-        'source', 'lead_source', 'channel', 'Source', 'Lead Source', 'leadsource'
-      ]) || 'BULK_IMPORT';
-      const rawIntent = getRowValue(row, [
-        'intent', 'lead_intent', 'Intent', 'Priority', 'priority', 'Lead Intent', 'leadintent'
-      ]) || '';
-      const rawEmail = getRowValue(row, [
-        'email', 'email_address', 'Email', 'Email Address', 'emailaddress'
-      ]);
-      const rawCity = getRowValue(row, [
-        'city', 'location', 'City', 'Location', 'address', 'Address'
-      ]);
+        let rawName = getRowValue(row, [
+          'name', 'full_name', 'fullname', 'customer_name', 'client_name', 'Name',
+          'Customer Name', 'CustomerName', 'client_name', 'customer', 'lead_name',
+          'lead', 'contact_name', 'person_name', 'applicant_name', 'party_name', 'client'
+        ]);
+        let rawMobile = getRowValue(row, [
+          'mobile', 'phone', 'primary_mobile', 'contact', 'Mobile', 'Phone', 'Contact',
+          'Mobile Number', 'MobileNumber', 'mobile_number', 'phone_number', 'phoneNumber',
+          'mobileNo', 'mobile_no', 'Contact Number', 'contact_number', 'cell', 'telephone',
+          'number', 'phone1', 'mobile1', 'primary_phone', 'contact_no', 'contactno'
+        ]);
+        const rawProject = getRowValue(row, [
+          'project', 'project_name', 'code', 'Project', 'ProjectCode',
+          'Project Name', 'ProjectName', 'project_code', 'projectcode'
+        ]);
+        const rawSource = getRowValue(row, [
+          'source', 'lead_source', 'channel', 'Source', 'Lead Source', 'leadsource'
+        ]) || 'BULK_IMPORT';
+        const rawIntent = getRowValue(row, [
+          'intent', 'lead_intent', 'Intent', 'Priority', 'priority', 'Lead Intent', 'leadintent'
+        ]) || '';
+        const rawEmail = getRowValue(row, [
+          'email', 'email_address', 'Email', 'Email Address', 'emailaddress'
+        ]);
+        const rawCity = getRowValue(row, [
+          'city', 'location', 'City', 'Location', 'address', 'Address'
+        ]);
 
-      let cleanMobile = normalizePhone(rawMobile);
+        let cleanMobile = normalizePhone(rawMobile);
 
-      // SMART AUTO-DETECT 1: If cleanMobile missing/invalid, scan ALL cell values in row for 10-digit phone number
-      if (!cleanMobile || cleanMobile.length < 10) {
-        for (const [k, val] of Object.entries(row)) {
-          if (!val) continue;
-          const candidate = normalizePhone(String(val));
-          if (candidate && candidate.length === 10) {
-            cleanMobile = candidate;
-            rawMobile = String(val);
-            break;
+        // SMART AUTO-DETECT 1: If cleanMobile missing/invalid, scan ALL cell values in row for 10-digit phone number
+        if (!cleanMobile || cleanMobile.length < 10) {
+          for (const [k, val] of Object.entries(row)) {
+            if (!val) continue;
+            const candidate = normalizePhone(String(val));
+            if (candidate && candidate.length === 10) {
+              cleanMobile = candidate;
+              rawMobile = String(val);
+              break;
+            }
           }
         }
-      }
 
-      // SMART AUTO-DETECT 2: If rawName missing, scan text cells in row for candidate customer name
-      if (!rawName) {
-        for (const [k, val] of Object.entries(row)) {
-          if (!val) continue;
-          const strVal = String(val).trim();
-          const candidatePhone = normalizePhone(strVal);
-          if (candidatePhone && candidatePhone.length >= 10) continue;
-          if (
-            strVal.length >= 2 &&
-            !/^\d+$/.test(strVal) &&
-            !strVal.includes('http') &&
-            !strVal.toLowerCase().includes('sheet') &&
-            !strVal.toLowerCase().includes('batch') &&
-            !projects.some((p) => p.name.toLowerCase() === strVal.toLowerCase())
-          ) {
-            rawName = strVal;
-            break;
+        // SMART AUTO-DETECT 2: If rawName missing, scan text cells in row for candidate customer name
+        if (!rawName) {
+          for (const [k, val] of Object.entries(row)) {
+            if (!val) continue;
+            const strVal = String(val).trim();
+            const candidatePhone = normalizePhone(strVal);
+            if (candidatePhone && candidatePhone.length >= 10) continue;
+            if (
+              strVal.length >= 2 &&
+              !/^\d+$/.test(strVal) &&
+              !strVal.includes('http') &&
+              !strVal.toLowerCase().includes('sheet') &&
+              !strVal.toLowerCase().includes('batch') &&
+              !projects.some((p) => p && p.name && p.name.toLowerCase() === strVal.toLowerCase())
+            ) {
+              rawName = strVal;
+              break;
+            }
           }
         }
-      }
 
-      // SMART FALLBACK 3: If mobile is valid (10 digits) but rawName is still empty, auto-generate Prospect Name
-      if (!rawName && cleanMobile && cleanMobile.length === 10) {
-        rawName = `Prospect (${cleanMobile})`;
-      }
-
-      let cleanIntent = null;
-      if (rawIntent) {
-        const l = rawIntent.toLowerCase();
-        if (['high', 'medium', 'low'].includes(l)) cleanIntent = l;
-      }
-
-      // Validation check
-      if (!rawName || !cleanMobile || cleanMobile.length < 10) {
-        invalid.push({
-          rowNumber: rowNum,
-          rawRow: row,
-          reason: !rawName ? 'Missing customer full name' : 'Missing or invalid 10-digit mobile number'
-        });
-        continue;
-      }
-
-      // Resolve Project
-      let targetProject = defaultProject;
-      if (rawProject && projects.length > 0) {
-        const found = projects.find(
-          (p) =>
-            p._id.toString() === rawProject ||
-            p.name.toLowerCase() === rawProject.toLowerCase() ||
-            p.code.toLowerCase() === rawProject.toLowerCase()
-        );
-        if (found) {
-          targetProject = found;
+        // SMART FALLBACK 3: If mobile is valid (10 digits) but rawName is still empty, auto-generate Prospect Name
+        if (!rawName && cleanMobile && cleanMobile.length === 10) {
+          rawName = `Prospect (${cleanMobile})`;
         }
-      }
+
+        let cleanIntent = null;
+        if (rawIntent) {
+          const l = rawIntent.toLowerCase();
+          if (['high', 'medium', 'low'].includes(l)) cleanIntent = l;
+        }
+
+        // Validation check
+        if (!rawName || !cleanMobile || cleanMobile.length < 10) {
+          invalid.push({
+            rowNumber: rowNum,
+            rawRow: row,
+            reason: !rawName ? 'Missing customer full name' : 'Missing or invalid 10-digit mobile number'
+          });
+          continue;
+        }
+
+        // Resolve Project
+        let targetProject = defaultProject;
+        if (rawProject && projects.length > 0) {
+          const found = projects.find(
+            (p) =>
+              p &&
+              ((p._id ? p._id.toString() : '') === String(rawProject) ||
+                (p.name ? p.name.toLowerCase() : '') === String(rawProject).toLowerCase() ||
+                (p.code ? p.code.toLowerCase() : '') === String(rawProject).toLowerCase())
+          );
+          if (found) {
+            targetProject = found;
+          }
+        }
 
       if (!targetProject) {
         invalid.push({
@@ -278,6 +280,13 @@ const previewImport = async (req, res, next) => {
           source: rawSource,
           intent: cleanIntent,
           isExistingCustomer: false
+        }
+      } catch (rowErr) {
+        console.error(`Error processing row ${rowNum}:`, rowErr);
+        invalid.push({
+          rowNumber: rowNum,
+          rawRow: origRow,
+          reason: rowErr.message || 'Row processing error'
         });
       }
     }
