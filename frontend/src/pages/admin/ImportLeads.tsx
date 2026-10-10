@@ -89,7 +89,8 @@ export default function ImportLeadsPage() {
 
   // Confirm Mutation
   const confirmMutation = useMutation({
-    mutationFn: ({ validLeads, name, targetUserId }: { validLeads: any[]; name?: string; targetUserId?: string }) => confirmImportLeads(validLeads, name, targetUserId),
+    mutationFn: ({ validLeads, name, targetUserId, targetProjectId }: { validLeads: any[]; name?: string; targetUserId?: string; targetProjectId?: string }) =>
+      confirmImportLeads(validLeads, name, targetUserId, targetProjectId),
     onSuccess: (data) => {
       setImportSummary(data);
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
@@ -150,7 +151,8 @@ export default function ImportLeadsPage() {
     confirmMutation.mutate({
       validLeads: previewResult.valid,
       name: batchName.trim() || `NEW_DDV_${getYYMMDDStr()}`,
-      targetUserId: selectedUserId || undefined
+      targetUserId: selectedUserId || undefined,
+      targetProjectId: selectedProjectId || undefined
     });
   };
 

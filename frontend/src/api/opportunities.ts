@@ -39,8 +39,8 @@ export async function previewImportLeads(file: File) {
   return response.data;
 }
 
-export async function confirmImportLeads(leads: any[], batchName?: string, targetUserId?: string) {
-  const response = await api.post('/leads/import/confirm', { leads, batchName, targetUserId });
+export async function confirmImportLeads(leads: any[], batchName?: string, targetUserId?: string, projectId?: string) {
+  const response = await api.post('/leads/import/confirm', { leads, batchName, targetUserId, projectId });
   return response.data;
 }
 

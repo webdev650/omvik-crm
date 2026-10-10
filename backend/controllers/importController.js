@@ -15,7 +15,9 @@ function getRowValue(row, possibleKeys) {
   // Also check case-insensitive match on row keys
   const rowKeys = Object.keys(row);
   for (const pKey of possibleKeys) {
-    const matchedKey = rowKeys.find((k) => k.toLowerCase().replace(/[^a-z0-9]/g, '') === pKey.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    const matchedKey = rowKeys.find(
+      (k) => k.toLowerCase().replace(/[^a-z0-9]/g, '') === pKey.toLowerCase().replace(/[^a-z0-9]/g, '')
+    );
     if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== null && String(row[matchedKey]).trim() !== '') {
       return String(row[matchedKey]).trim();
     }
@@ -26,12 +28,12 @@ function getRowValue(row, possibleKeys) {
 /**
  * Preview bulk lead import (Excel / CSV parsing and check-only duplicate analysis)
  * @route POST /api/leads/import/preview
- * @access Private (super_admin, admin, director)
+ * @access Private (super_admin, admin, director, telecaller, team_lead)
  */
 const previewImport = async (req, res, next) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'Please upload an Excel (.xlsx) or CSV (.csv) file' });
+      return res.status(400).json({ message: 'Please upload an Excel (.xlsx, .xls) or CSV (.csv) file' });
     }
 
     // 1. Read Excel / CSV buffer
@@ -61,11 +63,31 @@ const previewImport = async (req, res, next) => {
       const row = rawRows[i];
       const rowNum = i + 2; // Header is row 1
 
-      const rawName = getRowValue(row, ['name', 'full_name', 'fullname', 'customer_name', 'client_name', 'Name']);
-      const rawMobile = getRowValue(row, ['mobile', 'phone', 'primary_mobile', 'contact', 'Mobile', 'Phone', 'Contact']);
-      const rawProject = getRowValue(row, ['project', 'project_name', 'code', 'Project', 'ProjectCode']);
-      const rawSource = getRowValue(row, ['source', 'lead_source', 'channel', 'Source']) || 'BULK_IMPORT';
-      const rawIntent = getRowValue(row, ['intent', 'lead_intent', 'Intent', 'Priority', 'priority']) || '';
+      const rawName = getRowValue(row, [
+        'name', 'full_name', 'fullname', 'customer_name', 'client_name', 'Name',
+        'Customer Name', 'CustomerName', 'client_name', 'customer'
+      ]);
+      const rawMobile = getRowValue(row, [
+        'mobile', 'phone', 'primary_mobile', 'contact', 'Mobile', 'Phone', 'Contact',
+        'Mobile Number', 'MobileNumber', 'mobile_number', 'phone_number', 'phoneNumber',
+        'mobileNo', 'mobile_no', 'Contact Number', 'contact_number'
+      ]);
+      const rawProject = getRowValue(row, [
+        'project', 'project_name', 'code', 'Project', 'ProjectCode',
+        'Project Name', 'ProjectName', 'project_code', 'projectcode'
+      ]);
+      const rawSource = getRowValue(row, [
+        'source', 'lead_source', 'channel', 'Source', 'Lead Source', 'leadsource'
+      ]) || 'BULK_IMPORT';
+      const rawIntent = getRowValue(row, [
+        'intent', 'lead_intent', 'Intent', 'Priority', 'priority', 'Lead Intent', 'leadintent'
+      ]) || '';
+      const rawEmail = getRowValue(row, [
+        'email', 'email_address', 'Email', 'Email Address', 'emailaddress'
+      ]);
+      const rawCity = getRowValue(row, [
+        'city', 'location', 'City', 'Location', 'address', 'Address'
+      ]);
 
       let cleanIntent = null;
       if (rawIntent) {
@@ -76,7 +98,7 @@ const previewImport = async (req, res, next) => {
       const cleanMobile = normalizePhone(rawMobile);
 
       // Validation check
-      if (!rawName || !cleanMobile) {
+      if (!rawName || !cleanMobile || cleanMobile.length < 10) {
         invalid.push({
           rowNumber: rowNum,
           rawRow: row,
@@ -130,6 +152,8 @@ const previewImport = async (req, res, next) => {
             rowNumber: rowNum,
             rawName: rawName.trim(),
             mobile: cleanMobile,
+            email: rawEmail || customer.email || '',
+            city: rawCity || customer.city || '',
             project: targetProject.name,
             projectId: targetProject._id,
             source: rawSource,
@@ -153,6 +177,8 @@ const previewImport = async (req, res, next) => {
             rowNumber: rowNum,
             rawName: rawName.trim(),
             mobile: cleanMobile,
+            email: rawEmail || customer.email || '',
+            city: rawCity || customer.city || '',
             project: targetProject.name,
             projectId: targetProject._id,
             source: rawSource,
@@ -166,6 +192,8 @@ const previewImport = async (req, res, next) => {
           rowNumber: rowNum,
           rawName: rawName.trim(),
           mobile: cleanMobile,
+          email: rawEmail || '',
+          city: rawCity || '',
           project: targetProject.name,
           projectId: targetProject._id,
           source: rawSource,
@@ -196,11 +224,11 @@ const previewImport = async (req, res, next) => {
 /**
  * Confirm bulk lead import (Processes previewed leads through duplicate engine & auto-assignment)
  * @route POST /api/leads/import/confirm
- * @access Private (super_admin, admin, director)
+ * @access Private (super_admin, admin, director, telecaller, team_lead)
  */
 const confirmImport = async (req, res, next) => {
   try {
-    const { leads, batchName, targetUserId } = req.body;
+    const { leads, batchName, targetUserId, projectId: fallbackProjectId } = req.body;
 
     if (!Array.isArray(leads) || leads.length === 0) {
       return res.status(400).json({ message: 'No valid leads array provided for confirmation' });
@@ -208,24 +236,48 @@ const confirmImport = async (req, res, next) => {
 
     const assignedBatchId = (batchName && String(batchName).trim()) || `Sheet-${Date.now()}`;
 
+    // Load active projects for robust project ID resolution
+    const projects = await Project.find({ isActive: true });
+    const defaultProject = (fallbackProjectId && projects.find(p => p._id.toString() === String(fallbackProjectId))) || projects[0] || null;
+
     let importedCount = 0;
     let skippedCount = 0;
     const results = [];
 
     for (let i = 0; i < leads.length; i++) {
       const item = leads[i];
-      const rawName = item.rawName || item.name;
-      const rawMobile = item.rawMobile || item.mobile;
-      const project = item.projectId || item.project;
+      const rawName = item.rawName || item.name || item.customerName;
+      const rawMobile = item.rawMobile || item.mobile || item.primaryMobile;
+      const rawProject = item.projectId || item.project || item.projectName;
       const source = item.source || 'BULK_IMPORT';
       const intent = item.intent || null;
+      const email = item.email || '';
+      const city = item.city || '';
 
-      if (!rawName || !rawMobile || !project) {
+      // Robustly resolve project ObjectId
+      let targetProjectId = null;
+      if (rawProject) {
+        const found = projects.find(
+          (p) =>
+            p._id.toString() === String(rawProject) ||
+            p.name.toLowerCase() === String(rawProject).toLowerCase() ||
+            p.code.toLowerCase() === String(rawProject).toLowerCase()
+        );
+        if (found) {
+          targetProjectId = found._id;
+        }
+      }
+
+      if (!targetProjectId && defaultProject) {
+        targetProjectId = defaultProject._id;
+      }
+
+      if (!rawName || !rawMobile || !targetProjectId) {
         skippedCount++;
         results.push({
           index: i,
           success: false,
-          reason: 'Missing name, mobile, or project ID'
+          reason: !rawName ? 'Missing name' : !rawMobile ? 'Missing mobile' : 'No matching active project ID'
         });
         continue;
       }
@@ -235,9 +287,11 @@ const confirmImport = async (req, res, next) => {
           {
             rawName,
             rawMobile,
-            project,
+            project: targetProjectId,
             source,
             intent,
+            email,
+            city,
             owner: targetUserId || item.owner || null,
             importBatchId: assignedBatchId,
             allowDuplicate: item.allowDuplicate || false,
@@ -265,6 +319,7 @@ const confirmImport = async (req, res, next) => {
           });
         }
       } catch (err) {
+        console.error(`Error importing row ${i + 1} (${rawName}):`, err);
         skippedCount++;
         results.push({
           index: i,
