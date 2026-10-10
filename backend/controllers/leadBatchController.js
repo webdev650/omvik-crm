@@ -1,9 +1,10 @@
 // @desc    Get summary list of all import batches with lead counts, assigned owners, and projects
 // @route   GET /api/admin/lead-batches
-// @access  Private (admin, super_admin, director)
+// @access  Private (admin, super_admin, director, team_lead)
 const getLeadBatches = async (req, res, next) => {
   try {
-    const scopeFilter = req.dataScope || {};
+    const isFullAdmin = ['super_admin', 'admin', 'director'].includes(req.user.role);
+    const scopeFilter = isFullAdmin ? {} : (req.dataScope || {});
 
     const batchAgg = await Opportunity.aggregate([
       { $match: scopeFilter },
@@ -59,14 +60,17 @@ const getLeadBatches = async (req, res, next) => {
 
 // @desc    Get leads inside a specific import batch with search/filtering
 // @route   GET /api/admin/lead-batches/:batchId
-// @access  Private (admin, super_admin, director)
+// @access  Private (admin, super_admin, director, team_lead)
 const getBatchLeads = async (req, res, next) => {
   try {
     const { batchId } = req.params;
-    const { search, stage, page = 1, limit = 100 } = req.query;
+    const { search, stage, page = 1, limit = 500 } = req.query;
+
+    const isFullAdmin = ['super_admin', 'admin', 'director'].includes(req.user.role);
+    const scopeFilter = isFullAdmin ? {} : (req.dataScope || {});
 
     const query = {
-      ...(req.dataScope || {})
+      ...scopeFilter
     };
 
     if (batchId === 'MANUAL / WEBSITE' || batchId === 'manual') {
