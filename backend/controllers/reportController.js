@@ -105,7 +105,8 @@ const getEmployeeHistory = async (req, res, next) => {
       dealsWon,
       dealsLost,
       slaBreaches,
-      dailyReportsList
+      dailyReportsList,
+      batchAgg
     ] = await Promise.all([
       Opportunity.countDocuments({ owner: userId, createdAt: { $gte: startDate, $lte: endDate } }),
       Opportunity.countDocuments({ owner: userId, createdAt: { $lte: endDate } }),
@@ -116,7 +117,27 @@ const getEmployeeHistory = async (req, res, next) => {
       Opportunity.countDocuments({ owner: userId, stage: 'won', updatedAt: { $gte: startDate, $lte: endDate } }),
       Opportunity.countDocuments({ owner: userId, stage: 'lost', updatedAt: { $gte: startDate, $lte: endDate } }),
       Opportunity.countDocuments({ owner: userId, slaBreached: true, updatedAt: { $gte: startDate, $lte: endDate } }),
-      DailyReport.find({ user: userId, date: { $gte: fromDateStr, $lte: toDateStr } }).sort({ date: -1 })
+      DailyReport.find({ user: userId, date: { $gte: fromDateStr, $lte: toDateStr } }).sort({ date: -1 }),
+      Opportunity.aggregate([
+        {
+          $match: {
+            owner: targetUser._id,
+            createdAt: { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: { $ifNull: ['$importBatchId', 'MANUAL / WEBSITE'] },
+            totalAssigned: { $sum: 1 },
+            activeLeads: { $sum: { $cond: [{ $eq: ['$isActive', true] }, 1, 0] } },
+            wonDeals: { $sum: { $cond: [{ $eq: ['$stage', 'won'] }, 1, 0] } },
+            lostDeals: { $sum: { $cond: [{ $eq: ['$stage', 'lost'] }, 1, 0] } },
+            firstAssignedAt: { $min: '$createdAt' },
+            lastAssignedAt: { $max: '$createdAt' }
+          }
+        },
+        { $sort: { lastAssignedAt: -1 } }
+      ])
     ]);
 
     // Outcome breakdown
@@ -135,6 +156,17 @@ const getEmployeeHistory = async (req, res, next) => {
         activityOutcomeBreakdown[act.outcome]++;
       }
     });
+
+    const assignedBatches = batchAgg.map((b) => ({
+      batchId: b._id,
+      batchName: b._id,
+      totalAssigned: b.totalAssigned,
+      activeLeads: b.activeLeads,
+      wonDeals: b.wonDeals,
+      lostDeals: b.lostDeals,
+      firstAssignedAt: b.firstAssignedAt,
+      lastAssignedAt: b.lastAssignedAt
+    }));
 
     res.json({
       success: true,
@@ -164,6 +196,7 @@ const getEmployeeHistory = async (req, res, next) => {
         dealsLost,
         slaBreaches
       },
+      assignedBatches,
       dailyReports: dailyReportsList
     });
   } catch (error) {

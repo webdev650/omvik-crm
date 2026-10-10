@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
-import { History, Calendar, UserCheck, PhoneCall, CheckCircle2, AlertTriangle, ArrowRight, User } from 'lucide-react';
+import { History, Calendar, UserCheck, PhoneCall, CheckCircle2, AlertTriangle, ArrowRight, User, Tag, FileSpreadsheet, ChevronRight } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import { getUsers } from '../../api/users';
 import { getEmployeeHistory } from '../../api/reports';
@@ -54,6 +54,7 @@ export default function AdminEmployeeHistory() {
 
   const emp = historyData?.employee;
   const summary = historyData?.summary;
+  const assignedBatches = historyData?.assignedBatches || [];
   const dailyReports = historyData?.dailyReports || [];
 
   // Preset Date Handlers
@@ -290,6 +291,67 @@ export default function AdminEmployeeHistory() {
                     </div>
                   </div>
                 )}
+
+                {/* Assigned Excel Lead Sheets Timeline */}
+                <div className="rounded-2xl border border-slate-800/80 bg-[#131c31] overflow-hidden shadow-sm">
+                  <div className="p-4 border-b border-slate-800 bg-[#0b0f19] flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <FileSpreadsheet className="w-4 h-4 text-indigo-400" />
+                      <span>Assigned Excel Lead Sheets Timeline ({assignedBatches.length})</span>
+                    </h4>
+                  </div>
+                  {assignedBatches.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 text-xs">
+                      No Excel lead sheets assigned to {emp?.name} within this date window.
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader className="bg-[#0b0f19]">
+                        <TableRow className="border-b border-slate-800">
+                          <TableHead className="text-slate-400 font-semibold text-xs">Sheet Code (Batch Tag)</TableHead>
+                          <TableHead className="text-slate-400 font-semibold text-xs">Leads Assigned</TableHead>
+                          <TableHead className="text-slate-400 font-semibold text-xs">Active Pipeline</TableHead>
+                          <TableHead className="text-slate-400 font-semibold text-xs">Deals Won / Lost</TableHead>
+                          <TableHead className="text-slate-400 font-semibold text-xs">Assignment Date</TableHead>
+                          <TableHead className="text-right text-slate-400 font-semibold text-xs">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {assignedBatches.map((b: any) => (
+                          <TableRow key={b.batchId} className="border-b border-slate-800/40 hover:bg-slate-800/40">
+                            <TableCell className="font-mono text-slate-200 text-xs font-bold flex items-center gap-2">
+                              <Tag className="w-3.5 h-3.5 text-indigo-400" />
+                              <span>{b.batchName}</span>
+                            </TableCell>
+                            <TableCell className="font-extrabold text-indigo-300 text-xs">{b.totalAssigned} leads</TableCell>
+                            <TableCell>
+                              <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-xs">
+                                {b.activeLeads} active
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs font-mono font-bold">
+                              <span className="text-emerald-400">🏆 {b.wonDeals} won</span>
+                              <span className="text-slate-500"> / {b.lostDeals} lost</span>
+                            </TableCell>
+                            <TableCell className="text-slate-400 text-xs font-mono">
+                              {b.lastAssignedAt ? new Date(b.lastAssignedAt).toLocaleDateString() : '—'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="sm"
+                                onClick={() => navigate('/admin/lead-batches')}
+                                className="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white text-xs font-bold rounded-xl h-8 px-3 border border-indigo-500/30"
+                              >
+                                <span>View Batch</span>
+                                <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
 
                 {/* Daily Reports Log Table */}
                 <div className="rounded-2xl border border-slate-800/80 bg-[#131c31] overflow-hidden shadow-sm">
