@@ -94,9 +94,9 @@ const getOpportunities = async (req, res, next) => {
     }
 
     const opportunities = await Opportunity.find(filter)
-      .populate('customer', 'name primaryMobile')
-      .populate('project', 'name location')
-      .populate('owner', 'name')
+      .populate('customer', 'name primaryMobile alternateMobile email city state country address')
+      .populate('project', 'name code location projectCode')
+      .populate('owner', 'name email role employeeId')
       .sort({ createdAt: -1 });
 
     const Booking = require('../models/Booking');

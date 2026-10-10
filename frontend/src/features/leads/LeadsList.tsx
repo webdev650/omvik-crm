@@ -283,8 +283,10 @@ export default function LeadsList() {
                     <TableRow className="border-b border-slate-800/80 bg-[#0b0f19]">
                       <TableHead className="text-slate-400 text-xs font-bold uppercase">Lead Code</TableHead>
                       <TableHead className="text-slate-400 text-xs font-bold uppercase">Customer</TableHead>
-                      <TableHead className="text-slate-400 text-xs font-bold uppercase">Mobile</TableHead>
+                      <TableHead className="text-slate-400 text-xs font-bold uppercase">Contact & City</TableHead>
                       <TableHead className="text-slate-400 text-xs font-bold uppercase">Project</TableHead>
+                      <TableHead className="text-slate-400 text-xs font-bold uppercase">Source / Intent</TableHead>
+                      <TableHead className="text-slate-400 text-xs font-bold uppercase">Batch Tag</TableHead>
                       <TableHead className="text-slate-400 text-xs font-bold uppercase">Stage</TableHead>
                       <TableHead className="text-slate-400 text-xs font-bold uppercase">Owner</TableHead>
                       <TableHead className="text-slate-400 text-xs font-bold uppercase">SLA Status</TableHead>
@@ -305,16 +307,44 @@ export default function LeadsList() {
                         </TableCell>
 
                         <TableCell className="font-semibold text-slate-100">
-                          {opp.customer?.name || 'N/A'}
+                          <div>{opp.customer?.name || 'N/A'}</div>
+                          {opp.customer?.email && (
+                            <div className="text-[10px] text-slate-400 font-normal">{opp.customer.email}</div>
+                          )}
                         </TableCell>
 
-
-                        <TableCell className="font-mono text-slate-400 text-xs">
-                          {opp.customer?.primaryMobile || 'N/A'}
+                        <TableCell className="font-mono text-slate-300 text-xs">
+                          <div>{opp.customer?.primaryMobile || 'N/A'}</div>
+                          {opp.customer?.city && (
+                            <div className="text-[10px] text-indigo-300 font-sans">{opp.customer.city}</div>
+                          )}
                         </TableCell>
 
-                        <TableCell className="text-slate-300 text-xs">
+                        <TableCell className="text-slate-300 text-xs font-medium">
                           {opp.project?.name || 'N/A'}
+                        </TableCell>
+
+                        <TableCell className="text-xs">
+                          <div className="text-slate-300 font-semibold">{opp.source || 'BULK_IMPORT'}</div>
+                          {opp.intent && (
+                            <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                              opp.intent === 'high' ? 'bg-red-500/20 text-red-400' :
+                              opp.intent === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                              'bg-slate-500/20 text-slate-400'
+                            }`}>
+                              {opp.intent} priority
+                            </span>
+                          )}
+                        </TableCell>
+
+                        <TableCell className="font-mono text-[11px] text-indigo-300 font-semibold">
+                          {opp.importBatchId ? (
+                            <span className="px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20">
+                              {opp.importBatchId}
+                            </span>
+                          ) : (
+                            <span className="text-slate-500">—</span>
+                          )}
                         </TableCell>
 
                         <TableCell>
@@ -364,9 +394,14 @@ export default function LeadsList() {
                     className="p-4 hover:bg-slate-800/40 transition-colors cursor-pointer space-y-2.5"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <h4 className="text-sm font-bold text-white truncate">
-                        {opp.customer?.name || 'N/A'}
-                      </h4>
+                      <div>
+                        <h4 className="text-sm font-bold text-white truncate">
+                          {opp.customer?.name || 'N/A'}
+                        </h4>
+                        {opp.customer?.email && (
+                          <p className="text-[11px] text-slate-400">{opp.customer.email}</p>
+                        )}
+                      </div>
                       <Badge variant={getStageBadgeVariant(opp.stage)}>
                         {opp.stage ? opp.stage.replace('_', ' ') : 'N/A'}
                       </Badge>
@@ -382,6 +417,12 @@ export default function LeadsList() {
                         <span>{opp.project?.name || 'N/A'}</span>
                       </div>
                     </div>
+
+                    {opp.importBatchId && (
+                      <div className="text-[11px] text-indigo-400 font-mono">
+                        Tag: {opp.importBatchId}
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-800/40">
                       <div className="flex items-center gap-1.5">
