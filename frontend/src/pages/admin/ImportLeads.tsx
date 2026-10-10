@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { FileSpreadsheet, Upload, CheckCircle2, ArrowRight, Database, Tag, UserCheck } from 'lucide-react';
+import { FileSpreadsheet, Upload, CheckCircle2, ArrowRight, Database, Tag, UserCheck, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 import Navbar from '../../components/Navbar';
 import { previewImportLeads, confirmImportLeads } from '../../api/opportunities';
 import { Button } from '../../components/ui/button';
@@ -43,6 +44,53 @@ export default function ImportLeadsPage() {
   const [previewResult, setPreviewResult] = useState<any>(null);
   const [importSummary, setImportSummary] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleDownloadSampleTemplate = () => {
+    const sampleData = [
+      {
+        'Customer Name': 'Ramesh Kumar',
+        'Mobile Number': '9876543210',
+        'Email Address': 'ramesh@example.com',
+        'City': 'Mumbai',
+        'Project Name': 'Om Sai Ashraya',
+        'Lead Source': 'META_ADS',
+        'Lead Intent': 'High'
+      },
+      {
+        'Customer Name': 'Priya Sharma',
+        'Mobile Number': '9123456789',
+        'Email Address': 'priya@example.com',
+        'City': 'Delhi',
+        'Project Name': 'Om Sai Ashraya',
+        'Lead Source': 'WALK_IN',
+        'Lead Intent': 'Medium'
+      },
+      {
+        'Customer Name': 'Amit Verma',
+        'Mobile Number': '9988776655',
+        'Email Address': 'amit@example.com',
+        'City': 'Bangalore',
+        'Project Name': 'Om Sai Ashraya',
+        'Lead Source': 'BULK_IMPORT',
+        'Lead Intent': 'Low'
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    worksheet['!cols'] = [
+      { wch: 20 },
+      { wch: 16 },
+      { wch: 24 },
+      { wch: 15 },
+      { wch: 22 },
+      { wch: 16 },
+      { wch: 14 }
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sample Leads');
+    XLSX.writeFile(workbook, 'OMVIK_Sample_Lead_Import_Template.xlsx');
+    toast.success('Downloaded OMVIK_Sample_Lead_Import_Template.xlsx!');
+  };
 
   // Fetch Projects for Target Project selector
   const { data: projectsData } = useQuery({
@@ -184,14 +232,25 @@ export default function ImportLeadsPage() {
             </p>
           </div>
 
-          <Button
-            size="sm"
-            onClick={() => navigate('/admin/lead-batches')}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl flex items-center gap-2 border border-slate-700/60"
-          >
-            <Tag className="w-4 h-4 text-indigo-400" />
-            <span>View All Lead Batches →</span>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDownloadSampleTemplate}
+              className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs font-bold rounded-xl flex items-center gap-2 transition-all shadow-sm"
+            >
+              <Download className="w-4 h-4 text-emerald-400" />
+              <span>Download Sample Excel Template (.xlsx)</span>
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => navigate('/admin/lead-batches')}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl flex items-center gap-2 border border-slate-700/60"
+            >
+              <Tag className="w-4 h-4 text-indigo-400" />
+              <span>View All Lead Batches →</span>
+            </Button>
+          </div>
         </div>
 
         {/* Global Error Banner */}
@@ -311,8 +370,22 @@ export default function ImportLeadsPage() {
               <p className="text-sm font-semibold text-slate-200">
                 {selectedFile ? selectedFile.name : 'Drag & Drop your Excel (.xlsx, .xls) or CSV file here'}
               </p>
-              <p className="text-xs text-slate-500 mt-1">
-                {selectedFile ? `${(selectedFile.size / 1024).toFixed(1)} KB` : 'Supported columns: Name, Mobile, Project, Source, Intent (High/Medium/Low)'}
+              <p className="text-xs text-slate-400 mt-1">
+                {selectedFile ? `${(selectedFile.size / 1024).toFixed(1)} KB` : (
+                  <span>
+                    Supported columns: Name, Mobile, Email, City, Project, Source, Intent.{' '}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadSampleTemplate();
+                      }}
+                      className="text-indigo-400 hover:text-indigo-300 font-bold underline inline-flex items-center gap-1"
+                    >
+                      <Download className="w-3 h-3" /> Download Sample .xlsx
+                    </button>
+                  </span>
+                )}
               </p>
               <input
                 type="file"
