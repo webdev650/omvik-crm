@@ -268,6 +268,7 @@ async function overrideDuplicate(customerId, projectId, newOwnerId, reason, over
     customer: customerId,
     project: projectId,
     owner: newOwnerId || overridingUser._id,
+    createdBy: overridingUser ? overridingUser._id : null,
     stage: 'new',
     isActive: true,
     supersedesOpportunity: existingOpportunity._id,
