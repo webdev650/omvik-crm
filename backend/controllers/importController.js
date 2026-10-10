@@ -54,7 +54,7 @@ const previewImport = async (req, res, next) => {
     }
 
     // 1. Read Excel / CSV buffer
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer', raw: false, codepage: 65001 });
     const sheetName = workbook.SheetNames[0];
     if (!sheetName) {
       return res.status(400).json({ message: 'Uploaded file contains no valid sheets' });
@@ -77,8 +77,18 @@ const previewImport = async (req, res, next) => {
 
     // 3. Process each row
     for (let i = 0; i < rawRows.length; i++) {
-      const row = rawRows[i];
+      const origRow = rawRows[i];
       const rowNum = i + 2; // Header is row 1
+
+      // Clean row object keys (strip BOM, quotes, control characters)
+      const row = {};
+      for (const [key, val] of Object.entries(origRow)) {
+        const cleanKey = String(key)
+          .replace(/^\uFEFF/, '')
+          .replace(/^["']|["']$/g, '')
+          .trim();
+        row[cleanKey] = val;
+      }
 
       let rawName = getRowValue(row, [
         'name', 'full_name', 'fullname', 'customer_name', 'client_name', 'Name',
@@ -135,12 +145,18 @@ const previewImport = async (req, res, next) => {
             !/^\d+$/.test(strVal) &&
             !strVal.includes('http') &&
             !strVal.toLowerCase().includes('sheet') &&
-            !strVal.toLowerCase().includes('batch')
+            !strVal.toLowerCase().includes('batch') &&
+            !projects.some((p) => p.name.toLowerCase() === strVal.toLowerCase())
           ) {
             rawName = strVal;
             break;
           }
         }
+      }
+
+      // SMART FALLBACK 3: If mobile is valid (10 digits) but rawName is still empty, auto-generate Prospect Name
+      if (!rawName && cleanMobile && cleanMobile.length === 10) {
+        rawName = `Prospect (${cleanMobile})`;
       }
 
       let cleanIntent = null;
