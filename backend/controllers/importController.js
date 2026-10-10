@@ -66,16 +66,25 @@ const previewImport = async (req, res, next) => {
       }
     }
 
-    const sheetName = workbook?.SheetNames?.[0];
-    if (!sheetName) {
-      return res.status(400).json({ message: 'Uploaded file contains no valid sheets' });
+    // Find the first sheet that contains data rows
+    let sheet = null;
+    let sheetName = null;
+    let rawRows = [];
+
+    const sheetNames = workbook?.SheetNames || [];
+    for (const name of sheetNames) {
+      const candidateSheet = workbook.Sheets[name];
+      const candidateRows = XLSX.utils.sheet_to_json(candidateSheet, { defval: '', raw: false, blankrows: false });
+      if (candidateRows && candidateRows.length > 0) {
+        sheet = candidateSheet;
+        sheetName = name;
+        rawRows = candidateRows;
+        break;
+      }
     }
 
-    const sheet = workbook.Sheets[sheetName];
-    const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-
-    if (!rawRows || rawRows.length === 0) {
-      return res.status(400).json({ message: 'Uploaded spreadsheet is empty' });
+    if (!sheet || !rawRows || rawRows.length === 0) {
+      return res.status(400).json({ message: 'Uploaded spreadsheet is empty or contains no valid data rows' });
     }
 
     // 2. Fetch active projects for matching
@@ -306,7 +315,10 @@ const previewImport = async (req, res, next) => {
       invalid
     });
   } catch (error) {
-    next(error);
+    console.error('Error in previewImport:', error);
+    return res.status(400).json({
+      message: `Failed to process spreadsheet: ${error.message || 'Invalid file format'}`
+    });
   }
 };
 
