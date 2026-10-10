@@ -57,6 +57,7 @@ export function useAuth() {
       console.error('Logout error:', e);
     } finally {
       queryClient.setQueryData(['authUser'], null);
+      queryClient.clear();
       storeLogout();
       if (onComplete) onComplete();
     }

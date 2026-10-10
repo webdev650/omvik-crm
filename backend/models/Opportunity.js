@@ -17,6 +17,12 @@ const opportunitySchema = new mongoose.Schema(
       ref: 'User',
       default: null
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      index: true
+    },
     stage: {
       type: String,
       enum: [

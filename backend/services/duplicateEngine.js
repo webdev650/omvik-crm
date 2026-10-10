@@ -138,6 +138,7 @@ async function processIncomingLead(leadInput, submittingUser) {
       customer: customer._id,
       project: leadInput.project,
       owner: leadInput.owner || null,
+      createdBy: submittingUser ? submittingUser._id : (leadInput.createdBy || null),
       source: leadInput.source || 'DIRECT',
       campaign: leadInput.campaign || '',
       importBatchId: leadInput.importBatchId || null,

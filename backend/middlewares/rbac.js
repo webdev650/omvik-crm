@@ -57,7 +57,9 @@ const applyDataScope = async (req, res, next) => {
           $or: [
             { owner: { $in: memberIds } },
             { assignedTo: { $in: memberIds } },
-            { createdBy: { $in: memberIds } }
+            { createdBy: { $in: memberIds } },
+            { createdBy: userId },
+            { owner: null }
           ]
         };
         console.log('[applyDataScope TL Debug]', { userId, teamId, memberIds, scope: req.dataScope });
@@ -65,27 +67,50 @@ const applyDataScope = async (req, res, next) => {
       }
 
       case 'telecaller':
-        // Telecallers only see their own records.
-        // `owner` is the Opportunity field; `assignedTo`/`createdBy` for other models
+        // Telecallers see their owned records, records created by them, or unassigned records
         req.dataScope = {
-          $or: [{ owner: userId }, { assignedTo: userId }, { createdBy: userId }]
+          $or: [
+            { owner: userId },
+            { assignedTo: userId },
+            { createdBy: userId },
+            { owner: null }
+          ]
         };
         break;
 
       case 'marketing':
         req.dataScope = {
-          $or: [{ owner: userId }, { assignedTo: userId }, { department: 'marketing' }]
+          $or: [
+            { owner: userId },
+            { assignedTo: userId },
+            { createdBy: userId },
+            { department: 'marketing' },
+            { owner: null }
+          ]
         };
         break;
 
       case 'finance':
         req.dataScope = {
-          $or: [{ owner: userId }, { assignedTo: userId }, { category: 'finance' }]
+          $or: [
+            { owner: userId },
+            { assignedTo: userId },
+            { createdBy: userId },
+            { category: 'finance' },
+            { owner: null }
+          ]
         };
         break;
 
       default:
-        req.dataScope = { $or: [{ owner: userId }, { assignedTo: userId }] };
+        req.dataScope = {
+          $or: [
+            { owner: userId },
+            { assignedTo: userId },
+            { createdBy: userId },
+            { owner: null }
+          ]
+        };
         break;
     }
 
