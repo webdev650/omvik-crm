@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { FileSpreadsheet, Upload, CheckCircle2, ArrowRight, Database, Tag, UserCheck } from 'lucide-react';
+import { toast } from 'sonner';
 import Navbar from '../../components/Navbar';
 import { previewImportLeads, confirmImportLeads } from '../../api/opportunities';
 import { Button } from '../../components/ui/button';
@@ -73,6 +74,8 @@ export default function ImportLeadsPage() {
       setPreviewResult(data);
       setErrorMessage(null);
       setImportSummary(null);
+      const validCnt = data.summary?.validCount || 0;
+      toast.success(`Spreadsheet parsed! ${validCnt} valid lead${validCnt !== 1 ? 's' : ''} ready.`);
       if (data.summary?.validCount > 0) {
         setActiveTab('valid');
       } else if (data.summary?.duplicateCount > 0) {
@@ -84,6 +87,7 @@ export default function ImportLeadsPage() {
     onError: (err: any) => {
       const msg = err.response?.data?.message || 'Failed to parse spreadsheet file.';
       setErrorMessage(msg);
+      toast.error(msg);
     }
   });
 
@@ -93,6 +97,7 @@ export default function ImportLeadsPage() {
       confirmImportLeads(validLeads, name, targetUserId, targetProjectId),
     onSuccess: (data) => {
       setImportSummary(data);
+      toast.success(`Import complete! ${data.imported || 0} leads created under ${data.importBatchId}`);
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['leadBatches'] });
@@ -100,6 +105,7 @@ export default function ImportLeadsPage() {
     onError: (err: any) => {
       const msg = err.response?.data?.message || 'Failed to confirm bulk lead import.';
       setErrorMessage(msg);
+      toast.error(msg);
     }
   });
 

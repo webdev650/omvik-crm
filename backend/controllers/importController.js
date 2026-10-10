@@ -53,9 +53,20 @@ const previewImport = async (req, res, next) => {
       return res.status(400).json({ message: 'Please upload an Excel (.xlsx, .xls) or CSV (.csv) file' });
     }
 
-    // 1. Read Excel / CSV buffer
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer', raw: false, codepage: 65001 });
-    const sheetName = workbook.SheetNames[0];
+    // 1. Read Excel / CSV buffer with fallback
+    let workbook;
+    try {
+      workbook = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
+    } catch (parseErr) {
+      try {
+        const text = req.file.buffer.toString('utf8').replace(/^\uFEFF/, '');
+        workbook = XLSX.read(text, { type: 'string', cellDates: true });
+      } catch (fallbackErr) {
+        return res.status(400).json({ message: 'Could not parse uploaded file. Please ensure it is a valid Excel (.xlsx, .xls) or CSV (.csv) file.' });
+      }
+    }
+
+    const sheetName = workbook?.SheetNames?.[0];
     if (!sheetName) {
       return res.status(400).json({ message: 'Uploaded file contains no valid sheets' });
     }
