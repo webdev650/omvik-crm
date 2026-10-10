@@ -48,43 +48,83 @@ export default function ImportLeadsPage() {
   const handleDownloadSampleTemplate = () => {
     const sampleData = [
       {
-        'Customer Name': 'Ramesh Kumar',
-        'Mobile Number': '9876543210',
-        'Email Address': 'ramesh@example.com',
-        'City': 'Mumbai',
-        'Project Name': 'Om Sai Ashraya',
-        'Lead Source': 'META_ADS',
-        'Lead Intent': 'High'
+        'FULL NAMEE': 'Ramesh Kumar',
+        'Phone Number': '9876543210',
+        'Project': 'Om Sai Ashraya',
+        'Intent': 'High',
+        'Address': 'Mumbai, Maharashtra',
+        'Source of Client': 'META_ADS',
+        'Call Date': '2026-10-10',
+        'Call Status': 'Connected',
+        'Follow up Call Date': '2026-10-12',
+        'Follow up Call Status': 'Scheduled',
+        'Remarks': 'Interested in 2BHK flat, budget 75L',
+        'Whatsapp Text Status': 'Sent',
+        'Visit Date(Scheduled)': '2026-10-15',
+        'Visited': 'No',
+        'Conversation Remark': 'Customer requested brochure on WhatsApp',
+        'Call Remark': 'Good response, warm lead',
+        'Status': 'New'
       },
       {
-        'Customer Name': 'Priya Sharma',
-        'Mobile Number': '9123456789',
-        'Email Address': 'priya@example.com',
-        'City': 'Delhi',
-        'Project Name': 'Om Sai Ashraya',
-        'Lead Source': 'WALK_IN',
-        'Lead Intent': 'Medium'
+        'FULL NAMEE': 'Priya Sharma',
+        'Phone Number': '9123456789',
+        'Project': 'Om Sai Ashraya',
+        'Intent': 'Medium',
+        'Address': 'Delhi, NCR',
+        'Source of Client': 'WALK_IN',
+        'Call Date': '2026-10-09',
+        'Call Status': 'Connected',
+        'Follow up Call Date': '2026-10-11',
+        'Follow up Call Status': 'Pending',
+        'Remarks': 'Looking for investment property',
+        'Whatsapp Text Status': 'Delivered',
+        'Visit Date(Scheduled)': '2026-10-14',
+        'Visited': 'Yes',
+        'Conversation Remark': 'Site visit done with family',
+        'Call Remark': 'Follow up for booking amount',
+        'Status': 'In Progress'
       },
       {
-        'Customer Name': 'Amit Verma',
-        'Mobile Number': '9988776655',
-        'Email Address': 'amit@example.com',
-        'City': 'Bangalore',
-        'Project Name': 'Om Sai Ashraya',
-        'Lead Source': 'BULK_IMPORT',
-        'Lead Intent': 'Low'
+        'FULL NAMEE': 'Amit Verma',
+        'Phone Number': '9988776655',
+        'Project': 'Om Sai Ashraya',
+        'Intent': 'Low',
+        'Address': 'Bangalore, Karnataka',
+        'Source of Client': 'BULK_IMPORT',
+        'Call Date': '2026-10-08',
+        'Call Status': 'Ringing / No Answer',
+        'Follow up Call Date': '2026-10-13',
+        'Follow up Call Status': 'Scheduled',
+        'Remarks': 'Call back after 5 PM',
+        'Whatsapp Text Status': 'Not Sent',
+        'Visit Date(Scheduled)': '',
+        'Visited': 'No',
+        'Conversation Remark': 'Number busy during first attempt',
+        'Call Remark': 'Retry call scheduled',
+        'Status': 'New'
       }
     ];
 
     const worksheet = XLSX.utils.json_to_sheet(sampleData);
     worksheet['!cols'] = [
-      { wch: 20 },
-      { wch: 16 },
-      { wch: 24 },
-      { wch: 15 },
-      { wch: 22 },
-      { wch: 16 },
-      { wch: 14 }
+      { wch: 18 }, // FULL NAMEE
+      { wch: 15 }, // Phone Number
+      { wch: 20 }, // Project
+      { wch: 10 }, // Intent
+      { wch: 22 }, // Address
+      { wch: 18 }, // Source of Client
+      { wch: 12 }, // Call Date
+      { wch: 18 }, // Call Status
+      { wch: 18 }, // Follow up Call Date
+      { wch: 18 }, // Follow up Call Status
+      { wch: 30 }, // Remarks
+      { wch: 20 }, // Whatsapp Text Status
+      { wch: 20 }, // Visit Date(Scheduled)
+      { wch: 10 }, // Visited
+      { wch: 32 }, // Conversation Remark
+      { wch: 25 }, // Call Remark
+      { wch: 12 }  // Status
     ];
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Sample Leads');

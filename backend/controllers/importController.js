@@ -112,13 +112,13 @@ const previewImport = async (req, res, next) => {
         }
 
         let rawName = getRowValue(row, [
-          'name', 'full_name', 'fullname', 'customer_name', 'client_name', 'Name',
+          'FULL NAMEE', 'Full Namee', 'full namee', 'full_namee', 'name', 'full_name', 'fullname', 'customer_name', 'client_name', 'Name',
           'Customer Name', 'CustomerName', 'client_name', 'customer', 'lead_name',
           'lead', 'contact_name', 'person_name', 'applicant_name', 'party_name', 'client'
         ]);
         let rawMobile = getRowValue(row, [
-          'mobile', 'phone', 'primary_mobile', 'contact', 'Mobile', 'Phone', 'Contact',
-          'Mobile Number', 'MobileNumber', 'mobile_number', 'phone_number', 'phoneNumber',
+          'Phone Number', 'phone number', 'phone_number', 'mobile', 'phone', 'primary_mobile', 'contact', 'Mobile', 'Phone', 'Contact',
+          'Mobile Number', 'MobileNumber', 'mobile_number', 'phoneNumber',
           'mobileNo', 'mobile_no', 'Contact Number', 'contact_number', 'cell', 'telephone',
           'number', 'phone1', 'mobile1', 'primary_phone', 'contact_no', 'contactno'
         ]);
@@ -127,7 +127,7 @@ const previewImport = async (req, res, next) => {
           'Project Name', 'ProjectName', 'project_code', 'projectcode'
         ]);
         const rawSource = getRowValue(row, [
-          'source', 'lead_source', 'channel', 'Source', 'Lead Source', 'leadsource'
+          'Source of Client', 'source of client', 'source_of_client', 'source', 'lead_source', 'channel', 'Source', 'Lead Source', 'leadsource'
         ]) || 'BULK_IMPORT';
         const rawIntent = getRowValue(row, [
           'intent', 'lead_intent', 'Intent', 'Priority', 'priority', 'Lead Intent', 'leadintent'
@@ -136,7 +136,7 @@ const previewImport = async (req, res, next) => {
           'email', 'email_address', 'Email', 'Email Address', 'emailaddress'
         ]);
         const rawCity = getRowValue(row, [
-          'city', 'location', 'City', 'Location', 'address', 'Address'
+          'Address', 'address', 'city', 'location', 'City', 'Location'
         ]);
 
         let cleanMobile = normalizePhone(rawMobile);
