@@ -15,9 +15,7 @@ const getImportHistory = async (req, res, next) => {
   try {
     const { startDate, endDate, assignedTo } = req.query;
 
-    const matchQuery = {
-      importBatchId: { $ne: null, $exists: true, $nin: ['', null] }
-    };
+    const matchQuery = {};
 
     if (startDate || endDate) {
       matchQuery.createdAt = {};
