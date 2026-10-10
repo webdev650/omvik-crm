@@ -457,6 +457,42 @@ export default function Navbar() {
                           </NavLink>
 
                           <NavLink
+                            to="/admin/import-history"
+                            onClick={() => setIsMoreOpen(false)}
+                            className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-800/80 transition-all group"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                              <Database className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-white group-hover:text-indigo-300 transition-colors">
+                                Import History Dashboard
+                              </div>
+                              <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
+                                Audit excel uploads & reassign
+                              </div>
+                            </div>
+                          </NavLink>
+
+                          <NavLink
+                            to="/admin/employee-work-history"
+                            onClick={() => setIsMoreOpen(false)}
+                            className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-800/80 transition-all group"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                              <History className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-white group-hover:text-indigo-300 transition-colors">
+                                Employee Work History
+                              </div>
+                              <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
+                                Batch timelines & conversion stats
+                              </div>
+                            </div>
+                          </NavLink>
+
+                          <NavLink
                             to="/admin/projects"
                             onClick={() => setIsMoreOpen(false)}
                             className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-800/80 transition-all group"

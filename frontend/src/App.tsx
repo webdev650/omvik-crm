@@ -14,6 +14,8 @@ import ProjectsPage from './pages/admin/ProjectsPage';
 import TeamsPage from './pages/admin/TeamsPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import ImportLeadsPage from './pages/admin/ImportLeads';
+import ImportHistoryPage from './pages/admin/ImportHistoryPage';
+import EmployeeWorkHistoryPage from './pages/admin/EmployeeWorkHistoryPage';
 import LeadBatchesPage from './pages/admin/LeadBatchesPage';
 import DataQualityPage from './pages/admin/DataQualityPage';
 import ProfilePage from './pages/ProfilePage';
@@ -200,6 +202,22 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director', 'team_lead']}>
                 <ImportLeadsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/import-history"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director', 'team_lead']}>
+                <ImportHistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/employee-work-history"
+            element={
+              <ProtectedRoute>
+                <EmployeeWorkHistoryPage />
               </ProtectedRoute>
             }
           />
