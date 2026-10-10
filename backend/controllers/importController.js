@@ -7,21 +7,38 @@ const normalizePhone = require('../utils/normalizePhone');
 
 // Helper to extract value from row across flexible header names
 function getRowValue(row, possibleKeys) {
+  // 1. Direct exact key lookup
   for (const key of possibleKeys) {
     if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
       return String(row[key]).trim();
     }
   }
-  // Also check case-insensitive match on row keys
+
+  // 2. Case-insensitive and alphanumeric-only key lookup
   const rowKeys = Object.keys(row);
   for (const pKey of possibleKeys) {
+    const pClean = pKey.toLowerCase().replace(/[^a-z0-9]/g, '');
     const matchedKey = rowKeys.find(
-      (k) => k.toLowerCase().replace(/[^a-z0-9]/g, '') === pKey.toLowerCase().replace(/[^a-z0-9]/g, '')
+      (k) => k.toLowerCase().replace(/[^a-z0-9]/g, '') === pClean
     );
     if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== null && String(row[matchedKey]).trim() !== '') {
       return String(row[matchedKey]).trim();
     }
   }
+
+  // 3. Substring / fuzzy key matching
+  for (const pKey of possibleKeys) {
+    const pClean = pKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (pClean.length < 3) continue;
+    const matchedKey = rowKeys.find((k) => {
+      const kClean = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return kClean.includes(pClean) || pClean.includes(kClean);
+    });
+    if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== null && String(row[matchedKey]).trim() !== '') {
+      return String(row[matchedKey]).trim();
+    }
+  }
+
   return '';
 }
 
@@ -63,14 +80,16 @@ const previewImport = async (req, res, next) => {
       const row = rawRows[i];
       const rowNum = i + 2; // Header is row 1
 
-      const rawName = getRowValue(row, [
+      let rawName = getRowValue(row, [
         'name', 'full_name', 'fullname', 'customer_name', 'client_name', 'Name',
-        'Customer Name', 'CustomerName', 'client_name', 'customer'
+        'Customer Name', 'CustomerName', 'client_name', 'customer', 'lead_name',
+        'lead', 'contact_name', 'person_name', 'applicant_name', 'party_name', 'client'
       ]);
-      const rawMobile = getRowValue(row, [
+      let rawMobile = getRowValue(row, [
         'mobile', 'phone', 'primary_mobile', 'contact', 'Mobile', 'Phone', 'Contact',
         'Mobile Number', 'MobileNumber', 'mobile_number', 'phone_number', 'phoneNumber',
-        'mobileNo', 'mobile_no', 'Contact Number', 'contact_number'
+        'mobileNo', 'mobile_no', 'Contact Number', 'contact_number', 'cell', 'telephone',
+        'number', 'phone1', 'mobile1', 'primary_phone', 'contact_no', 'contactno'
       ]);
       const rawProject = getRowValue(row, [
         'project', 'project_name', 'code', 'Project', 'ProjectCode',
@@ -89,13 +108,46 @@ const previewImport = async (req, res, next) => {
         'city', 'location', 'City', 'Location', 'address', 'Address'
       ]);
 
+      let cleanMobile = normalizePhone(rawMobile);
+
+      // SMART AUTO-DETECT 1: If cleanMobile missing/invalid, scan ALL cell values in row for 10-digit phone number
+      if (!cleanMobile || cleanMobile.length < 10) {
+        for (const [k, val] of Object.entries(row)) {
+          if (!val) continue;
+          const candidate = normalizePhone(String(val));
+          if (candidate && candidate.length === 10) {
+            cleanMobile = candidate;
+            rawMobile = String(val);
+            break;
+          }
+        }
+      }
+
+      // SMART AUTO-DETECT 2: If rawName missing, scan text cells in row for candidate customer name
+      if (!rawName) {
+        for (const [k, val] of Object.entries(row)) {
+          if (!val) continue;
+          const strVal = String(val).trim();
+          const candidatePhone = normalizePhone(strVal);
+          if (candidatePhone && candidatePhone.length >= 10) continue;
+          if (
+            strVal.length >= 2 &&
+            !/^\d+$/.test(strVal) &&
+            !strVal.includes('http') &&
+            !strVal.toLowerCase().includes('sheet') &&
+            !strVal.toLowerCase().includes('batch')
+          ) {
+            rawName = strVal;
+            break;
+          }
+        }
+      }
+
       let cleanIntent = null;
       if (rawIntent) {
         const l = rawIntent.toLowerCase();
         if (['high', 'medium', 'low'].includes(l)) cleanIntent = l;
       }
-
-      const cleanMobile = normalizePhone(rawMobile);
 
       // Validation check
       if (!rawName || !cleanMobile || cleanMobile.length < 10) {
