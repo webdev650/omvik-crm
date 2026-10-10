@@ -280,8 +280,9 @@ const previewImport = async (req, res, next) => {
           source: rawSource,
           intent: cleanIntent,
           isExistingCustomer: false
-        }
-      } catch (rowErr) {
+        });
+      }
+    } catch (rowErr) {
         console.error(`Error processing row ${rowNum}:`, rowErr);
         invalid.push({
           rowNumber: rowNum,
