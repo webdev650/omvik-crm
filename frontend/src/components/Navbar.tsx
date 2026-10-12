@@ -338,6 +338,24 @@ export default function Navbar() {
                         </NavLink>
 
                         <NavLink
+                          to="/leads/history"
+                          onClick={() => setIsMoreOpen(false)}
+                          className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-800/80 transition-all group"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                            <Calendar className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-white group-hover:text-indigo-300 transition-colors">
+                              Lead History Calendar
+                            </div>
+                            <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
+                              Calendar date view of uploaded leads
+                            </div>
+                          </div>
+                        </NavLink>
+
+                        <NavLink
                           to="/leave"
                           onClick={() => setIsMoreOpen(false)}
                           className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-800/80 transition-all group"

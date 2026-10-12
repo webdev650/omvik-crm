@@ -87,3 +87,38 @@ export async function getProjectTeamStats(projectId: string) {
   const response = await api.get(`/opportunities/project-team-stats/${projectId}`);
   return response.data;
 }
+
+export interface LeadByDateItem {
+  _id: string;
+  leadCode: string;
+  customerName: string;
+  phone: string;
+  email?: string;
+  city?: string;
+  project: string;
+  projectCode?: string;
+  intent: 'high' | 'medium' | 'low' | string;
+  source: string;
+  createdAt: string;
+  assignedTo: string;
+  assignedToUser?: any;
+  createdBy?: string;
+  currentStage: string;
+  stage: string;
+  importBatchId?: string | null;
+}
+
+export async function getLeadsByDate(date: string, params: Record<string, any> = {}): Promise<LeadByDateItem[]> {
+  const response = await api.get('/leads/by-date', {
+    params: { date, ...params }
+  });
+  return Array.isArray(response.data) ? response.data : (response.data?.leads || []);
+}
+
+export async function getLeadsDateSummary(month: string, year?: string | number): Promise<Record<string, number>> {
+  const response = await api.get('/leads/date-summary', {
+    params: { month, year }
+  });
+  return response.data?.summary || response.data || {};
+}
+

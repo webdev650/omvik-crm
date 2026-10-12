@@ -15,6 +15,7 @@ import TeamsPage from './pages/admin/TeamsPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import ImportLeadsPage from './pages/admin/ImportLeads';
 import ImportHistoryPage from './pages/admin/ImportHistoryPage';
+import LeadHistoryCalendarPage from './pages/LeadHistoryCalendarPage';
 import EmployeeWorkHistoryPage from './pages/admin/EmployeeWorkHistoryPage';
 import LeadBatchesPage from './pages/admin/LeadBatchesPage';
 import DataQualityPage from './pages/admin/DataQualityPage';
@@ -127,6 +128,22 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <LeadsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/leads/history"
+            element={
+              <ProtectedRoute>
+                <LeadHistoryCalendarPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/lead-history"
+            element={
+              <ProtectedRoute>
+                <LeadHistoryCalendarPage />
               </ProtectedRoute>
             }
           />

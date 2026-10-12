@@ -8,7 +8,7 @@ import useAuthStore from '../../store/authStore';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/table';
 import { Badge, getStageBadgeVariant } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { ArrowRight, Phone, Building2, User, Hash } from 'lucide-react';
+import { ArrowRight, Phone, Building2, User, Hash, Calendar } from 'lucide-react';
 import ProjectTeamPanel from './ProjectTeamPanel';
 
 export default function LeadsList() {
@@ -103,6 +103,14 @@ export default function LeadsList() {
 
             {/* Action Buttons */}
             <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <Button
+                onClick={() => navigate('/leads/history')}
+                className="h-10 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs gap-1.5 rounded-xl shadow-sm min-h-[40px]"
+              >
+                <Calendar className="w-4 h-4 text-indigo-400" />
+                <span>📅 View Lead History</span>
+              </Button>
+
               {canExport && (
                 <Button
                   onClick={() => navigate('/admin/import')}

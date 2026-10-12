@@ -89,3 +89,18 @@ export async function getProjectTeamStats(projectId) {
   });
   return response.data;
 }
+
+export async function getLeadsByDate(date, params = {}) {
+  const response = await api.get('/leads/by-date', {
+    params: { date, ...params }
+  });
+  return Array.isArray(response.data) ? response.data : (response.data?.leads || []);
+}
+
+export async function getLeadsDateSummary(month, year) {
+  const response = await api.get('/leads/date-summary', {
+    params: { month, year }
+  });
+  return response.data?.summary || response.data || {};
+}
+
