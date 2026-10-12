@@ -118,9 +118,10 @@ export default function LogActivityForm({ opportunityId, currentStage }: Props) 
       setSuccessMsg(
         `Activity logged${newStage ? ` — stage updated to "${newStage.replace('_', ' ')}"` : ''}.`
       );
-      // Refresh both the timeline and the opportunity header
+      // Refresh timeline, opportunity header, and Omvik Assistant
       queryClient.invalidateQueries({ queryKey: ['activities', opportunityId] });
       queryClient.invalidateQueries({ queryKey: ['opportunity', opportunityId] });
+      queryClient.invalidateQueries({ queryKey: ['assistantMessage'] });
       reset();
     },
     onError: (err: any) => {

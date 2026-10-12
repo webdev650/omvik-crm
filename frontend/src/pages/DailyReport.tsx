@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { FileText, AlertTriangle, Send, Calendar, User as UserIcon, Layers, MessageSquare, Phone, PhoneCall, MapPin, BookmarkCheck } from 'lucide-react';
 import Navbar from '../components/Navbar';
@@ -11,6 +11,7 @@ import { Label } from '../components/ui/label';
 
 export default function DailyReportPage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const [whatsappMessages, setWhatsappMessages] = useState<number | ''>('');
   const [calls, setCalls] = useState<number | ''>('');
@@ -52,7 +53,9 @@ export default function DailyReportPage() {
     onSuccess: (res) => {
       toast.success(res.message || 'Daily report submitted successfully!');
       refetch();
+      queryClient.invalidateQueries({ queryKey: ['assistantMessage'] });
     },
+
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'Failed to submit daily report.');
     }

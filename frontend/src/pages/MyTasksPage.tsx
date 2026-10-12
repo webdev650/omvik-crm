@@ -30,6 +30,7 @@ export default function MyTasksPage() {
       setShowForm(false);
       queryClient.invalidateQueries({ queryKey: ['tasks', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['employeeSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['assistantMessage'] });
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create task')
   });
@@ -40,6 +41,7 @@ export default function MyTasksPage() {
       toast.success('Task marked complete!');
       queryClient.invalidateQueries({ queryKey: ['tasks', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['employeeSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['assistantMessage'] });
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update task')
   });

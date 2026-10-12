@@ -45,6 +45,7 @@ import Navbar from '../components/Navbar';
 import useAuth from '../hooks/useAuth';
 import { getDashboardSummary } from '../api/dashboard';
 import { getDataQualityMetrics } from '../api/admin';
+import { getAssistantMessage } from '../api/assistant';
 import api from '../api/axios';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -132,6 +133,13 @@ export default function DirectorDashboard() {
   const navigate = useNavigate();
 
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+
+  // ── Omvik Assistant Message ───────────────────────────────────────────
+  const { data: assistantData } = useQuery({
+    queryKey: ['assistantMessage'],
+    queryFn: getAssistantMessage,
+    enabled: isAssistantOpen
+  });
 
   // Deep-Dive Filter State
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
@@ -1073,9 +1081,9 @@ export default function DirectorDashboard() {
                 <span>Daily Action Summary</span>
               </div>
               <p className="text-[11px] leading-relaxed">
-                {stats?.uncontactedLeadsCount > 0
+                {assistantData?.message || (stats?.uncontactedLeadsCount > 0
                   ? `📞 You still have ${stats.uncontactedLeadsCount} uncontacted leads to contact today!`
-                  : 'Fantastic job! Your daily action inbox is clean today. No immediate SLA escalations required.'}
+                  : 'Fantastic job! Your daily action inbox is clean today. No immediate SLA escalations required.')}
               </p>
             </div>
 

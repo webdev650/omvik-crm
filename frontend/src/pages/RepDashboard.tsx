@@ -30,6 +30,7 @@ import useAuth from '../hooks/useAuth';
 import { getDashboardSummary, getEmployeeSummary } from '../api/dashboard';
 import { getMyFollowups } from '../api/followups';
 import { getOpportunities } from '../api/opportunities';
+import { getAssistantMessage } from '../api/assistant';
 import { Badge, getStageBadgeVariant } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 
@@ -102,6 +103,13 @@ export default function RepDashboard() {
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'p1' | 'p2' | 'p3'>('all');
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+
+  // ── Omvik Assistant Message ───────────────────────────────────────────
+  const { data: assistantData } = useQuery({
+    queryKey: ['assistantMessage'],
+    queryFn: getAssistantMessage,
+    enabled: isAssistantOpen
+  });
 
   // ── Employee Summary (all the new stat cards) ──────────────────────────
   const { data: summaryData, isLoading: loadingSummary } = useQuery({
@@ -617,9 +625,9 @@ export default function RepDashboard() {
                 <span>Daily Action Summary</span>
               </div>
               <p className="text-[11px] leading-relaxed">
-                {emp?.overdueAction > 0
+                {assistantData?.message || (emp?.overdueAction > 0
                   ? `You have ${emp.overdueAction} overdue action${emp.overdueAction > 1 ? 's' : ''}. Address these immediately to stay SLA-compliant.`
-                  : 'Fantastic job! Your daily action inbox is clean today. No immediate SLA escalations required.'}
+                  : 'Fantastic job! Your daily action inbox is clean today. No immediate SLA escalations required.')}
               </p>
             </div>
 

@@ -39,6 +39,7 @@ function FollowupRow({ followup, showMark }: { followup: any; showMark: boolean 
     onSuccess: () => {
       setLocalDone(true);
       queryClient.invalidateQueries({ queryKey: ['followups', 'me'] });
+      queryClient.invalidateQueries({ queryKey: ['assistantMessage'] });
     }
   });
 

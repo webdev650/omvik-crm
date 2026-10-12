@@ -1,50 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import useAuth from '../hooks/useAuth';
-import { getMyPerformance } from '../api/reports';
-import { getTodayReport } from '../api/dailyReports';
+import { getAssistantMessage, AssistantMessageResponse } from '../api/assistant';
 
 export default function NudgeMascot() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
   const [isVisible, setIsVisible] = useState(false);
-  const [message, setMessage] = useState('');
+  const [customMessage, setCustomMessage] = useState<string | null>(null);
+  const [customType, setCustomType] = useState<'reminder' | 'appreciation' | 'info' | 'greeting' | null>(null);
   const [isReducedMotion, setIsReducedMotion] = useState(false);
 
-  // Fetch real performance & uncontacted / overdue lead counts
-  const { data } = useQuery({
-    queryKey: ['myPerformance'],
-    queryFn: getMyPerformance,
-    enabled: !!user && user.nudgesEnabled !== false
-  });
-
-  // Fetch today's EOD daily report status (ONLY for telecaller role)
-  const { data: eodData } = useQuery({
-    queryKey: ['todayDailyReport'],
-    queryFn: getTodayReport,
-    enabled: !!user && user.role === 'telecaller' && user.nudgesEnabled !== false
-  });
-
+  // Check OS accessibility preference for reduced motion
   useEffect(() => {
-    // Check OS accessibility preference for reduced motion
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     setIsReducedMotion(mediaQuery.matches);
+  }, []);
 
-    // Check if user disabled nudges
+  // Fetch role-based, task-aware Omvik Assistant message on load & refresh every 5 minutes
+  const {
+    data: assistantData,
+    isLoading,
+    isError,
+    refetch
+  } = useQuery<AssistantMessageResponse>({
+    queryKey: ['assistantMessage'],
+    queryFn: getAssistantMessage,
+    enabled: !!user && user.nudgesEnabled !== false,
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+    refetchOnWindowFocus: true
+  });
+
+  // Listen for global assistant refresh events (e.g. after call logged, task completed, EOD submitted)
+  useEffect(() => {
+    const handleRefresh = () => {
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['assistantMessage'] });
+    };
+
+    window.addEventListener('omvik_refresh_assistant', handleRefresh);
+    return () => window.removeEventListener('omvik_refresh_assistant', handleRefresh);
+  }, [refetch, queryClient]);
+
+  // Handle immediate Login Greeting from sessionStorage or dynamic mascot events
+  useEffect(() => {
     if (!user || user.nudgesEnabled === false) {
       setIsVisible(false);
       return;
     }
 
-    // 1. Immediate Login Greeting check from sessionStorage
     const pendingGreeting = sessionStorage.getItem('omvik_mascot_greeting');
     if (pendingGreeting) {
-      setMessage(pendingGreeting);
+      setCustomMessage(pendingGreeting);
+      setCustomType('greeting');
       setIsVisible(true);
       sessionStorage.removeItem('omvik_mascot_greeting');
       return;
     }
 
-    // 2. Check if user dismissed nudges today
+    // Check if dismissed today
     const todayStr = new Date().toISOString().split('T')[0];
     const dismissedToday = localStorage.getItem('omvik_nudge_dismissed_today');
     if (dismissedToday === todayStr) {
@@ -52,59 +67,20 @@ export default function NudgeMascot() {
       return;
     }
 
-    const checkAndShowNudge = () => {
-      const currentHour = new Date().getHours();
-      const hasSubmittedEOD = !!eodData?.report;
-      const isSalesRep = ['telecaller', 'team_lead'].includes(user?.role || '');
-
-      // Priority 1: After 5 PM local time, remind telecallers ONLY to submit today's EOD if pending
-      if (currentHour >= 17 && !hasSubmittedEOD && user?.role === 'telecaller') {
-        setMessage("📋 Don't forget to submit today's EOD report before you log off!");
-        setIsVisible(true);
-        return;
-      }
-
-      // Priority 2: Workload & SLA nudges (ONLY for sales reps / telecallers)
-      if (isSalesRep) {
-        const perf = data?.performance || {};
-        const uncontacted = perf.uncontactedLeads || perf.slaBreachedCount || perf.followupsOverdue || 0;
-        const won = perf.opportunitiesWon || 0;
-
-        if (uncontacted > 0) {
-          setMessage(`📞 You still have ${uncontacted} lead${uncontacted > 1 ? 's' : ''} to contact today!`);
-          setIsVisible(true);
-        } else if (won > 0) {
-          setMessage(`🎉 Great progress! You have closed ${won} deal${won > 1 ? 's' : ''} won. Keep it up!`);
-          setIsVisible(true);
-        } else {
-          setMessage('✨ Fantastic job! Your daily action inbox is clean today.');
-          setIsVisible(true);
-        }
-      } else {
-        // Executive / Admin Management Tier: No personal workload/leave nagging
-        setMessage('✨ Welcome back! Executive management panel active.');
-        setIsVisible(true);
-      }
-    };
-
-
-    // Initial nudge trigger after 8 seconds
-    const initialTimer = setTimeout(checkAndShowNudge, 8000);
-
-    // 30-minute periodic reminder interval (30 * 60 * 1000 ms)
-    const intervalTimer = setInterval(checkAndShowNudge, 30 * 60 * 1000);
-
-    return () => {
-      clearTimeout(initialTimer);
-      clearInterval(intervalTimer);
-    };
-  }, [user, data, eodData]);
+    // If assistantData loaded and not dismissed, show card
+    if (assistantData?.message) {
+      setIsVisible(true);
+    }
+  }, [user, assistantData]);
 
   // Listen for dynamic Mascot Nudge Events
   useEffect(() => {
     const handleMascotEvent = (e: any) => {
       if (e.detail?.message && user?.nudgesEnabled !== false) {
-        setMessage(e.detail.message);
+        setCustomMessage(e.detail.message);
+        if (e.detail.type) {
+          setCustomType(e.detail.type);
+        }
         setIsVisible(true);
       }
     };
@@ -127,10 +103,59 @@ export default function NudgeMascot() {
     return null;
   }
 
+  // Determine current active message and type safely
+  const isAdminRole = user?.role && ['admin', 'super_admin', 'director', 'team_lead'].includes(user.role);
+  let displayMessage = customMessage || assistantData?.message || '';
+  let displayType = customType || assistantData?.type || (isAdminRole ? 'greeting' : 'info');
+
+  if (isLoading && !displayMessage) {
+    displayMessage = 'Checking updates...';
+    displayType = 'greeting';
+  } else if (isError && !displayMessage) {
+    displayMessage = isAdminRole
+      ? 'Welcome to OMVIK CRM. Have a productive day!'
+      : 'Check your leads and tasks to stay on track.';
+    displayType = 'info';
+  }
+
+  // Subtle styling per type (reminder = amber, appreciation = green, greeting = neutral)
+  const isReminder = displayType === 'reminder';
+  const isAppreciation = displayType === 'appreciation';
+
+  const borderClass = isReminder
+    ? 'border-amber-500/40 shadow-amber-950/20'
+    : isAppreciation
+    ? 'border-emerald-500/40 shadow-emerald-950/20'
+    : 'border-indigo-500/40 shadow-indigo-950/20';
+
+  const badgeTextClass = isReminder
+    ? 'text-amber-400'
+    : isAppreciation
+    ? 'text-emerald-400'
+    : 'text-indigo-400';
+
+  const buttonClass = isReminder
+    ? 'bg-amber-600 hover:bg-amber-500'
+    : isAppreciation
+    ? 'bg-emerald-600 hover:bg-emerald-500'
+    : 'bg-indigo-600 hover:bg-indigo-500';
+
+  const linkHoverClass = isReminder
+    ? 'hover:text-amber-300'
+    : isAppreciation
+    ? 'hover:text-emerald-300'
+    : 'hover:text-indigo-300';
+
   return (
-    <div className={`fixed bottom-4 right-4 left-4 sm:left-auto max-w-[calc(100vw-32px)] sm:max-w-sm z-50 flex items-end gap-2.5 sm:gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300 ${isReducedMotion ? '' : 'transition-transform'}`}>
+    <div
+      className={`fixed bottom-4 right-4 left-4 sm:left-auto max-w-[calc(100vw-32px)] sm:max-w-sm z-50 flex items-end gap-2.5 sm:gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300 ${
+        isReducedMotion ? '' : 'transition-transform'
+      }`}
+    >
       {/* Nudge Speech Bubble */}
-      <div className="flex-1 bg-slate-900 border border-indigo-500/40 p-3.5 sm:p-4 rounded-2xl shadow-2xl backdrop-blur-2xl text-slate-100 space-y-2 relative min-w-0">
+      <div
+        className={`flex-1 bg-slate-900 border p-3.5 sm:p-4 rounded-2xl shadow-2xl backdrop-blur-2xl text-slate-100 space-y-2 relative min-w-0 transition-colors ${borderClass}`}
+      >
         <button
           onClick={handleDismiss}
           className="absolute top-2 right-2 text-slate-400 hover:text-white text-xs p-1"
@@ -139,24 +164,24 @@ export default function NudgeMascot() {
           ✕
         </button>
 
-        <div className="flex items-center gap-2 text-[11px] font-bold text-indigo-400 uppercase tracking-widest">
+        <div className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest ${badgeTextClass}`}>
           <span>🤖 Omvik Assistant</span>
         </div>
 
         <p className="text-xs text-slate-200 leading-relaxed pr-4 font-medium">
-          {message}
+          {displayMessage}
         </p>
 
         <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400 border-t border-slate-800/80">
           <button
             onClick={handleDismissToday}
-            className="hover:text-indigo-300 font-semibold underline decoration-dotted cursor-pointer"
+            className={`font-semibold underline decoration-dotted cursor-pointer transition-colors ${linkHoverClass}`}
           >
             Don't show today
           </button>
           <button
             onClick={handleDismiss}
-            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold cursor-pointer"
+            className={`px-2.5 py-1 rounded-lg text-white font-bold cursor-pointer transition-colors ${buttonClass}`}
           >
             Got it
           </button>
@@ -164,7 +189,15 @@ export default function NudgeMascot() {
       </div>
 
       {/* SVG Animated Mascot Character */}
-      <div className={`w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-600 flex items-center justify-center shadow-xl shadow-indigo-600/40 border border-indigo-400/30 ${isReducedMotion ? '' : 'animate-bounce'}`}>
+      <div
+        className={`w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-2xl bg-gradient-to-tr ${
+          isReminder
+            ? 'from-amber-600 to-orange-600 shadow-amber-600/30 border-amber-400/30'
+            : isAppreciation
+            ? 'from-emerald-600 to-teal-600 shadow-emerald-600/30 border-emerald-400/30'
+            : 'from-indigo-600 to-blue-600 shadow-indigo-600/40 border-indigo-400/30'
+        } flex items-center justify-center shadow-xl border ${isReducedMotion ? '' : 'animate-bounce'}`}
+      >
         <svg
           viewBox="0 0 24 24"
           fill="none"

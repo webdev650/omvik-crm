@@ -204,6 +204,7 @@ export default function MySiteVisits() {
       setErrorBanner(null);
       queryClient.invalidateQueries({ queryKey: ['siteVisits'] });
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['assistantMessage'] });
       setCompleteVisit(null);
     },
     onError: (err: any) => {
