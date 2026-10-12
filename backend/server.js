@@ -94,6 +94,7 @@ app.use('/api/public', require('./routes/publicRoutes'));
 app.use('/api/search', require('./routes/searchRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/admin/lead-batches', require('./routes/leadBatchRoutes'));
+app.use('/api/import', require('./routes/importRoutes'));
 app.use('/api/import-history', require('./routes/importHistoryRoutes'));
 app.use('/api/employees', require('./routes/employeeRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
@@ -103,8 +104,8 @@ app.use('/api/bookings', require('./routes/bookingRoutes'));
 app.use('/api/visit-reminders', require('./routes/visitReminderRoutes'));
 app.use('/api/tasks', require('./routes/taskRoutes'));
 
-app.get('/health', (req, res) => res.json({ status: 'ok_v5', deployed: '2026-10-12-v5', db: 'omvik-crm', loginActivity: true, nodeEnv: process.env.NODE_ENV }));
-app.get('/api/health', (req, res) => res.json({ status: 'ok_v5', deployed: '2026-10-12-v5', db: 'omvik-crm', loginActivity: true, nodeEnv: process.env.NODE_ENV }));
+app.get('/health', (req, res) => res.json({ status: 'ok_v6', deployed: '2026-10-12-v6-autosave-import', db: 'omvik-crm', loginActivity: true, nodeEnv: process.env.NODE_ENV }));
+app.get('/api/health', (req, res) => res.json({ status: 'ok_v6', deployed: '2026-10-12-v6-autosave-import', db: 'omvik-crm', loginActivity: true, nodeEnv: process.env.NODE_ENV }));
 
 app.get('/', (req, res) => {
   res.send('OMVIK API is running...');

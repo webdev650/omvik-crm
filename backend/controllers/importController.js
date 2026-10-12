@@ -514,7 +514,296 @@ const confirmImport = async (req, res, next) => {
   }
 };
 
+/**
+ * Auto-save bulk lead import directly to MongoDB (Single-step import without manual preview confirmation)
+ * @route POST /api/leads/import or POST /api/import
+ * @access Private (super_admin, admin, director, telecaller, team_lead)
+ */
+const autoSaveImport = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Please upload an Excel (.xlsx, .xls) or CSV (.csv) file' });
+    }
+
+    const { batchName, targetUserId, projectId: fallbackProjectId } = req.body;
+
+    // 1. Read Excel / CSV buffer with fallback
+    let workbook;
+    try {
+      workbook = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
+    } catch (parseErr) {
+      try {
+        const text = req.file.buffer.toString('utf8').replace(/^\uFEFF/, '');
+        workbook = XLSX.read(text, { type: 'string', cellDates: true });
+      } catch (fallbackErr) {
+        return res.status(400).json({ message: 'Could not parse uploaded file. Please ensure it is a valid Excel (.xlsx, .xls) or CSV (.csv) file.' });
+      }
+    }
+
+    // Find the first sheet that contains data rows
+    let sheet = null;
+    let sheetName = null;
+    let rawRows = [];
+
+    const sheetNames = workbook?.SheetNames || [];
+    for (const name of sheetNames) {
+      const candidateSheet = workbook.Sheets[name];
+      const candidateRows = XLSX.utils.sheet_to_json(candidateSheet, { defval: '', raw: false, blankrows: false });
+      if (candidateRows && candidateRows.length > 0) {
+        sheet = candidateSheet;
+        sheetName = name;
+        rawRows = candidateRows;
+        break;
+      }
+    }
+
+    if (!sheet || !rawRows || rawRows.length === 0) {
+      return res.status(400).json({ message: 'Uploaded spreadsheet is empty or contains no valid data rows' });
+    }
+
+    // 2. Fetch projects for matching and fallback
+    let projects = await Project.find({ $or: [{ isActive: true }, { isActive: { $exists: false } }] });
+    if (!projects || projects.length === 0) {
+      projects = await Project.find({});
+    }
+
+    let defaultProject = (fallbackProjectId && projects.find(p => p._id.toString() === String(fallbackProjectId))) || projects[0] || null;
+    if (!defaultProject) {
+      try {
+        defaultProject = await Project.create({
+          name: 'Om Sai Ashraya',
+          code: 'DDV',
+          projectCode: 'DDV',
+          location: 'Bhubaneswar',
+          status: 'active',
+          isActive: true
+        });
+        projects = [defaultProject];
+      } catch (prjErr) {
+        defaultProject = await Project.findOne();
+      }
+    }
+
+    const defaultCode = (defaultProject?.projectCode || defaultProject?.code || 'DDV').toUpperCase();
+    const assignedBatchId = (batchName && String(batchName).trim()) || `NEW_${defaultCode}_${Date.now()}`;
+
+    console.log(`[autoSaveImport] Auto-saving bulk import of ${rawRows.length} rows directly to MongoDB under batch "${assignedBatchId}"...`);
+
+    let importedCount = 0;
+    let skippedCount = 0;
+    const importedLeads = [];
+    const skippedDetails = [];
+
+    for (let i = 0; i < rawRows.length; i++) {
+      const origRow = rawRows[i];
+      const rowNum = i + 2;
+
+      try {
+        // Clean row object keys
+        const row = {};
+        for (const [key, val] of Object.entries(origRow)) {
+          const cleanKey = String(key)
+            .replace(/^\uFEFF/, '')
+            .replace(/^["']|["']$/g, '')
+            .trim();
+          row[cleanKey] = val;
+        }
+
+        let rawName = getRowValue(row, [
+          'FULL NAMEE', 'Full Namee', 'full namee', 'full_namee', 'name', 'full_name', 'fullname', 'customer_name', 'client_name', 'Name',
+          'Customer Name', 'CustomerName', 'client_name', 'customer', 'lead_name',
+          'lead', 'contact_name', 'person_name', 'applicant_name', 'party_name', 'client'
+        ]);
+        let rawMobile = getRowValue(row, [
+          'Phone Number', 'phone number', 'phone_number', 'mobile', 'phone', 'primary_mobile', 'contact', 'Mobile', 'Phone', 'Contact',
+          'Mobile Number', 'MobileNumber', 'mobile_number', 'phoneNumber',
+          'mobileNo', 'mobile_no', 'Contact Number', 'contact_number', 'cell', 'telephone',
+          'number', 'phone1', 'mobile1', 'primary_phone', 'contact_no', 'contactno'
+        ]);
+        const rawProject = getRowValue(row, [
+          'project', 'project_name', 'code', 'Project', 'ProjectCode',
+          'Project Name', 'ProjectName', 'project_code', 'projectcode'
+        ]);
+        const rawSource = getRowValue(row, [
+          'Source of Client', 'source of client', 'source_of_client', 'source', 'lead_source', 'channel', 'Source', 'Lead Source', 'leadsource'
+        ]) || 'BULK_IMPORT';
+        const rawIntent = getRowValue(row, [
+          'intent', 'lead_intent', 'Intent', 'Priority', 'priority', 'Lead Intent', 'leadintent'
+        ]) || '';
+        const rawEmail = getRowValue(row, [
+          'email', 'email_address', 'Email', 'Email Address', 'emailaddress'
+        ]);
+        const rawCity = getRowValue(row, [
+          'Address', 'address', 'city', 'location', 'City', 'Location'
+        ]);
+
+        let cleanMobile = normalizePhone(rawMobile);
+
+        // Smart phone scan across row
+        if (!cleanMobile || cleanMobile.length < 10) {
+          for (const [k, val] of Object.entries(row)) {
+            if (!val) continue;
+            const candidate = normalizePhone(String(val));
+            if (candidate && candidate.length === 10) {
+              cleanMobile = candidate;
+              rawMobile = String(val);
+              break;
+            }
+          }
+        }
+
+        // Smart customer name scan
+        if (!rawName) {
+          for (const [k, val] of Object.entries(row)) {
+            if (!val) continue;
+            const strVal = String(val).trim();
+            const candidatePhone = normalizePhone(strVal);
+            if (candidatePhone && candidatePhone.length >= 10) continue;
+            if (
+              strVal.length >= 2 &&
+              !/^\d+$/.test(strVal) &&
+              !strVal.includes('http') &&
+              !strVal.toLowerCase().includes('sheet') &&
+              !strVal.toLowerCase().includes('batch') &&
+              !projects.some((p) => p && p.name && p.name.toLowerCase() === strVal.toLowerCase())
+            ) {
+              rawName = strVal;
+              break;
+            }
+          }
+        }
+
+        if (!rawName && cleanMobile && cleanMobile.length === 10) {
+          rawName = `Prospect (${cleanMobile})`;
+        }
+
+        let cleanIntent = null;
+        if (rawIntent) {
+          const l = rawIntent.toLowerCase();
+          if (['high', 'medium', 'low'].includes(l)) cleanIntent = l;
+        }
+
+        if (!rawName || !cleanMobile || cleanMobile.length < 10) {
+          skippedCount++;
+          skippedDetails.push({
+            rowNumber: rowNum,
+            customerName: rawName || 'Unknown',
+            mobile: rawMobile || 'Missing',
+            reason: !rawName ? 'Missing customer full name' : 'Missing or invalid 10-digit mobile number'
+          });
+          continue;
+        }
+
+        // Resolve Project ObjectId
+        let targetProject = defaultProject;
+        if (rawProject && projects.length > 0) {
+          const found = projects.find(
+            (p) =>
+              p &&
+              ((p._id ? p._id.toString() : '') === String(rawProject) ||
+                (p.name ? p.name.toLowerCase() : '') === String(rawProject).toLowerCase() ||
+                (p.code ? p.code.toLowerCase() : '') === String(rawProject).toLowerCase() ||
+                (p.projectCode ? p.projectCode.toLowerCase() : '') === String(rawProject).toLowerCase())
+          );
+          if (found) targetProject = found;
+        }
+
+        if (!targetProject && defaultProject) targetProject = defaultProject;
+
+        // Process directly into MongoDB through duplicate engine & auto-assignment
+        const leadResult = await processIncomingLead(
+          {
+            rawName: rawName.trim(),
+            rawMobile: cleanMobile,
+            project: targetProject._id,
+            source: rawSource,
+            intent: cleanIntent,
+            email: rawEmail || '',
+            city: rawCity || '',
+            owner: targetUserId || null,
+            importBatchId: assignedBatchId,
+            allowDuplicate: false,
+            reason: `Auto-save spreadsheet import batch ${assignedBatchId}`
+          },
+          req.user
+        );
+
+        if (leadResult.isDuplicate || !leadResult.opportunity) {
+          if (leadResult.existingOpportunity) {
+            // Update existing active opportunity to join this batch
+            await Opportunity.findByIdAndUpdate(leadResult.existingOpportunity._id, {
+              importBatchId: assignedBatchId,
+              ...(targetUserId ? { owner: targetUserId } : {})
+            });
+            importedCount++;
+            importedLeads.push({
+              _id: leadResult.existingOpportunity._id,
+              leadCode: leadResult.existingOpportunity.leadCode || 'EXISTING',
+              customerName: rawName.trim(),
+              phone: cleanMobile,
+              project: targetProject.name,
+              currentOwner: leadResult.existingOpportunity.owner?.name || 'Assigned Rep',
+              stage: leadResult.existingOpportunity.stage || 'new',
+              intent: cleanIntent || 'medium',
+              status: 'Linked Existing'
+            });
+          } else {
+            skippedCount++;
+            skippedDetails.push({
+              rowNumber: rowNum,
+              customerName: rawName.trim(),
+              mobile: cleanMobile,
+              reason: 'Duplicate active opportunity conflict'
+            });
+          }
+        } else {
+          importedCount++;
+          importedLeads.push({
+            _id: leadResult.opportunity._id,
+            leadCode: leadResult.opportunity.leadCode,
+            customerName: rawName.trim(),
+            phone: cleanMobile,
+            project: targetProject.name,
+            currentOwner: leadResult.opportunity.owner?.name || 'Assigned Agent',
+            stage: leadResult.opportunity.stage || 'new',
+            intent: cleanIntent || 'medium',
+            status: 'Newly Created'
+          });
+        }
+      } catch (rowErr) {
+        console.error(`[autoSaveImport] Error on row ${rowNum}:`, rowErr);
+        skippedCount++;
+        skippedDetails.push({
+          rowNumber: rowNum,
+          customerName: origRow.name || 'Unknown',
+          mobile: origRow.phone || 'Unknown',
+          reason: rowErr.message || 'Error saving to MongoDB'
+        });
+      }
+    }
+
+    console.log(`[autoSaveImport] Finished batch "${assignedBatchId}": saved=${importedCount}, skipped=${skippedCount}`);
+
+    return res.status(200).json({
+      success: true,
+      message: `Successfully saved ${importedCount} leads directly to MongoDB under Sheet Code "${assignedBatchId}"`,
+      importBatchId: assignedBatchId,
+      imported: importedCount,
+      skipped: skippedCount,
+      totalRows: rawRows.length,
+      leads: importedLeads,
+      skippedDetails
+    });
+  } catch (error) {
+    console.error('Error in autoSaveImport:', error);
+    return res.status(500).json({
+      message: `Failed to import spreadsheet: ${error.message || 'Server error'}`
+    });
+  }
+};
+
 module.exports = {
+  autoSaveImport,
   previewImport,
   confirmImport
 };

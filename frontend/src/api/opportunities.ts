@@ -30,6 +30,19 @@ export async function overrideDuplicateLead(data: { customerId: string; projectI
   return response.data;
 }
 
+export async function uploadAndAutoSaveImportLeads(file: File, batchName?: string, targetUserId?: string, projectId?: string) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (batchName) formData.append('batchName', batchName);
+  if (targetUserId) formData.append('targetUserId', targetUserId);
+  if (projectId) formData.append('projectId', projectId);
+
+  const response = await api.post('/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return response.data;
+}
+
 export async function previewImportLeads(file: File, projectId?: string) {
   const formData = new FormData();
   formData.append('file', file);
