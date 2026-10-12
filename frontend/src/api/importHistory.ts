@@ -1,7 +1,11 @@
 import api from './axios.js';
 
 export async function getImportHistory(params: Record<string, any> = {}) {
-  const response = await api.get('/import-history', { params });
+  const cleanParams: Record<string, any> = {};
+  if (params.startDate) cleanParams.startDate = params.startDate;
+  if (params.endDate) cleanParams.endDate = params.endDate;
+  if (params.assignedTo && params.assignedTo !== 'all') cleanParams.assignedTo = params.assignedTo;
+  const response = await api.get('/import-history', { params: cleanParams });
   return response.data;
 }
 
@@ -21,7 +25,10 @@ export async function reassignBatchLeads(batchId: string, data: { selectedLeadId
 }
 
 export async function getEmployeeWorkHistory(empId: string, params: Record<string, any> = {}) {
-  const response = await api.get(`/employees/${encodeURIComponent(empId)}/work-history`, { params });
+  const cleanParams: Record<string, any> = {};
+  if (params.startDate) cleanParams.startDate = params.startDate;
+  if (params.endDate) cleanParams.endDate = params.endDate;
+  const response = await api.get(`/employees/${encodeURIComponent(empId)}/work-history`, { params: cleanParams });
   return response.data;
 }
 

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middlewares/auth');
 const { authorize } = require('../middlewares/rbac');
 const {
   getImportHistory,
@@ -8,7 +9,8 @@ const {
   reassignBatchLeads
 } = require('../controllers/importHistoryController');
 
-// All import history endpoints require admin oversight
+// All import history endpoints require authentication & admin oversight
+router.use(protect);
 router.use(authorize('super_admin', 'admin', 'director', 'team_lead'));
 
 router.get('/', getImportHistory);

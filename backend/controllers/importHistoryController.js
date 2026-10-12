@@ -17,10 +17,13 @@ const getImportHistory = async (req, res, next) => {
 
     const matchQuery = {};
 
-    if (startDate || endDate) {
+    const hasStart = startDate && String(startDate).trim() !== '';
+    const hasEnd = endDate && String(endDate).trim() !== '';
+
+    if (hasStart || hasEnd) {
       matchQuery.createdAt = {};
-      if (startDate) matchQuery.createdAt.$gte = new Date(startDate);
-      if (endDate) {
+      if (hasStart) matchQuery.createdAt.$gte = new Date(startDate);
+      if (hasEnd) {
         const eDate = new Date(endDate);
         eDate.setHours(23, 59, 59, 999);
         matchQuery.createdAt.$lte = eDate;
