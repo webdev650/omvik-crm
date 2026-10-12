@@ -323,18 +323,10 @@ export default function LeadHistoryCalendarPage() {
             </Button>
             <Button
               size="sm"
-              onClick={() => navigate('/admin/import')}
+              onClick={() => navigate('/admin/import-history')}
               className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-sm"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Bulk Import Leads</span>
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => navigate('/admin/import-history')}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700/80 text-xs font-bold rounded-xl flex items-center gap-2"
-            >
-              <Tag className="w-3.5 h-3.5 text-indigo-400" />
+              <Tag className="w-3.5 h-3.5" />
               <span>Import History</span>
             </Button>
           </div>
@@ -410,27 +402,29 @@ export default function LeadHistoryCalendarPage() {
                     <button
                       key={cell.dateStr}
                       onClick={() => setSelectedDate(cell.dateStr)}
-                      className={`relative min-h-[56px] rounded-xl p-1.5 flex flex-col items-center justify-between transition-all group ${
+                      className={`relative min-h-[58px] rounded-xl p-1.5 flex flex-col items-center justify-between transition-all group ${
                         !isCurrent
-                          ? 'opacity-30 hover:opacity-70 bg-[#0b0f19]/40 border border-slate-900'
+                          ? 'opacity-25 hover:opacity-60 bg-[#0b0f19]/30 border border-slate-900 text-slate-600'
                           : isSelected
-                          ? 'bg-indigo-600/30 border-2 border-indigo-500 text-white shadow-lg shadow-indigo-600/20'
+                          ? 'bg-blue-600/30 border-2 border-blue-400 text-white shadow-lg shadow-blue-500/20 ring-2 ring-blue-500/30'
                           : hasLeads
-                          ? 'bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-slate-100 hover:scale-[1.02]'
-                          : 'bg-[#0b0f19] hover:bg-slate-800/60 border border-slate-800/80 text-slate-400 hover:text-slate-200'
-                      } ${cell.isToday && !isSelected ? 'ring-2 ring-emerald-400/60' : ''}`}
+                          ? 'bg-blue-600/20 hover:bg-blue-600/30 border-2 border-blue-500/80 text-white hover:scale-[1.03] shadow-md shadow-blue-500/10'
+                          : 'bg-[#0b0f19] hover:bg-slate-800/50 border border-slate-800/80 text-slate-400 hover:text-slate-200'
+                      } ${cell.isToday && !isSelected ? 'ring-2 ring-emerald-400/80' : ''}`}
                     >
                       {/* Day Number and Today Indicator */}
                       <div className="w-full flex items-center justify-between text-xs px-0.5">
                         <span
                           className={`font-bold ${
                             isSelected
-                              ? 'text-indigo-300 font-black'
+                              ? 'text-blue-300 font-black'
+                              : hasLeads
+                              ? 'text-blue-200 font-black'
                               : cell.isToday
                               ? 'text-emerald-400 font-black'
                               : isCurrent
-                              ? 'text-slate-200'
-                              : 'text-slate-500'
+                              ? 'text-slate-400'
+                              : 'text-slate-600'
                           }`}
                         >
                           {cell.dayNumber}
@@ -447,10 +441,10 @@ export default function LeadHistoryCalendarPage() {
                       {/* Lead Count Badge / Indicator */}
                       {hasLeads ? (
                         <div
-                          className={`mt-1 px-1.5 py-0.5 rounded-full text-[10px] font-black tracking-tight leading-none transition-all ${
+                          className={`mt-1 px-2 py-0.5 rounded-full text-[11px] font-black tracking-tight leading-none transition-all shadow-sm ${
                             isSelected
-                              ? 'bg-indigo-500 text-white shadow-sm'
-                              : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 group-hover:bg-indigo-500 group-hover:text-white'
+                              ? 'bg-blue-500 text-white shadow-blue-500/50 ring-1 ring-white/40'
+                              : 'bg-blue-600 text-white group-hover:bg-blue-500 shadow-blue-600/30'
                           }`}
                           title={`${cell.leadCount} leads created on ${cell.dateStr}`}
                         >
@@ -467,15 +461,15 @@ export default function LeadHistoryCalendarPage() {
               {/* Calendar Legend / Info Footer */}
               <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between text-[11px] text-slate-400 gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-500/80 border border-indigo-400" />
-                  <span>Has Leads</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600 border border-blue-400" />
+                  <span className="text-blue-300 font-semibold">Has Leads ({totalLeadsThisMonth})</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
                   <span>Today</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-md border-2 border-indigo-500 bg-indigo-600/30" />
+                  <span className="w-2.5 h-2.5 rounded-md border-2 border-blue-400 bg-blue-600/30" />
                   <span>Selected</span>
                 </div>
               </div>
@@ -641,22 +635,13 @@ export default function LeadHistoryCalendarPage() {
                             <h3 className="text-sm font-bold text-slate-200">
                               {searchQuery
                                 ? 'No leads matched your search'
-                                : `No leads on ${formatHumanDate(selectedDate)}`}
+                                : `No leads were uploaded or created on ${formatHumanDate(selectedDate)}`}
                             </h3>
                             <p className="text-xs text-slate-500">
                               {searchQuery
                                 ? 'Try searching by a different name, phone number, or lead code.'
                                 : 'Select a highlighted date on the calendar to inspect leads uploaded or created on that day.'}
                             </p>
-                            {!searchQuery && (
-                              <Button
-                                size="sm"
-                                onClick={() => navigate('/admin/import')}
-                                className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl mt-2"
-                              >
-                                📥 Import Leads Now
-                              </Button>
-                            )}
                           </div>
                         </TableCell>
                       </TableRow>

@@ -1,5 +1,8 @@
 const { processIncomingLead, overrideDuplicate } = require('../services/duplicateEngine');
 const Opportunity = require('../models/Opportunity');
+const User = require('../models/User');
+const Customer = require('../models/Customer');
+const Project = require('../models/Project');
 const sendAdminAlert = require('../utils/sendAdminAlert');
 
 // @desc    Submit a new lead
