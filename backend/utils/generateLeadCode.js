@@ -30,15 +30,25 @@ async function generateLeadCode(projectId, date = new Date()) {
   const yymmdd = getYYMMDD(date);
   const counterKey = `${projectCode}_${yymmdd}`;
 
-  // Atomic counter increment (safe against race conditions)
-  const counter = await Counter.findOneAndUpdate(
-    { name: counterKey },
-    { $inc: { value: 1 } },
-    { upsert: true, new: true }
-  );
+  // Atomic counter increment (safe against race conditions) with collision check
+  const Opportunity = require('../models/Opportunity');
+  let codeCandidate = '';
+  let exists = true;
+  let attempts = 0;
 
-  const seqStr = String(counter.value).padStart(3, '0');
-  return `OMV-${projectCode}-${yymmdd}-${seqStr}`;
+  while (exists && attempts < 50) {
+    attempts++;
+    const counter = await Counter.findOneAndUpdate(
+      { name: counterKey },
+      { $inc: { value: 1 } },
+      { upsert: true, new: true }
+    );
+    const seqStr = String(counter.value).padStart(3, '0');
+    codeCandidate = `OMV-${projectCode}-${yymmdd}-${seqStr}`;
+    exists = await Opportunity.exists({ leadCode: codeCandidate });
+  }
+
+  return codeCandidate;
 }
 
 module.exports = {

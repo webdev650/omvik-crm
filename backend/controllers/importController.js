@@ -88,8 +88,29 @@ const previewImport = async (req, res, next) => {
     }
 
     // 2. Fetch active projects for matching
-    const projects = await Project.find({ isActive: true });
-    const defaultProject = projects[0] || null;
+    let projects = await Project.find({ $or: [{ isActive: true }, { isActive: { $exists: false } }] });
+    if (!projects || projects.length === 0) {
+      projects = await Project.find({});
+    }
+
+    const fallbackProjectId = req.body?.projectId || req.query?.projectId;
+    let defaultProject = (fallbackProjectId && projects.find(p => p._id.toString() === String(fallbackProjectId))) || projects[0] || null;
+    if (!defaultProject) {
+      try {
+        defaultProject = await Project.create({
+          name: 'Om Sai Ashraya',
+          code: 'DDV',
+          projectCode: 'DDV',
+          location: 'Bhubaneswar',
+          status: 'active',
+          isActive: true
+        });
+        projects = [defaultProject];
+        console.log('[previewImport] Created default project:', defaultProject.name);
+      } catch (prjErr) {
+        defaultProject = await Project.findOne();
+      }
+    }
 
     const valid = [];
     const duplicates = [];
@@ -204,21 +225,26 @@ const previewImport = async (req, res, next) => {
               p &&
               ((p._id ? p._id.toString() : '') === String(rawProject) ||
                 (p.name ? p.name.toLowerCase() : '') === String(rawProject).toLowerCase() ||
-                (p.code ? p.code.toLowerCase() : '') === String(rawProject).toLowerCase())
+                (p.code ? p.code.toLowerCase() : '') === String(rawProject).toLowerCase() ||
+                (p.projectCode ? p.projectCode.toLowerCase() : '') === String(rawProject).toLowerCase())
           );
           if (found) {
             targetProject = found;
           }
         }
 
-      if (!targetProject) {
-        invalid.push({
-          rowNumber: rowNum,
-          rawRow: row,
-          reason: 'No active real-estate project available in database'
-        });
-        continue;
-      }
+        if (!targetProject && defaultProject) {
+          targetProject = defaultProject;
+        }
+
+        if (!targetProject) {
+          invalid.push({
+            rowNumber: rowNum,
+            rawRow: row,
+            reason: 'No active real-estate project available in database'
+          });
+          continue;
+        }
 
       // Check-only Duplicate Engine Analysis
       const customer = await Customer.findOne({
@@ -336,10 +362,32 @@ const confirmImport = async (req, res, next) => {
     }
 
     const assignedBatchId = (batchName && String(batchName).trim()) || `Sheet-${Date.now()}`;
+    console.log(`[confirmImport] Starting bulk import of ${leads.length} leads under batch "${assignedBatchId}"...`);
 
     // Load active projects for robust project ID resolution
-    const projects = await Project.find({ isActive: true });
-    const defaultProject = (fallbackProjectId && projects.find(p => p._id.toString() === String(fallbackProjectId))) || projects[0] || null;
+    let projects = await Project.find({ $or: [{ isActive: true }, { isActive: { $exists: false } }] });
+    if (!projects || projects.length === 0) {
+      projects = await Project.find({});
+    }
+
+    // Fallback: If no projects in database at all, auto-create a default project so import succeeds
+    let defaultProject = (fallbackProjectId && projects.find(p => p._id.toString() === String(fallbackProjectId))) || projects[0] || null;
+    if (!defaultProject) {
+      try {
+        defaultProject = await Project.create({
+          name: 'Om Sai Ashraya',
+          code: 'DDV',
+          projectCode: 'DDV',
+          location: 'Bhubaneswar',
+          status: 'active',
+          isActive: true
+        });
+        projects = [defaultProject];
+        console.log('[confirmImport] Created default project:', defaultProject.name);
+      } catch (prjErr) {
+        defaultProject = await Project.findOne();
+      }
+    }
 
     let importedCount = 0;
     let skippedCount = 0;
@@ -357,12 +405,14 @@ const confirmImport = async (req, res, next) => {
 
       // Robustly resolve project ObjectId
       let targetProjectId = null;
-      if (rawProject) {
+      if (rawProject && projects.length > 0) {
         const found = projects.find(
           (p) =>
-            p._id.toString() === String(rawProject) ||
-            p.name.toLowerCase() === String(rawProject).toLowerCase() ||
-            p.code.toLowerCase() === String(rawProject).toLowerCase()
+            p &&
+            ((p._id ? p._id.toString() : '') === String(rawProject) ||
+              (p.name ? p.name.toLowerCase() : '') === String(rawProject).toLowerCase() ||
+              (p.code ? p.code.toLowerCase() : '') === String(rawProject).toLowerCase() ||
+              (p.projectCode ? p.projectCode.toLowerCase() : '') === String(rawProject).toLowerCase())
         );
         if (found) {
           targetProjectId = found._id;
@@ -401,21 +451,36 @@ const confirmImport = async (req, res, next) => {
           req.user
         );
 
-        if (leadResult.isDuplicateBlocked) {
-          skippedCount++;
-          results.push({
-            index: i,
-            success: false,
-            mobile: rawMobile,
-            reason: 'Duplicate active opportunity conflict',
-            owner: leadResult.existingOpportunity?.owner?.name || 'another team member'
-          });
+        if (leadResult.isDuplicate || !leadResult.opportunity) {
+          if (leadResult.existingOpportunity) {
+            // Update existing opportunity with the import batch ID so it joins this batch and persists
+            await Opportunity.findByIdAndUpdate(leadResult.existingOpportunity._id, {
+              importBatchId: assignedBatchId,
+              ...(targetUserId ? { owner: targetUserId } : {})
+            });
+            importedCount++;
+            results.push({
+              index: i,
+              success: true,
+              opportunityId: leadResult.existingOpportunity._id,
+              owner: leadResult.existingOpportunity?.owner?.name || 'assigned rep',
+              isUpdatedExisting: true
+            });
+          } else {
+            skippedCount++;
+            results.push({
+              index: i,
+              success: false,
+              mobile: rawMobile,
+              reason: 'Duplicate active opportunity conflict'
+            });
+          }
         } else {
           importedCount++;
           results.push({
             index: i,
             success: true,
-            opportunityId: leadResult.opportunity?._id,
+            opportunityId: leadResult.opportunity._id,
             owner: leadResult.opportunity?.owner?.name || 'assigned agent'
           });
         }
@@ -429,6 +494,8 @@ const confirmImport = async (req, res, next) => {
         });
       }
     }
+
+    console.log(`[confirmImport] Batch "${assignedBatchId}" finished: imported=${importedCount}, skipped=${skippedCount}`);
 
     res.status(200).json({
       success: true,

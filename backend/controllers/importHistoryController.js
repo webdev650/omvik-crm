@@ -52,7 +52,7 @@ const getImportHistory = async (req, res, next) => {
 
     const resultBatches = await Promise.all(
       batchAgg.map(async (b) => {
-        const batchId = b._id;
+        const batchId = b._id || 'MANUAL / WEBSITE';
         const ownerIds = (b.owners || []).filter(Boolean);
         const creatorIds = (b.creators || []).filter(Boolean);
 

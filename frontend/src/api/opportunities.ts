@@ -30,9 +30,12 @@ export async function overrideDuplicateLead(data: { customerId: string; projectI
   return response.data;
 }
 
-export async function previewImportLeads(file: File) {
+export async function previewImportLeads(file: File, projectId?: string) {
   const formData = new FormData();
   formData.append('file', file);
+  if (projectId) {
+    formData.append('projectId', projectId);
+  }
   const response = await api.post('/leads/import/preview', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   });

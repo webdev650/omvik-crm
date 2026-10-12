@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { FileSpreadsheet, Upload, CheckCircle2, ArrowRight, Database, Tag, UserCheck, Download } from 'lucide-react';
+import { FileSpreadsheet, Upload, CheckCircle2, ArrowRight, Database, Tag, UserCheck, Download, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import Navbar from '../../components/Navbar';
@@ -157,7 +157,7 @@ export default function ImportLeadsPage() {
 
   // Preview Mutation
   const previewMutation = useMutation({
-    mutationFn: (file: File) => previewImportLeads(file),
+    mutationFn: ({ file, projectId }: { file: File; projectId?: string }) => previewImportLeads(file, projectId),
     onSuccess: (data) => {
       setPreviewResult(data);
       setErrorMessage(null);
@@ -185,10 +185,12 @@ export default function ImportLeadsPage() {
       confirmImportLeads(validLeads, name, targetUserId, targetProjectId),
     onSuccess: (data) => {
       setImportSummary(data);
+      setPreviewResult(null); // Clear in-memory preview state since leads are now permanently stored in MongoDB
       toast.success(`Import complete! ${data.imported || 0} leads created under ${data.importBatchId}`);
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['leadBatches'] });
+      queryClient.invalidateQueries({ queryKey: ['importHistory'] });
     },
     onError: (err: any) => {
       const msg = err.response?.data?.message || 'Failed to confirm bulk lead import.';
@@ -236,7 +238,7 @@ export default function ImportLeadsPage() {
     e.preventDefault();
     if (!selectedFile) return;
     setErrorMessage(null);
-    previewMutation.mutate(selectedFile);
+    previewMutation.mutate({ file: selectedFile, projectId: selectedProjectId || undefined });
   };
 
   const handleConfirmImport = () => {
@@ -303,32 +305,42 @@ export default function ImportLeadsPage() {
 
         {/* Import Completed Toast / Summary */}
         {importSummary && (
-          <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 backdrop-blur-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-emerald-400 flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                <span>Bulk Import Complete — Sheet Code Tagged: "{importSummary.importBatchId}"</span>
-              </h3>
-              <div className="flex items-center gap-3">
+          <div className="p-6 rounded-2xl bg-emerald-500/15 border-2 border-emerald-500/40 backdrop-blur-xl space-y-4 shadow-xl shadow-emerald-500/5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-emerald-400 flex items-center gap-2">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                  <span>✅ PERMANENTLY SAVED TO MONGODB — Sheet Code: "{importSummary.importBatchId}"</span>
+                </h3>
+                <p className="text-xs text-slate-300">
+                  Successfully stored <strong className="text-emerald-400 font-bold">{importSummary.imported}</strong> leads permanently in MongoDB! These leads will persist across logouts and page reloads. (Duplicate conflicts skipped: {importSummary.skipped})
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   size="sm"
-                  onClick={() => navigate('/admin/lead-batches')}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl"
+                  onClick={() => navigate('/admin/import-history')}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-sm"
                 >
-                  Lead Batches
+                  View in Import History →
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => navigate('/leads')}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700"
+                >
+                  View All Leads
                 </Button>
                 <Button
                   size="sm"
                   onClick={() => navigate('/pipeline')}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-sm"
                 >
                   View Pipeline Dashboard →
                 </Button>
               </div>
             </div>
-            <p className="text-xs text-slate-300">
-              Successfully created and auto-assigned <strong className="text-emerald-400">{importSummary.imported}</strong> new leads to sales pod members. (Skipped: {importSummary.skipped})
-            </p>
           </div>
         )}
 
@@ -458,6 +470,32 @@ export default function ImportLeadsPage() {
         {/* Step 2: Preview Results & Summary */}
         {previewResult && (
           <div className="space-y-6">
+            {/* Step 1 Preview Warning Banner */}
+            <div className="p-5 rounded-2xl bg-amber-500/15 border-2 border-amber-500/50 text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl shadow-amber-500/10">
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+                  <AlertTriangle className="w-6 h-6 text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-extrabold text-amber-300 tracking-wide uppercase">
+                    Step 1 Complete: In-Memory Preview Only — Not Stored in MongoDB Yet!
+                  </p>
+                  <p className="text-xs text-amber-200/90 mt-1">
+                    You are viewing an in-memory preview of <strong>{summary?.validCount || 0}</strong> valid leads. If you log out or refresh now, this preview will clear and NO data will be in MongoDB. You <strong>MUST</strong> click the green <strong>"Save & Store Leads in MongoDB"</strong> button below to save them.
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleConfirmImport}
+                disabled={!summary?.validCount || summary.validCount === 0 || confirmMutation.isPending}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs px-6 h-12 rounded-xl shrink-0 shadow-lg shadow-emerald-600/30 flex items-center gap-2 animate-pulse hover:animate-none"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{confirmMutation.isPending ? 'Storing in MongoDB...' : `Save ${summary?.validCount || 0} Leads to MongoDB →`}</span>
+              </Button>
+            </div>
+
             {/* KPI Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div className="p-4 rounded-2xl border border-slate-800/80 bg-[#131c31]">
@@ -512,13 +550,15 @@ export default function ImportLeadsPage() {
             </div>
 
             {/* Action Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border border-slate-800/80 bg-[#131c31]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-r from-emerald-950/40 via-[#131c31] to-[#131c31] shadow-xl">
               <div>
-                <p className="text-sm font-bold text-slate-200">
-                  Ready to Process {summary?.validCount || 0} Valid Leads into Batch: <span className="text-indigo-400 font-mono">"{batchName || 'Default Batch'}"</span>
+                <p className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span>Ready to write <strong className="text-emerald-400 text-base">{summary?.validCount || 0}</strong> leads into MongoDB under Sheet Code:</span>
+                  <span className="text-indigo-400 font-mono font-bold bg-slate-900 px-2 py-0.5 rounded border border-slate-700">"{batchName || 'Default Batch'}"</span>
                 </p>
-                <p className="text-xs text-slate-400">
-                  Duplicate conflicts ({summary?.duplicateCount}) and invalid rows ({summary?.invalidCount}) will be safely skipped.
+                <p className="text-xs text-slate-400 mt-1">
+                  Duplicate conflicts ({summary?.duplicateCount || 0}) and invalid rows ({summary?.invalidCount || 0}) will be safely skipped.
                 </p>
               </div>
 
@@ -529,9 +569,10 @@ export default function ImportLeadsPage() {
                   summary.validCount === 0 ||
                   confirmMutation.isPending
                 }
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs gap-2 rounded-xl h-11 px-5 shadow-md shadow-emerald-600/20"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs gap-2 rounded-xl h-12 px-6 shadow-xl shadow-emerald-600/30 transition-all hover:scale-[1.02]"
               >
-                {confirmMutation.isPending ? 'Importing Leads...' : `Import ${summary?.validCount || 0} Valid Leads →`}
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{confirmMutation.isPending ? 'Storing in MongoDB...' : `Confirm & Save ${summary?.validCount || 0} Leads to MongoDB Database →`}</span>
               </Button>
             </div>
 
@@ -686,6 +727,26 @@ export default function ImportLeadsPage() {
                   )}
                 </TableBody>
               </Table>
+            </div>
+
+            {/* Floating Sticky Save Bar (Guarantees Save Button is always visible on screen during review) */}
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#131c31]/95 border-2 border-emerald-500/60 shadow-2xl backdrop-blur-xl px-6 py-3 rounded-2xl flex items-center gap-4 text-white">
+              <div className="hidden sm:block">
+                <p className="text-xs font-bold text-slate-200">
+                  {summary?.validCount || 0} Valid Leads in Preview
+                </p>
+                <p className="text-[11px] text-amber-300 font-semibold">
+                  ⚠️ Action required: Save to MongoDB
+                </p>
+              </div>
+              <Button
+                onClick={handleConfirmImport}
+                disabled={!summary?.validCount || summary.validCount === 0 || confirmMutation.isPending}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs gap-2 rounded-xl h-10 px-5 shadow-lg shadow-emerald-600/40"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{confirmMutation.isPending ? 'Saving...' : `Save ${summary?.validCount || 0} Leads to MongoDB →`}</span>
+              </Button>
             </div>
           </div>
         )}
