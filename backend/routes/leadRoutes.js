@@ -4,6 +4,7 @@ const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 
 const {
+  getLeads,
   submitLead,
   overrideDuplicateLead,
   getLeadsByDate,
@@ -16,6 +17,7 @@ const { authorize, applyDataScope } = require('../middlewares/rbac');
 
 router.use(protect);
 
+router.get('/', applyDataScope, getLeads);
 router.get('/export', applyDataScope, exportLeads);
 router.get('/by-date', applyDataScope, getLeadsByDate);
 router.get('/date-summary', applyDataScope, getLeadsDateSummary);

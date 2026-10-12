@@ -132,8 +132,12 @@ const getLeadsByDate = async (req, res, next) => {
 
     const query = {
       createdAt: { $gte: start, $lte: end },
-      ...(req.dataScope || {})
+      ...(req.dataScope || req.dataScopeFilter || {})
     };
+
+    if (req.query.batchId || req.query.importBatchId) {
+      query.importBatchId = req.query.batchId || req.query.importBatchId;
+    }
 
     const opportunities = await Opportunity.find(query)
       .populate('customer', 'name primaryMobile alternateMobile email city')
@@ -205,8 +209,12 @@ const getLeadsDateSummary = async (req, res, next) => {
 
     const matchQuery = {
       createdAt: { $gte: startDate, $lte: endDate },
-      ...(req.dataScope || {})
+      ...(req.dataScope || req.dataScopeFilter || {})
     };
+
+    if (req.query.batchId || req.query.importBatchId) {
+      matchQuery.importBatchId = req.query.batchId || req.query.importBatchId;
+    }
 
     const aggregated = await Opportunity.aggregate([
       { $match: matchQuery },
@@ -242,7 +250,46 @@ const getLeadsDateSummary = async (req, res, next) => {
   }
 };
 
+// @desc    Get leads / opportunities (supports batchId filter with access enforcement)
+// @route   GET /api/leads
+// @access  Private (Scoped)
+const getLeads = async (req, res, next) => {
+  try {
+    const scopeFilter = req.dataScope || req.dataScopeFilter || {};
+    const filter = { ...scopeFilter };
+
+    const batchIdParam = req.query.batchId || req.query.importBatchId;
+    if (batchIdParam) {
+      filter.importBatchId = batchIdParam;
+    }
+
+    if (req.query.stage) {
+      filter.stage = req.query.stage;
+    }
+
+    if (req.query.project) {
+      filter.project = req.query.project;
+    }
+
+    const opportunities = await Opportunity.find(filter)
+      .populate('customer', 'name primaryMobile alternateMobile email city')
+      .populate('project', 'name code projectCode')
+      .populate('owner', 'name email role employeeId')
+      .populate('createdBy', 'name email role')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: opportunities.length,
+      leads: opportunities
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
+  getLeads,
   submitLead,
   overrideDuplicateLead,
   getLeadsByDate,

@@ -15,7 +15,9 @@ import {
   RefreshCw,
   FileCheck,
   Filter,
-  Check
+  Check,
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -55,6 +57,10 @@ export default function ImportLeadsPage() {
   const [batchName, setBatchName] = useState<string>('');
   const [isCustomBatchName, setIsCustomBatchName] = useState<boolean>(false);
   
+  // Access Control state
+  const [visibility, setVisibility] = useState<'all' | 'specific'>('all');
+  const [isPrivateConfirmed, setIsPrivateConfirmed] = useState<boolean>(false);
+
   // Results state after auto-save import completes
   const [importResult, setImportResult] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -172,18 +178,25 @@ export default function ImportLeadsPage() {
   };
 
   // Direct Auto-Save Mutation to MongoDB
+  const selectedEmployee = users.find((u: any) => u._id === selectedUserId);
+  const selectedEmployeeName = selectedEmployee ? selectedEmployee.name : '';
+
   const importMutation = useMutation({
     mutationFn: ({
       file,
       name,
       userId,
-      projectId
+      projectId,
+      isPrivate,
+      accessLevel
     }: {
       file: File;
       name?: string;
       userId?: string;
       projectId?: string;
-    }) => uploadAndAutoSaveImportLeads(file, name, userId, projectId),
+      isPrivate?: boolean;
+      accessLevel?: string;
+    }) => uploadAndAutoSaveImportLeads(file, name, userId, projectId, isPrivate, accessLevel),
     onSuccess: (data) => {
       setImportResult(data);
       setErrorMessage(null);
@@ -193,6 +206,7 @@ export default function ImportLeadsPage() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['leadBatches'] });
       queryClient.invalidateQueries({ queryKey: ['importHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['myAccessibleBatches'] });
     },
     onError: (err: any) => {
       const msg = err.response?.data?.message || err.message || 'Failed to import and save spreadsheet to MongoDB.';
@@ -238,12 +252,19 @@ export default function ImportLeadsPage() {
       toast.error('Please select an Excel or CSV file to upload.');
       return;
     }
+    if (visibility === 'specific' && !selectedUserId) {
+      toast.error('Please select an employee for specific batch access or choose All Employees.');
+      return;
+    }
     setErrorMessage(null);
+    const isPrivate = visibility === 'specific';
     importMutation.mutate({
       file: selectedFile,
       name: batchName.trim() || undefined,
       userId: selectedUserId || undefined,
-      projectId: selectedProjectId || undefined
+      projectId: selectedProjectId || undefined,
+      isPrivate,
+      accessLevel: 'view'
     });
   };
 
@@ -636,7 +657,13 @@ export default function ImportLeadsPage() {
                   </Label>
                   <select
                     value={selectedUserId}
-                    onChange={(e) => setSelectedUserId(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedUserId(e.target.value);
+                      if (e.target.value) {
+                        setVisibility('specific');
+                        setIsPrivateConfirmed(true);
+                      }
+                    }}
                     className="w-full h-10 bg-[#0b0f19] border border-slate-700 text-slate-200 text-xs font-semibold rounded-xl px-3 focus:border-indigo-500 focus:outline-none"
                   >
                     <option value="">⚡ Auto Round-Robin (All Telecallers)</option>
@@ -648,6 +675,127 @@ export default function ImportLeadsPage() {
                   </select>
                   <p className="text-[11px] text-slate-400">Assign sheet to a specific employee or auto round-robin across reps.</p>
                 </div>
+              </div>
+
+              {/* ACCESS CONTROL SECTION (Batch-Level Access Control) */}
+              <div className="p-4 rounded-xl bg-[#0b1324] border border-indigo-500/30 space-y-3.5 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <div className="inline-flex items-center gap-1.5 text-indigo-400 font-bold text-xs uppercase tracking-wider">
+                      <ShieldCheck className="w-4 h-4 text-indigo-400" />
+                      <span>Batch Access Control &amp; Visibility</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Determine who is allowed to view, access, and download this sheet's leads.
+                    </p>
+                  </div>
+
+                  {/* Toggle buttons */}
+                  <div className="inline-flex p-1 bg-[#0b0f19] border border-slate-700/80 rounded-xl shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVisibility('all');
+                        setIsPrivateConfirmed(false);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        visibility === 'all'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      👥 All Employees
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVisibility('specific');
+                        setIsPrivateConfirmed(true);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        visibility === 'specific'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      🔒 Assigned to Specific Employee
+                    </button>
+                  </div>
+                </div>
+
+                {visibility === 'specific' ? (
+                  <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Lock className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="text-xs font-bold text-slate-200">
+                          Visibility: Assigned to Specific Employee
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        {selectedEmployeeName ? (
+                          <>Only <strong className="text-emerald-400">{selectedEmployeeName}</strong> and Admins can see this sheet and its leads. All other employees are strictly blocked.</>
+                        ) : (
+                          'Select an employee in the dropdown to assign exclusive access.'
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <select
+                        value={selectedUserId}
+                        onChange={(e) => {
+                          setSelectedUserId(e.target.value);
+                          setIsPrivateConfirmed(true);
+                        }}
+                        className="h-10 bg-[#0b0f19] border border-indigo-500/60 text-slate-200 text-xs font-semibold rounded-xl px-3 focus:outline-none"
+                      >
+                        <option value="">Select Employee...</option>
+                        {users.map((u: any) => (
+                          <option key={u._id} value={u._id}>
+                            {u.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          if (!selectedUserId) {
+                            toast.error('Please select an employee first');
+                            return;
+                          }
+                          setIsPrivateConfirmed(true);
+                          toast.success(`Set as Private to ${selectedEmployeeName}`);
+                        }}
+                        className={`h-10 px-4 text-xs font-bold rounded-xl transition-all shadow-sm ${
+                          isPrivateConfirmed && selectedUserId
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                            : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                        }`}
+                      >
+                        {isPrivateConfirmed && selectedUserId ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Private to {selectedEmployeeName}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="w-3.5 h-3.5" />
+                            <span>Set as Private to {selectedEmployeeName || 'Employee'}</span>
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="pt-2 border-t border-slate-800/80 flex items-center gap-2 text-[11px] text-slate-400">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                    <span>
+                      Default Visibility: All Employees (Auto Round-Robin) — Leads are distributed across eligible active reps.
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Drag & Drop File Upload Box */}

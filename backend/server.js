@@ -104,6 +104,8 @@ app.use('/api/bookings', require('./routes/bookingRoutes'));
 app.use('/api/visit-reminders', require('./routes/visitReminderRoutes'));
 app.use('/api/tasks', require('./routes/taskRoutes'));
 app.use('/api/assistant', require('./routes/assistantRoutes'));
+app.use('/api/batch-access', require('./routes/batchAccessRoutes'));
+app.get('/api/my-accessible-batches', require('./middlewares/auth').protect, require('./controllers/batchAccessController').getMyAccessibleBatches);
 
 
 app.get('/health', (req, res) => res.json({ status: 'ok_v8', deployed: '2026-10-12-v8-history-calendar-fix', db: 'omvik-crm', loginActivity: true, nodeEnv: process.env.NODE_ENV }));

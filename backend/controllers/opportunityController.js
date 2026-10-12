@@ -71,6 +71,11 @@ const getOpportunities = async (req, res, next) => {
     const scopeFilter = req.dataScope || req.scopeFilter || {};
     const filter = { ...scopeFilter };
 
+    const batchIdParam = req.query.batchId || req.query.importBatchId;
+    if (batchIdParam) {
+      filter.importBatchId = batchIdParam;
+    }
+
     if (req.query.stage) {
       filter.stage = req.query.stage;
     }

@@ -8,8 +8,9 @@ import useAuthStore from '../../store/authStore';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui/table';
 import { Badge, getStageBadgeVariant } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { ArrowRight, Phone, Building2, User, Hash, Calendar } from 'lucide-react';
+import { ArrowRight, Phone, Building2, User, Hash, Calendar, Tag, Lock } from 'lucide-react';
 import ProjectTeamPanel from './ProjectTeamPanel';
+import { getMyAccessibleBatches } from '../../api/batchAccess';
 
 export default function LeadsList() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export default function LeadsList() {
   const [activeTab, setActiveTab] = useState<'all' | 'did_not_pick' | 'visit_scheduled' | 'visited' | 'date'>('all');
   const [selectedStage, setSelectedStage] = useState<string>('');
   const [selectedProject, setSelectedProject] = useState<string>('');
+  const [selectedBatch, setSelectedBatch] = useState<string>('');
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
   const [isExporting, setIsExporting] = useState<boolean>(false);
@@ -49,13 +51,21 @@ export default function LeadsList() {
 
   const projects = projectsData?.projects || [];
 
+  // Fetch Accessible Batches for "My Accessible Sheets" filter
+  const { data: accessibleBatchesData } = useQuery({
+    queryKey: ['myAccessibleBatches'],
+    queryFn: getMyAccessibleBatches
+  });
+  const accessibleBatches = accessibleBatchesData?.batches || [];
+
   // Fetch Opportunities List
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['opportunities', selectedStage, selectedProject, fromDate, toDate],
+  const { data, isLoading, isError, refetch, error: loadError } = useQuery({
+    queryKey: ['opportunities', selectedStage, selectedProject, selectedBatch, fromDate, toDate],
     queryFn: () =>
       getOpportunities({
         stage: selectedStage || undefined,
         project: selectedProject || undefined,
+        batchId: selectedBatch || undefined,
         fromDate: fromDate || undefined,
         toDate: toDate || undefined
       })
@@ -69,7 +79,8 @@ export default function LeadsList() {
       setIsExporting(true);
       await exportLeads({
         stage: selectedStage || undefined,
-        project: selectedProject || undefined
+        project: selectedProject || undefined,
+        batchId: selectedBatch || undefined
       });
     } catch (err) {
       console.error('Export failed:', err);
@@ -161,6 +172,26 @@ export default function LeadsList() {
 
           {/* Filter Row */}
           <div className="flex flex-wrap items-end gap-2.5">
+            {/* My Accessible Sheets filter */}
+            <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
+              <label className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider px-1 flex items-center gap-1">
+                <Tag className="w-3 h-3 text-indigo-400" />
+                <span>My Accessible Sheets</span>
+              </label>
+              <select
+                value={selectedBatch}
+                onChange={(e) => setSelectedBatch(e.target.value)}
+                className="h-10 rounded-xl border border-slate-800 bg-[#0b0f19] px-3 text-xs font-semibold text-slate-200 focus:border-indigo-500 focus:outline-none"
+              >
+                <option value="">All Accessible Sheets</option>
+                {accessibleBatches.map((b: any) => (
+                  <option key={b.batchId} value={b.batchId}>
+                    {b.isPrivate ? '🔒' : '📄'} {b.batchId} ({b.leadCount || 0} leads)
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Stage filter */}
             <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
               <label className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider px-1">Stage</label>
@@ -220,20 +251,25 @@ export default function LeadsList() {
               />
             </div>
 
-            {/* Clear dates button */}
-            {(fromDate || toDate) && (
+            {/* Clear filters button */}
+            {(fromDate || toDate || selectedBatch || selectedStage || selectedProject) && (
               <button
-                onClick={clearDateFilters}
+                onClick={() => {
+                  clearDateFilters();
+                  setSelectedBatch('');
+                  setSelectedStage('');
+                  setSelectedProject('');
+                }}
                 className="h-10 px-3 rounded-xl border border-slate-700 bg-slate-800/60 text-xs text-slate-400 hover:text-slate-200 hover:border-slate-600 transition-colors self-end"
               >
-                Clear dates
+                Reset filters
               </button>
             )}
           </div>
         </div>
 
         {/* Total Count Strip */}
-        <div className="flex items-center gap-2 px-1">
+        <div className="flex flex-wrap items-center gap-2 px-1">
           <div className="flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-3 py-1.5">
             <Hash className="w-3.5 h-3.5 text-indigo-400" />
             <span className="text-xs font-bold text-indigo-300">
@@ -243,6 +279,12 @@ export default function LeadsList() {
               </span>
             </span>
           </div>
+          {selectedBatch && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-xs font-mono font-bold">
+              <Tag className="w-3 h-3" />
+              Sheet: {selectedBatch}
+            </span>
+          )}
           {(fromDate || toDate) && (
             <span className="text-[11px] text-slate-500 italic">
               {fromDate && toDate
@@ -264,13 +306,36 @@ export default function LeadsList() {
             </div>
           ) : isError ? (
             <div className="p-12 text-center space-y-3">
-              <p className="text-red-400 text-xs font-semibold">Failed to load opportunities list.</p>
-              <Button
-                onClick={() => refetch()}
-                className="px-4 py-2 bg-slate-800 text-slate-200 rounded-xl text-xs font-semibold hover:bg-slate-700"
-              >
-                Retry Request
-              </Button>
+              {(loadError as any)?.response?.status === 403 ? (
+                <div className="space-y-2">
+                  <div className="inline-flex p-3 rounded-full bg-red-500/10 border border-red-500/30 text-red-400">
+                    <Lock className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-base font-bold text-red-400">403 Forbidden — Access Denied</h3>
+                  <p className="text-xs text-slate-400 max-w-md mx-auto">
+                    You do not have access to view this batch or its leads. This sheet is assigned to another employee.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setSelectedBatch('');
+                      refetch();
+                    }}
+                    className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold hover:bg-indigo-500"
+                  >
+                    View My Accessible Leads
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <p className="text-red-400 text-xs font-semibold">Failed to load opportunities list.</p>
+                  <Button
+                    onClick={() => refetch()}
+                    className="px-4 py-2 bg-slate-800 text-slate-200 rounded-xl text-xs font-semibold hover:bg-slate-700"
+                  >
+                    Retry Request
+                  </Button>
+                </>
+              )}
             </div>
           ) : opportunities.length === 0 ? (
             <div className="p-12 text-center space-y-2">
@@ -279,7 +344,7 @@ export default function LeadsList() {
               </div>
               <h3 className="text-base font-semibold text-slate-200">No Opportunities Found</h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                No active leads or opportunities match the selected stage, project, or date range filters.
+                No active leads or opportunities match the selected stage, project, batch, or date range filters.
               </p>
             </div>
           ) : (

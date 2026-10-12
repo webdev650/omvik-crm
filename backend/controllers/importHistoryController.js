@@ -124,6 +124,12 @@ const getBatchLeadsDetail = async (req, res, next) => {
   try {
     const { batchId } = req.params;
 
+    const { checkUserBatchAccess } = require('../utils/batchAccessHelper');
+    const hasAccess = await checkUserBatchAccess(batchId, req.user);
+    if (!hasAccess) {
+      return res.status(403).json({ message: "You don't have access to this batch" });
+    }
+
     const query = { importBatchId: batchId };
     if (batchId === 'MANUAL / WEBSITE' || batchId === 'manual') {
       query.importBatchId = { $in: [null, '', 'MANUAL / WEBSITE', 'manual'] };

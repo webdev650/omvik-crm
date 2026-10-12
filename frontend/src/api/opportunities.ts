@@ -30,12 +30,21 @@ export async function overrideDuplicateLead(data: { customerId: string; projectI
   return response.data;
 }
 
-export async function uploadAndAutoSaveImportLeads(file: File, batchName?: string, targetUserId?: string, projectId?: string) {
+export async function uploadAndAutoSaveImportLeads(
+  file: File,
+  batchName?: string,
+  targetUserId?: string,
+  projectId?: string,
+  isPrivate?: boolean,
+  accessLevel?: string
+) {
   const formData = new FormData();
   formData.append('file', file);
   if (batchName) formData.append('batchName', batchName);
   if (targetUserId) formData.append('targetUserId', targetUserId);
   if (projectId) formData.append('projectId', projectId);
+  if (isPrivate !== undefined) formData.append('isPrivate', String(isPrivate));
+  if (accessLevel) formData.append('accessLevel', accessLevel);
 
   const response = await api.post('/import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
@@ -115,9 +124,9 @@ export async function getLeadsByDate(date: string, params: Record<string, any> =
   return Array.isArray(response.data) ? response.data : (response.data?.leads || []);
 }
 
-export async function getLeadsDateSummary(month: string, year?: string | number): Promise<Record<string, number>> {
+export async function getLeadsDateSummary(month: string, year?: string | number, params: Record<string, any> = {}): Promise<Record<string, number>> {
   const response = await api.get('/leads/date-summary', {
-    params: { month, year }
+    params: { month, year, ...params }
   });
   return response.data?.summary || response.data || {};
 }

@@ -66,6 +66,12 @@ const getBatchLeads = async (req, res, next) => {
     const { batchId } = req.params;
     const { search, stage, page = 1, limit = 500 } = req.query;
 
+    const { checkUserBatchAccess } = require('../utils/batchAccessHelper');
+    const hasAccess = await checkUserBatchAccess(batchId, req.user);
+    if (!hasAccess) {
+      return res.status(403).json({ message: "You don't have access to this batch" });
+    }
+
     const isFullAdmin = ['super_admin', 'admin', 'director'].includes(req.user.role);
     const scopeFilter = isFullAdmin ? {} : (req.dataScope || {});
 

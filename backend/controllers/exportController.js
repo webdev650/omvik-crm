@@ -9,10 +9,15 @@ const AuditLog = require('../models/AuditLog');
  */
 const exportLeads = async (req, res, next) => {
   try {
-    const { stage, project, slaBreached, isActive } = req.query;
+    const { stage, project, slaBreached, isActive, batchId, importBatchId } = req.query;
 
     // 1. Build filter combining data scope filter with query parameters
-    const filter = { ...(req.dataScopeFilter || {}) };
+    const filter = { ...(req.dataScope || req.dataScopeFilter || {}) };
+
+    const targetBatch = batchId || importBatchId;
+    if (targetBatch) {
+      filter.importBatchId = targetBatch;
+    }
 
     if (stage) filter.stage = stage;
     if (project) filter.project = project;

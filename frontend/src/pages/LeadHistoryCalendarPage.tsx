@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import Navbar from '../components/Navbar';
 import { getLeadsByDate, getLeadsDateSummary, LeadByDateItem } from '../api/opportunities';
+import { getMyAccessibleBatches } from '../api/batchAccess';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
@@ -93,8 +94,16 @@ export default function LeadHistoryCalendarPage() {
 
   // Filter & search state for the leads table
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedBatch, setSelectedBatch] = useState<string>('');
   const [sortField, setSortField] = useState<'time' | 'name' | 'code' | 'intent' | 'stage'>('time');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
+
+  // Fetch Accessible Batches for filtering
+  const { data: accessibleBatchesData } = useQuery({
+    queryKey: ['myAccessibleBatches'],
+    queryFn: getMyAccessibleBatches
+  });
+  const accessibleBatches = accessibleBatchesData?.batches || [];
 
   // Fetch month summary (dates highlighting and lead counts)
   const {
@@ -102,8 +111,8 @@ export default function LeadHistoryCalendarPage() {
     isLoading: isSummaryLoading,
     refetch: refetchSummary
   } = useQuery({
-    queryKey: ['leadsDateSummary', monthStr, currentYear],
-    queryFn: () => getLeadsDateSummary(monthStr, currentYear)
+    queryKey: ['leadsDateSummary', monthStr, currentYear, selectedBatch],
+    queryFn: () => getLeadsDateSummary(monthStr, currentYear, { batchId: selectedBatch || undefined })
   });
 
   // Fetch leads for the currently selected date
@@ -113,8 +122,8 @@ export default function LeadHistoryCalendarPage() {
     isRefetching: isLeadsRefetching,
     refetch: refetchLeads
   } = useQuery({
-    queryKey: ['leadsByDate', selectedDate],
-    queryFn: () => getLeadsByDate(selectedDate),
+    queryKey: ['leadsByDate', selectedDate, selectedBatch],
+    queryFn: () => getLeadsByDate(selectedDate, { batchId: selectedBatch || undefined }),
     enabled: !!selectedDate
   });
 
@@ -338,6 +347,36 @@ export default function LeadHistoryCalendarPage() {
           {/* LEFT SIDE: CALENDAR UI (lg:col-span-4 or 5)                                */}
           {/* ========================================================================= */}
           <div className="lg:col-span-4 xl:col-span-4 space-y-4">
+            {/* Sheet Filter Selector */}
+            <div className="rounded-2xl border border-slate-800/80 bg-[#131c31] p-4 shadow-sm space-y-2">
+              <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>My Accessible Sheets</span>
+                </span>
+                {selectedBatch && (
+                  <button
+                    onClick={() => setSelectedBatch('')}
+                    className="text-[10px] text-indigo-400 hover:text-indigo-300 lowercase font-medium"
+                  >
+                    view all
+                  </button>
+                )}
+              </label>
+              <select
+                value={selectedBatch}
+                onChange={(e) => setSelectedBatch(e.target.value)}
+                className="w-full h-9 bg-[#0b0f19] border border-slate-700 text-slate-200 text-xs font-semibold rounded-xl px-2.5 focus:border-indigo-500 focus:outline-none"
+              >
+                <option value="">All Accessible Sheets</option>
+                {accessibleBatches.map((b: any) => (
+                  <option key={b.batchId} value={b.batchId}>
+                    {b.isPrivate ? '🔒' : '📄'} {b.batchId} ({b.leadCount || 0} leads)
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="rounded-2xl border border-slate-800/80 bg-[#131c31] p-5 shadow-sm space-y-4">
               {/* Calendar Controls Header */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-800">

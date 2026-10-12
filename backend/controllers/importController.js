@@ -2,6 +2,8 @@ const XLSX = require('xlsx');
 const Customer = require('../models/Customer');
 const Opportunity = require('../models/Opportunity');
 const Project = require('../models/Project');
+const ImportBatch = require('../models/ImportBatch');
+const BatchAccess = require('../models/BatchAccess');
 const { processIncomingLead } = require('../services/duplicateEngine');
 const normalizePhone = require('../utils/normalizePhone');
 
@@ -497,6 +499,41 @@ const confirmImport = async (req, res, next) => {
 
     console.log(`[confirmImport] Batch "${assignedBatchId}" finished: imported=${importedCount}, skipped=${skippedCount}`);
 
+    // Persist ImportBatch document
+    const isPrivateBatch = req.body?.isPrivate === true || req.body?.isPrivate === 'true' || !!targetUserId;
+    const importBatchDoc = await ImportBatch.findOneAndUpdate(
+      { batchId: assignedBatchId },
+      {
+        batchId: assignedBatchId,
+        batchName: assignedBatchId,
+        project: defaultProject?._id || null,
+        uploadedBy: req.user?._id || null,
+        totalRows: leads.length,
+        importedCount,
+        skippedCount,
+        isPrivate: isPrivateBatch
+      },
+      { upsert: true, new: true }
+    );
+
+    // If batch is assigned to an employee or private, create BatchAccess document
+    let createdBatchAccess = null;
+    if (isPrivateBatch && targetUserId) {
+      const assignedUserIds = Array.isArray(targetUserId) ? targetUserId : [targetUserId];
+      createdBatchAccess = await BatchAccess.findOneAndUpdate(
+        { batchId: assignedBatchId },
+        {
+          batch: importBatchDoc._id,
+          batchId: assignedBatchId,
+          assignedTo: assignedUserIds,
+          accessLevel: req.body?.accessLevel || 'view',
+          grantedBy: req.user?._id || null,
+          grantedAt: new Date()
+        },
+        { upsert: true, new: true }
+      );
+    }
+
     res.status(200).json({
       success: true,
       importBatchId: assignedBatchId,
@@ -525,7 +562,7 @@ const autoSaveImport = async (req, res, next) => {
       return res.status(400).json({ message: 'Please upload an Excel (.xlsx, .xls) or CSV (.csv) file' });
     }
 
-    const { batchName, targetUserId, projectId: fallbackProjectId } = req.body;
+    const { batchName, targetUserId, projectId: fallbackProjectId, isPrivate, accessLevel } = req.body;
 
     // 1. Read Excel / CSV buffer with fallback
     let workbook;
@@ -783,6 +820,42 @@ const autoSaveImport = async (req, res, next) => {
     }
 
     console.log(`[autoSaveImport] Finished batch "${assignedBatchId}": saved=${importedCount}, skipped=${skippedCount}`);
+
+    // Persist ImportBatch document
+    const isPrivateBatch = isPrivate === true || isPrivate === 'true' || !!targetUserId;
+    const importBatchDoc = await ImportBatch.findOneAndUpdate(
+      { batchId: assignedBatchId },
+      {
+        batchId: assignedBatchId,
+        batchName: assignedBatchId,
+        originalFileName: req.file?.originalname || '',
+        project: defaultProject?._id || null,
+        uploadedBy: req.user?._id || null,
+        totalRows: rawRows.length,
+        importedCount,
+        skippedCount,
+        isPrivate: isPrivateBatch
+      },
+      { upsert: true, new: true }
+    );
+
+    // If batch is assigned to an employee or private, create BatchAccess document
+    let createdBatchAccess = null;
+    if (isPrivateBatch && targetUserId) {
+      const assignedUserIds = Array.isArray(targetUserId) ? targetUserId : [targetUserId];
+      createdBatchAccess = await BatchAccess.findOneAndUpdate(
+        { batchId: assignedBatchId },
+        {
+          batch: importBatchDoc._id,
+          batchId: assignedBatchId,
+          assignedTo: assignedUserIds,
+          accessLevel: accessLevel || 'view',
+          grantedBy: req.user?._id || null,
+          grantedAt: new Date()
+        },
+        { upsert: true, new: true }
+      );
+    }
 
     return res.status(200).json({
       success: true,
