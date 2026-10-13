@@ -1,4 +1,5 @@
 import api from './axios';
+import { triggerAssistantRefresh } from './assistant';
 
 /**
  * Fetch activity timeline for a specific opportunity (newest first)
@@ -18,5 +19,6 @@ export async function getActivities(opportunityId) {
  */
 export async function logActivity(opportunityId, data) {
   const response = await api.post(`/opportunities/${opportunityId}/activities`, data);
+  triggerAssistantRefresh();
   return response.data;
 }

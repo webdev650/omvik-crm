@@ -1,4 +1,5 @@
 import api from './axios';
+import { triggerAssistantRefresh } from './assistant';
 
 /**
  * Schedule a new site visit for a specific opportunity
@@ -7,6 +8,7 @@ import api from './axios';
  */
 export async function scheduleSiteVisit(opportunityId, data) {
   const response = await api.post(`/opportunities/${opportunityId}/site-visits`, data);
+  triggerAssistantRefresh();
   return response.data;
 }
 
@@ -27,6 +29,7 @@ export async function getSiteVisits(opportunityId) {
  */
 export async function updateSiteVisit(id, data) {
   const response = await api.patch(`/site-visits/${id}`, data);
+  triggerAssistantRefresh();
   return response.data;
 }
 

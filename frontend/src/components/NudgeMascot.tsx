@@ -68,10 +68,10 @@ export default function NudgeMascot() {
     }
 
     // If assistantData loaded and not dismissed, show card
-    if (assistantData?.message) {
+    if (assistantData?.message || isError) {
       setIsVisible(true);
     }
-  }, [user, assistantData]);
+  }, [user, assistantData, isError]);
 
   // Listen for dynamic Mascot Nudge Events
   useEffect(() => {
@@ -126,25 +126,25 @@ export default function NudgeMascot() {
     ? 'border-amber-500/40 shadow-amber-950/20'
     : isAppreciation
     ? 'border-emerald-500/40 shadow-emerald-950/20'
-    : 'border-indigo-500/40 shadow-indigo-950/20';
+    : 'border-slate-700/60 shadow-slate-950/20';
 
   const badgeTextClass = isReminder
     ? 'text-amber-400'
     : isAppreciation
     ? 'text-emerald-400'
-    : 'text-indigo-400';
+    : 'text-slate-300';
 
   const buttonClass = isReminder
     ? 'bg-amber-600 hover:bg-amber-500'
     : isAppreciation
     ? 'bg-emerald-600 hover:bg-emerald-500'
-    : 'bg-indigo-600 hover:bg-indigo-500';
+    : 'bg-slate-700 hover:bg-slate-600 text-slate-200';
 
   const linkHoverClass = isReminder
     ? 'hover:text-amber-300'
     : isAppreciation
     ? 'hover:text-emerald-300'
-    : 'hover:text-indigo-300';
+    : 'hover:text-slate-300';
 
   return (
     <div
@@ -195,7 +195,7 @@ export default function NudgeMascot() {
             ? 'from-amber-600 to-orange-600 shadow-amber-600/30 border-amber-400/30'
             : isAppreciation
             ? 'from-emerald-600 to-teal-600 shadow-emerald-600/30 border-emerald-400/30'
-            : 'from-indigo-600 to-blue-600 shadow-indigo-600/40 border-indigo-400/30'
+            : 'from-slate-700 to-slate-800 shadow-slate-900/40 border-slate-600/30'
         } flex items-center justify-center shadow-xl border ${isReducedMotion ? '' : 'animate-bounce'}`}
       >
         <svg

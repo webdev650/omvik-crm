@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Calendar, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { getMyFollowups, completeFollowup } from '../api/followups';
+import { triggerAssistantRefresh } from '../api/assistant';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { Button } from '../components/ui/button';
 
@@ -40,6 +41,7 @@ function FollowupRow({ followup, showMark }: { followup: any; showMark: boolean 
       setLocalDone(true);
       queryClient.invalidateQueries({ queryKey: ['followups', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['assistantMessage'] });
+      triggerAssistantRefresh();
     }
   });
 

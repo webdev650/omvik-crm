@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { CheckCircle2, Clock, Plus, ArrowLeft, ClipboardList } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { getMyTasks, createTask, completeTask } from '../api/tasks';
+import { triggerAssistantRefresh } from '../api/assistant';
 import { Button } from '../components/ui/button';
 
 export default function MyTasksPage() {
@@ -31,6 +32,7 @@ export default function MyTasksPage() {
       queryClient.invalidateQueries({ queryKey: ['tasks', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['employeeSummary'] });
       queryClient.invalidateQueries({ queryKey: ['assistantMessage'] });
+      triggerAssistantRefresh();
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create task')
   });
@@ -42,6 +44,7 @@ export default function MyTasksPage() {
       queryClient.invalidateQueries({ queryKey: ['tasks', 'me'] });
       queryClient.invalidateQueries({ queryKey: ['employeeSummary'] });
       queryClient.invalidateQueries({ queryKey: ['assistantMessage'] });
+      triggerAssistantRefresh();
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to update task')
   });

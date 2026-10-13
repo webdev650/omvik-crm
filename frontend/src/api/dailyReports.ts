@@ -1,4 +1,5 @@
 import api from './axios';
+import { triggerAssistantRefresh } from './assistant';
 
 export interface SubmitDailyReportPayload {
   claimedCalls: number;
@@ -12,6 +13,7 @@ export interface SubmitDailyReportPayload {
 
 export const submitDailyReport = async (data: SubmitDailyReportPayload) => {
   const res = await api.post('/daily-reports', data);
+  triggerAssistantRefresh();
   return res.data;
 };
 

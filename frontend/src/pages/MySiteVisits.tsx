@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Home, Calendar, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { getMySiteVisits, updateSiteVisit } from '../api/siteVisits';
+import { triggerAssistantRefresh } from '../api/assistant';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
@@ -205,6 +206,7 @@ export default function MySiteVisits() {
       queryClient.invalidateQueries({ queryKey: ['siteVisits'] });
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['assistantMessage'] });
+      triggerAssistantRefresh();
       setCompleteVisit(null);
     },
     onError: (err: any) => {

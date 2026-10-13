@@ -5,6 +5,7 @@ import { FileText, AlertTriangle, Send, Calendar, User as UserIcon, Layers, Mess
 import Navbar from '../components/Navbar';
 import useAuth from '../hooks/useAuth';
 import { submitDailyReport, getTodayReport } from '../api/dailyReports';
+import { triggerAssistantRefresh } from '../api/assistant';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
@@ -54,6 +55,7 @@ export default function DailyReportPage() {
       toast.success(res.message || 'Daily report submitted successfully!');
       refetch();
       queryClient.invalidateQueries({ queryKey: ['assistantMessage'] });
+      triggerAssistantRefresh();
     },
 
     onError: (err: any) => {

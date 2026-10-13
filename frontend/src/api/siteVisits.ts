@@ -1,7 +1,9 @@
 import api from './axios.js';
+import { triggerAssistantRefresh } from './assistant';
 
 export async function scheduleSiteVisit(opportunityId: string, data: any) {
   const response = await api.post(`/opportunities/${opportunityId}/site-visits`, data);
+  triggerAssistantRefresh();
   return response.data;
 }
 
@@ -12,6 +14,7 @@ export async function getSiteVisits(opportunityId: string) {
 
 export async function updateSiteVisit(id: string, data: any) {
   const response = await api.patch(`/site-visits/${id}`, data);
+  triggerAssistantRefresh();
   return response.data;
 }
 

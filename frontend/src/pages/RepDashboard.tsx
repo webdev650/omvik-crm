@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Users,
@@ -103,13 +103,30 @@ export default function RepDashboard() {
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'p1' | 'p2' | 'p3'>('all');
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   // ── Omvik Assistant Message ───────────────────────────────────────────
-  const { data: assistantData } = useQuery({
+  const {
+    data: assistantData,
+    isLoading: loadingAssistant,
+    isError: errorAssistant,
+    refetch: refetchAssistant
+  } = useQuery({
     queryKey: ['assistantMessage'],
     queryFn: getAssistantMessage,
-    enabled: isAssistantOpen
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+    refetchOnWindowFocus: true
   });
+
+  // Listen for global assistant refresh events
+  useEffect(() => {
+    const handleRefresh = () => {
+      refetchAssistant();
+      queryClient.invalidateQueries({ queryKey: ['assistantMessage'] });
+    };
+    window.addEventListener('omvik_refresh_assistant', handleRefresh);
+    return () => window.removeEventListener('omvik_refresh_assistant', handleRefresh);
+  }, [refetchAssistant, queryClient]);
 
   // ── Employee Summary (all the new stat cards) ──────────────────────────
   const { data: summaryData, isLoading: loadingSummary } = useQuery({
@@ -619,17 +636,43 @@ export default function RepDashboard() {
               </button>
             </div>
 
-            <div className="p-3 rounded-xl bg-[#131c31] border border-slate-800 space-y-1.5 text-slate-300">
-              <div className="flex items-center gap-1.5 text-amber-400 font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Daily Action Summary</span>
-              </div>
-              <p className="text-[11px] leading-relaxed">
-                {assistantData?.message || (emp?.overdueAction > 0
-                  ? `You have ${emp.overdueAction} overdue action${emp.overdueAction > 1 ? 's' : ''}. Address these immediately to stay SLA-compliant.`
-                  : 'Fantastic job! Your daily action inbox is clean today. No immediate SLA escalations required.')}
-              </p>
-            </div>
+            {(() => {
+              const msgType = assistantData?.type || 'info';
+              const isReminder = msgType === 'reminder';
+              const isAppreciation = msgType === 'appreciation';
+
+              const boxClass = isReminder
+                ? 'bg-amber-950/20 border-amber-500/30'
+                : isAppreciation
+                ? 'bg-emerald-950/20 border-emerald-500/30'
+                : 'bg-[#131c31] border-slate-800';
+
+              const titleColor = isReminder
+                ? 'text-amber-400'
+                : isAppreciation
+                ? 'text-emerald-400'
+                : 'text-indigo-400';
+
+              const messageText = assistantData?.message || (
+                loadingAssistant
+                  ? 'Checking tasks and updates...'
+                  : errorAssistant
+                  ? 'Check your leads and tasks to stay on track.'
+                  : 'Check your leads and tasks to stay on track.'
+              );
+
+              return (
+                <div className={`p-3 rounded-xl border space-y-1.5 text-slate-300 transition-colors ${boxClass}`}>
+                  <div className={`flex items-center gap-1.5 font-bold ${titleColor}`}>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Daily Action Summary</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    {messageText}
+                  </p>
+                </div>
+              );
+            })()}
 
             <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
               <span>

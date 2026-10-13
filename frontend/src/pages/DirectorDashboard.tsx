@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -133,13 +133,30 @@ export default function DirectorDashboard() {
   const navigate = useNavigate();
 
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   // ── Omvik Assistant Message ───────────────────────────────────────────
-  const { data: assistantData } = useQuery({
+  const {
+    data: assistantData,
+    isLoading: loadingAssistant,
+    isError: errorAssistant,
+    refetch: refetchAssistant
+  } = useQuery({
     queryKey: ['assistantMessage'],
     queryFn: getAssistantMessage,
-    enabled: isAssistantOpen
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+    refetchOnWindowFocus: true
   });
+
+  // Listen for global assistant refresh events
+  useEffect(() => {
+    const handleRefresh = () => {
+      refetchAssistant();
+      queryClient.invalidateQueries({ queryKey: ['assistantMessage'] });
+    };
+    window.addEventListener('omvik_refresh_assistant', handleRefresh);
+    return () => window.removeEventListener('omvik_refresh_assistant', handleRefresh);
+  }, [refetchAssistant, queryClient]);
 
   // Deep-Dive Filter State
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
@@ -1075,17 +1092,44 @@ export default function DirectorDashboard() {
               </button>
             </div>
 
-            <div className="p-3 rounded-xl bg-[#131c31] border border-slate-800 space-y-1.5 text-slate-300">
-              <div className="flex items-center gap-1.5 text-[#FBB040] font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Daily Action Summary</span>
-              </div>
-              <p className="text-[11px] leading-relaxed">
-                {assistantData?.message || (stats?.uncontactedLeadsCount > 0
-                  ? `📞 You still have ${stats.uncontactedLeadsCount} uncontacted leads to contact today!`
-                  : 'Fantastic job! Your daily action inbox is clean today. No immediate SLA escalations required.')}
-              </p>
-            </div>
+            {(() => {
+              const msgType = assistantData?.type || 'greeting';
+              const isGreeting = msgType === 'greeting';
+              const isReminder = msgType === 'reminder';
+              const isAppreciation = msgType === 'appreciation';
+
+              const boxClass = isReminder
+                ? 'bg-amber-950/20 border-amber-500/30'
+                : isAppreciation
+                ? 'bg-emerald-950/20 border-emerald-500/30'
+                : 'bg-[#131c31] border-slate-800';
+
+              const titleColor = isReminder
+                ? 'text-amber-400'
+                : isAppreciation
+                ? 'text-emerald-400'
+                : 'text-[#15B0F8]';
+
+              const messageText = assistantData?.message || (
+                loadingAssistant
+                  ? 'Checking updates...'
+                  : errorAssistant
+                  ? 'Welcome to OMVIK CRM. Have a productive day!'
+                  : 'Welcome to OMVIK CRM. Have a productive day!'
+              );
+
+              return (
+                <div className={`p-3 rounded-xl border space-y-1.5 text-slate-300 transition-colors ${boxClass}`}>
+                  <div className={`flex items-center gap-1.5 font-bold ${titleColor}`}>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{isGreeting ? 'Daily Greeting' : 'Daily Action Summary'}</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    {messageText}
+                  </p>
+                </div>
+              );
+            })()}
 
             <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
               <span>SLA Health: <strong className="text-emerald-400">48h Active</strong></span>

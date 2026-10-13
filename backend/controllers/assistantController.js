@@ -4,6 +4,9 @@ const SiteVisit = require('../models/SiteVisit');
 const DailyReport = require('../models/DailyReport');
 const Activity = require('../models/Activity');
 
+// In-memory map to guarantee rotation without repeating the same line consecutively
+const lastVariantIndices = new Map();
+
 /**
  * Returns date and time breakdown in Asia/Kolkata timezone (UTC+5:30).
  * Handles all timezone edge cases safely regardless of server timezone.
@@ -55,12 +58,28 @@ function getKolkataDateInfo(date = new Date()) {
 }
 
 /**
- * Randomly pick a variant from a pool to ensure rotation without repetition.
+ * Pick a variant from a pool and rotate to avoid repeating the same line consecutively.
  */
-function pickVariant(variants) {
+function pickRotatingVariant(key, variants) {
   if (!variants || variants.length === 0) return '';
-  const index = Math.floor(Math.random() * variants.length);
-  return variants[index];
+  if (variants.length === 1) return variants[0];
+
+  const lastIndex = lastVariantIndices.get(key);
+  let nextIndex = Math.floor(Math.random() * variants.length);
+
+  // If identical to last picked index, shift by 1 to guarantee rotation
+  if (lastIndex !== undefined && nextIndex === lastIndex) {
+    nextIndex = (lastIndex + 1) % variants.length;
+  }
+
+  lastVariantIndices.set(key, nextIndex);
+
+  // Prevent memory growth over time
+  if (lastVariantIndices.size > 5000) {
+    lastVariantIndices.clear();
+  }
+
+  return variants[nextIndex];
 }
 
 /**
@@ -79,15 +98,31 @@ const getAssistantMessage = async (req, res, next) => {
     const ADMIN_ROLES = ['admin', 'super_admin', 'director', 'team_lead'];
     const isAdmin = ADMIN_ROLES.includes(userRole);
 
-    const kolkata = getKolkataDateInfo(new Date());
+    // Support simulated time/hour for automated testing & verification
+    let kolkata = getKolkataDateInfo(new Date());
+    if (req.query?.simulateTime || req.headers?.['x-simulate-time']) {
+      const simDate = new Date(req.query?.simulateTime || req.headers?.['x-simulate-time']);
+      if (!isNaN(simDate.getTime())) {
+        kolkata = getKolkataDateInfo(simDate);
+      }
+    }
+    if (req.query?.simulateHour !== undefined) {
+      const parsedHour = parseInt(req.query.simulateHour, 10);
+      if (!isNaN(parsedHour)) {
+        kolkata.hour = parsedHour;
+      }
+    }
+
     const { hour, weekday, todayStr, startOfDayUtc, endOfDayUtc } = kolkata;
+    const userId = user._id;
 
     // ─────────────────────────────────────────────────────────────────────────────
     // 1. ADMIN LOGIC: Time-based wishes only (Asia/Kolkata time)
     // ─────────────────────────────────────────────────────────────────────────────
     if (isAdmin) {
-      const rawName = user.name ? String(user.name).trim() : '';
-      const firstName = rawName.split(/\s+/)[0] || 'there';
+      const rawName = user.firstName || (user.name ? String(user.name).trim().split(/\s+/)[0] : '');
+      const firstName = rawName || 'there';
+      const namePart = rawName ? `, ${rawName}` : '';
 
       // Time-based greetings:
       // 05:00 to 11:59: "Good Morning, {firstName}!"
@@ -96,13 +131,13 @@ const getAssistantMessage = async (req, res, next) => {
       // 21:00 to 04:59: "Good Night, {firstName}!"
       let greeting = '';
       if (hour >= 5 && hour < 12) {
-        greeting = `Good Morning, ${firstName}!`;
+        greeting = `Good Morning${namePart}!`;
       } else if (hour >= 12 && hour < 17) {
-        greeting = `Good Afternoon, ${firstName}!`;
+        greeting = `Good Afternoon${namePart}!`;
       } else if (hour >= 17 && hour < 21) {
-        greeting = `Good Evening, ${firstName}!`;
+        greeting = `Good Evening${namePart}!`;
       } else {
-        greeting = `Good Night, ${firstName}!`;
+        greeting = `Good Night${namePart}!`;
       }
 
       // Short extra line by weekday
@@ -128,7 +163,6 @@ const getAssistantMessage = async (req, res, next) => {
     // ─────────────────────────────────────────────────────────────────────────────
     // 2. EMPLOYEE LOGIC: Scoped strictly to req.user._id only
     // ─────────────────────────────────────────────────────────────────────────────
-    const userId = user._id;
     const now = new Date();
 
     // Query 1: Overdue follow-ups
@@ -181,17 +215,27 @@ const getAssistantMessage = async (req, res, next) => {
       Task.countDocuments({
         owner: userId,
         status: 'completed',
-        updatedAt: { $gte: startOfDayUtc, $lte: endOfDayUtc }
+        $or: [
+          { updatedAt: { $gte: startOfDayUtc, $lte: endOfDayUtc } },
+          { dueDate: { $gte: startOfDayUtc, $lte: endOfDayUtc } }
+        ]
       }),
       Followup.countDocuments({
         owner: userId,
         status: 'completed',
-        updatedAt: { $gte: startOfDayUtc, $lte: endOfDayUtc }
+        $or: [
+          { updatedAt: { $gte: startOfDayUtc, $lte: endOfDayUtc } },
+          { dueAt: { $gte: startOfDayUtc, $lte: endOfDayUtc } }
+        ]
       }),
       SiteVisit.countDocuments({
         $or: [{ owner: userId }, { scheduledBy: userId }],
         status: 'completed',
-        updatedAt: { $gte: startOfDayUtc, $lte: endOfDayUtc }
+        $or: [
+          { updatedAt: { $gte: startOfDayUtc, $lte: endOfDayUtc } },
+          { scheduledAt: { $gte: startOfDayUtc, $lte: endOfDayUtc } },
+          { completedAt: { $gte: startOfDayUtc, $lte: endOfDayUtc } }
+        ]
       }),
       Activity.countDocuments({
         user: userId,
@@ -217,6 +261,7 @@ const getAssistantMessage = async (req, res, next) => {
 
     let messageType = 'info';
     let selectedMessage = '';
+    const userKeyPrefix = String(userId);
 
     // ── PICK ONE MESSAGE BY PRIORITY ──────────────────────────────────────────
 
@@ -227,11 +272,11 @@ const getAssistantMessage = async (req, res, next) => {
       const s = count > 1 ? 's' : '';
       const overdueVariants = [
         `You have ${count} overdue follow-up${s}. Please call them first.`,
-        `Action needed: ${count} follow-up${count > 1 ? 's are' : ' is'} overdue. Please connect with them first.`,
+        `Action needed: You have ${count} overdue follow-up${s}. Please call them first.`,
         `Don't let leads go cold! You have ${count} overdue follow-up${s} waiting for action.`,
-        `Gentle reminder: ${count} follow-up${count > 1 ? 's require' : ' requires'} attention. Let's reach out to them first.`
+        `Gentle reminder: You have ${count} overdue follow-up${s} requiring attention. Let's reach out to them first.`
       ];
-      selectedMessage = pickVariant(overdueVariants);
+      selectedMessage = pickRotatingVariant(`${userKeyPrefix}_overdue`, overdueVariants);
     }
     // Priority b) Pending tasks or follow-ups due today > 0: reminder with the count
     else if (pendingTasks > 0 || followupsDueToday > 0) {
@@ -241,36 +286,36 @@ const getAssistantMessage = async (req, res, next) => {
         const ts = pendingTasks > 1 ? 's' : '';
         const combinedVariants = [
           `You have ${followupsDueToday} follow-up${fs} due today and ${pendingTasks} pending task${ts}. You're on track, keep going!`,
-          `${followupsDueToday} follow-up${fs} and ${pendingTasks} task${ts} are scheduled for today. Keep up the great pace!`,
-          `Today's priorities: ${followupsDueToday} follow-up${fs} and ${pendingTasks} task${ts} to complete. Stay focused!`,
-          `Ready for action? You have ${followupsDueToday} follow-up${fs} and ${pendingTasks} pending task${ts} today. Keep the momentum going!`
+          `${followupsDueToday} follow-up${fs} and ${pendingTasks} task${ts} are due today. You're on track, keep going!`,
+          `You have ${followupsDueToday} follow-up${fs} and ${pendingTasks} task${ts} scheduled today. Keep up the great pace!`,
+          `Stay focused: ${followupsDueToday} follow-up${fs} and ${pendingTasks} pending task${ts} today. You're on track!`
         ];
-        selectedMessage = pickVariant(combinedVariants);
+        selectedMessage = pickRotatingVariant(`${userKeyPrefix}_combined`, combinedVariants);
       } else if (followupsDueToday > 0) {
         const s = followupsDueToday > 1 ? 's' : '';
         const followupsVariants = [
-          `${followupsDueToday} follow-up${followupsDueToday > 1 ? 's are' : ' is'} due today. You're on track, keep going.`,
-          `You have ${followupsDueToday} follow-up${s} scheduled for today. Have great conversations with your leads!`,
-          `Stay ahead of your pipeline: ${followupsDueToday} follow-up${s} due today.`,
-          `Focus on your leads: ${followupsDueToday} follow-up${s} to complete today. Keep it up!`
+          `${followupsDueToday} follow-up${s} ${followupsDueToday > 1 ? 'are' : 'is'} due today. You're on track, keep going.`,
+          `You have ${followupsDueToday} follow-up${s} due today. You're on track, keep going!`,
+          `${followupsDueToday} follow-up${s} scheduled for today. Keep up the good work!`,
+          `Stay focused: ${followupsDueToday} follow-up${s} due today. You're on track, keep going.`
         ];
-        selectedMessage = pickVariant(followupsVariants);
+        selectedMessage = pickRotatingVariant(`${userKeyPrefix}_due_today`, followupsVariants);
       } else {
         const s = pendingTasks > 1 ? 's' : '';
         const tasksVariants = [
           `You have ${pendingTasks} pending task${s} today. You're on track, keep going.`,
-          `${pendingTasks} task${pendingTasks > 1 ? 's are' : ' is'} waiting for you today. Let's get them completed!`,
-          `Stay productive: ${pendingTasks} pending task${s} on your list today. Keep up the momentum!`,
-          `Keep pushing forward! You have ${pendingTasks} task${s} to finish today.`
+          `${pendingTasks} task${pendingTasks > 1 ? 's are' : ' is'} due today. You're on track, keep going.`,
+          `You have ${pendingTasks} task${s} to finish today. Keep up the momentum!`,
+          `Stay on track: ${pendingTasks} pending task${s} today. Keep going!`
         ];
-        selectedMessage = pickVariant(tasksVariants);
+        selectedMessage = pickRotatingVariant(`${userKeyPrefix}_tasks`, tasksVariants);
       }
     }
     // Priority c) Site visit today not completed
     else if (pendingVisitsCount > 0) {
       messageType = 'reminder';
       const earliestVisit = pendingVisitsToday[0];
-      const timeStr = earliestVisit.scheduledAt
+      const timeStr = earliestVisit && earliestVisit.scheduledAt
         ? new Intl.DateTimeFormat('en-US', {
             timeZone: 'Asia/Kolkata',
             hour: 'numeric',
@@ -281,44 +326,44 @@ const getAssistantMessage = async (req, res, next) => {
 
       const siteVisitVariants = [
         `You have a site visit at ${timeStr}. Be ready.`,
-        `Upcoming site visit today at ${timeStr}. Best of luck with the client!`,
-        `Reminder: Site visit scheduled for ${timeStr} today. Be prepared and on time.`,
-        `Client meeting ahead: You have a site visit today at ${timeStr}. Make it a success!`
+        `Upcoming site visit today at ${timeStr}. Be ready.`,
+        `Reminder: You have a site visit at ${timeStr} today. Be ready.`,
+        `Client meeting ahead: You have a site visit at ${timeStr}. Be prepared!`
       ];
-      selectedMessage = pickVariant(siteVisitVariants);
+      selectedMessage = pickRotatingVariant(`${userKeyPrefix}_site_visit`, siteVisitVariants);
     }
     // Priority d) Everything complete but EOD pending (only after 5 PM / hour >= 17)
     else if (hour >= 17 && !isEodSubmitted && hasCompletedWorkToday) {
       messageType = 'reminder';
       const eodPendingVariants = [
         'All tasks done. Please submit your EOD report.',
-        'Great work on completing your tasks today! Please submit your EOD report.',
-        'Everything is on track! Don\'t forget to submit your EOD report before wrapping up.',
-        'Your daily tasks are complete. Please take a moment to submit your EOD report.'
+        'Great work on your tasks today! Please submit your EOD report.',
+        'All your tasks are done. Don\'t forget to submit your EOD report.',
+        'Your tasks for today are completed. Please submit your EOD report.'
       ];
-      selectedMessage = pickVariant(eodPendingVariants);
+      selectedMessage = pickRotatingVariant(`${userKeyPrefix}_eod_pending`, eodPendingVariants);
     }
     // Priority e) ALL done: appreciation (no overdue, no pending tasks, no due follow-ups, no pending visits, EOD submitted if after 5 PM)
     else if (hasCompletedWorkToday && (hour < 17 || isEodSubmitted)) {
       messageType = 'appreciation';
       const appreciationVariants = [
         'Great work today! All your tasks are completed.',
-        'Outstanding job today! Everything has been completed successfully.',
-        'Fantastic effort! All your tasks, visits, and follow-ups are done for today.',
-        'Superb execution today! Your task list is completely cleared. Enjoy your evening!'
+        'Outstanding job today! All your tasks and follow-ups are completed.',
+        'Fantastic effort today! Everything on your schedule is completed.',
+        'Superb work today! All your tasks are done. Enjoy your rest!'
       ];
-      selectedMessage = pickVariant(appreciationVariants);
+      selectedMessage = pickRotatingVariant(`${userKeyPrefix}_appreciation`, appreciationVariants);
     }
     // Priority f) No tasks assigned at all: neutral message, not praise
     else {
       messageType = 'info';
       const noTasksVariants = [
         'No tasks assigned yet. Check your leads and start calling.',
-        'Your task queue is clear. Explore open leads in your pipeline to get started.',
-        'No pending tasks right now. Review your contact list and connect with prospects.',
-        'All quiet on tasks. Reach out to new leads to build your pipeline today.'
+        'No pending tasks right now. Check your leads and start calling.',
+        'Your task queue is empty. Check your leads and reach out to prospects.',
+        'No tasks assigned for today. Review your pipeline and start calling.'
       ];
-      selectedMessage = pickVariant(noTasksVariants);
+      selectedMessage = pickRotatingVariant(`${userKeyPrefix}_no_tasks`, noTasksVariants);
     }
 
     return res.json({
@@ -343,5 +388,5 @@ const getAssistantMessage = async (req, res, next) => {
 module.exports = {
   getAssistantMessage,
   getKolkataDateInfo,
-  pickVariant
+  pickRotatingVariant
 };

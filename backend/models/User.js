@@ -43,6 +43,7 @@ const userSchema = new mongoose.Schema(
         'admin',
         'team_lead',
         'telecaller',
+        'field_executive',
         'marketing',
         'finance'
       ],

@@ -1,4 +1,5 @@
 import api from './axios';
+import { triggerAssistantRefresh } from './assistant';
 
 export async function getMyFollowups(status?: string) {
   const params = status ? { status } : {};
@@ -8,6 +9,7 @@ export async function getMyFollowups(status?: string) {
 
 export async function completeFollowup(id: string) {
   const response = await api.patch(`/followups/${id}/complete`);
+  triggerAssistantRefresh();
   return response.data;
 }
 

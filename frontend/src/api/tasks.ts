@@ -1,4 +1,5 @@
 import api from './axios.js';
+import { triggerAssistantRefresh } from './assistant';
 
 // Get all tasks (pending + completed) for the logged-in user
 export async function getMyTasks() {
@@ -14,11 +15,13 @@ export async function createTask(data: {
   owner?: string;
 }) {
   const response = await api.post('/tasks', data);
+  triggerAssistantRefresh();
   return response.data;
 }
 
 // Mark a task as completed
 export async function completeTask(id: string) {
   const response = await api.patch(`/tasks/${id}/complete`);
+  triggerAssistantRefresh();
   return response.data;
 }
