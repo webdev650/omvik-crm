@@ -26,7 +26,8 @@ import {
   ChevronRight,
   Clock,
   CheckCircle2,
-  ClipboardList
+  ClipboardList,
+  Database
 } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 import NotificationBell from './NotificationBell';
