@@ -96,6 +96,16 @@ const opportunitySchema = new mongoose.Schema(
       unique: true,
       sparse: true,
       index: true
+    },
+    phone: {
+      type: String,
+      trim: true,
+      index: true
+    },
+    batchCode: {
+      type: String,
+      default: null,
+      index: true
     }
   },
   {
@@ -133,6 +143,9 @@ opportunitySchema.index(
   { customer: 1, project: 1 },
   { unique: true, partialFilterExpression: { isActive: true } }
 );
+
+// High-speed indexes for bulk import lookup and batch filtering
+opportunitySchema.index({ phone: 1, project: 1 });
 
 module.exports = mongoose.model('Opportunity', opportunitySchema);
 

@@ -3,9 +3,9 @@ const bcrypt = require('bcryptjs');
 
 const connectDB = async () => {
   try {
-    // Attempt connecting to configured MONGO_URI with 4s timeout
     const conn = await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 4000
+      serverSelectionTimeoutMS: 4000,
+      maxPoolSize: 20
     });
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {

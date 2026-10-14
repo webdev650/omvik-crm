@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import { uploadAndAutoSaveImportLeads } from '../../api/opportunities';
 import { Button } from '../../components/ui/button';
@@ -66,6 +67,11 @@ export default function ImportLeadsPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [resultsTab, setResultsTab] = useState<'imported' | 'skipped'>('imported');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Silently ping /api/health once on mount in background to warm up connection
+  useEffect(() => {
+    api.get('/health', { skipToast: true } as any).catch(() => {});
+  }, []);
 
   // Fetch Projects for Target Project selector
   const { data: projectsData } = useQuery({
@@ -395,7 +401,7 @@ export default function ImportLeadsPage() {
                     <span className="font-mono font-bold text-emerald-400 bg-slate-900/80 px-2.5 py-0.5 rounded-lg border border-slate-700">
                       "{importResult.importBatchId}"
                     </span>
-                    . All records are permanently stored and assigned. They will persist across logouts and page refreshes.
+                    . All records are permanently stored and assigned{importResult.timing?.totalMs ? ` in ${(importResult.timing.totalMs / 1000).toFixed(2)}s` : ''}. They will persist across logouts and page refreshes.
                   </p>
                 </div>
 

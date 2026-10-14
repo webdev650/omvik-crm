@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const rateLimit = require('express-rate-limit');
+const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
 
@@ -34,6 +35,9 @@ startVisitReminderCron();
 
 const app = express();
 
+// Enable HTTP response compression
+app.use(compression());
+
 // Trust proxy for reverse proxies (Render, Vercel, Heroku) for secure cookies & rate limiting
 app.set('trust proxy', 1);
 
@@ -49,6 +53,10 @@ app.use(cors({
 app.use(helmet({
   crossOriginResourcePolicy: false,
 }));
+
+// Fast health check endpoints (exempt from auth, DB queries, and rate limiter for keep-alive pings)
+app.get('/health', (req, res) => res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() }));
 
 // Data sanitization against NoSQL query injection (strips $ and .)
 app.use(mongoSanitize());
@@ -108,8 +116,19 @@ app.use('/api/batch-access', require('./routes/batchAccessRoutes'));
 app.get('/api/my-accessible-batches', require('./middlewares/auth').protect, require('./controllers/batchAccessController').getMyAccessibleBatches);
 
 
-app.get('/health', (req, res) => res.json({ status: 'ok_v8', deployed: '2026-10-12-v8-history-calendar-fix', db: 'omvik-crm', loginActivity: true, nodeEnv: process.env.NODE_ENV }));
-app.get('/api/health', (req, res) => res.json({ status: 'ok_v8', deployed: '2026-10-12-v8-history-calendar-fix', db: 'omvik-crm', loginActivity: true, nodeEnv: process.env.NODE_ENV }));
+// Keep-alive monitor: ping /api/health every 10 minutes to prevent Render free instance sleep
+const keepAliveUrl = process.env.RENDER_EXTERNAL_URL || process.env.BACKEND_URL;
+if (keepAliveUrl) {
+  setInterval(() => {
+    try {
+      const pingUrl = `${keepAliveUrl.replace(/\/$/, '')}/api/health`;
+      const httpModule = pingUrl.startsWith('https') ? require('https') : require('http');
+      httpModule.get(pingUrl, (res) => {
+        res.resume();
+      }).on('error', () => {});
+    } catch (e) {}
+  }, 10 * 60 * 1000);
+}
 
 app.get('/', (req, res) => {
   res.send('OMVIK API is running...');

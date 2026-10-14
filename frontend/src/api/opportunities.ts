@@ -48,7 +48,7 @@ export async function uploadAndAutoSaveImportLeads(
 
   const response = await api.post('/import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 300000 // 5 minutes timeout for large bulk imports
+    timeout: 180000 // 180000 ms safety net
   });
   return response.data;
 }
