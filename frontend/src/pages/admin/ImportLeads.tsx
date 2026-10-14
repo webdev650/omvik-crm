@@ -860,7 +860,16 @@ export default function ImportLeadsPage() {
               {/* Upload & Import Button with Loader */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
                 <div className="text-xs text-slate-400">
-                  <span className="font-semibold text-slate-300">⚡ Single-step auto-save:</span> Leads are saved directly to MongoDB upon upload. No secondary confirmation step required.
+                  {importMutation.isPending ? (
+                    <div className="flex items-center gap-2 text-emerald-400 font-semibold animate-pulse">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      <span>Processing large spreadsheet & batch-saving directly to MongoDB... Please keep this page open.</span>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="font-semibold text-slate-300">⚡ Single-step auto-save:</span> Leads are saved directly to MongoDB upon upload. No secondary confirmation step required.
+                    </>
+                  )}
                 </div>
 
                 <Button

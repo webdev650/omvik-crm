@@ -1,11 +1,16 @@
+const mongoose = require('mongoose');
 const XLSX = require('xlsx');
 const Customer = require('../models/Customer');
 const Opportunity = require('../models/Opportunity');
+const Lead = require('../models/Lead');
 const Project = require('../models/Project');
+const Counter = require('../models/Counter');
+const User = require('../models/User');
 const ImportBatch = require('../models/ImportBatch');
 const BatchAccess = require('../models/BatchAccess');
 const { processIncomingLead } = require('../services/duplicateEngine');
 const normalizePhone = require('../utils/normalizePhone');
+const { getYYMMDD } = require('../utils/generateLeadCode');
 
 // Helper to extract value from row across flexible header names
 function getRowValue(row, possibleKeys) {
@@ -552,7 +557,7 @@ const confirmImport = async (req, res, next) => {
 };
 
 /**
- * Auto-save bulk lead import directly to MongoDB (Single-step import without manual preview confirmation)
+ * Auto-save bulk lead import directly to MongoDB (High-Performance Bulk Pipeline)
  * @route POST /api/leads/import or POST /api/import
  * @access Private (super_admin, admin, director, telecaller, team_lead)
  */
@@ -598,10 +603,10 @@ const autoSaveImport = async (req, res, next) => {
       return res.status(400).json({ message: 'Uploaded spreadsheet is empty or contains no valid data rows' });
     }
 
-    // 2. Fetch projects for matching and fallback
-    let projects = await Project.find({ $or: [{ isActive: true }, { isActive: { $exists: false } }] });
+    // 2. Fetch projects for matching and fallback (Lean query)
+    let projects = await Project.find({ $or: [{ isActive: true }, { isActive: { $exists: false } }] }).lean();
     if (!projects || projects.length === 0) {
-      projects = await Project.find({});
+      projects = await Project.find({}).lean();
     }
 
     let defaultProject = (fallbackProjectId && projects.find(p => p._id.toString() === String(fallbackProjectId))) || projects[0] || null;
@@ -617,19 +622,36 @@ const autoSaveImport = async (req, res, next) => {
         });
         projects = [defaultProject];
       } catch (prjErr) {
-        defaultProject = await Project.findOne();
+        defaultProject = await Project.findOne().lean();
       }
     }
 
     const defaultCode = (defaultProject?.projectCode || defaultProject?.code || 'DDV').toUpperCase();
     const assignedBatchId = (batchName && String(batchName).trim()) || `NEW_${defaultCode}_${Date.now()}`;
 
-    console.log(`[autoSaveImport] Auto-saving bulk import of ${rawRows.length} rows directly to MongoDB under batch "${assignedBatchId}"...`);
+    console.log(`[autoSaveImport] Bulk import of ${rawRows.length} rows directly to MongoDB under batch "${assignedBatchId}"...`);
 
-    let importedCount = 0;
-    let skippedCount = 0;
-    const importedLeads = [];
+    // 3. Resolve Target User or Candidate Telecallers upfront
+    let targetUser = null;
+    let targetUserName = 'Assigned Rep';
+    if (targetUserId) {
+      targetUser = await User.findById(targetUserId).select('name email role employeeId').lean();
+      if (targetUser) targetUserName = targetUser.name;
+    }
+
+    let activeReps = [];
+    let repIndex = 0;
+    if (!targetUserId) {
+      activeReps = await User.find({
+        isActive: true,
+        role: { $in: ['telecaller', 'team_lead'] }
+      }).select('_id name email role').lean();
+    }
+
+    // 4. In-Memory Parsing & Data Cleansing across all rows
+    const validRows = [];
     const skippedDetails = [];
+    let skippedCount = 0;
 
     for (let i = 0; i < rawRows.length; i++) {
       const origRow = rawRows[i];
@@ -731,7 +753,7 @@ const autoSaveImport = async (req, res, next) => {
           continue;
         }
 
-        // Resolve Project ObjectId
+        // Resolve Project
         let targetProject = defaultProject;
         if (rawProject && projects.length > 0) {
           const found = projects.find(
@@ -747,81 +769,294 @@ const autoSaveImport = async (req, res, next) => {
 
         if (!targetProject && defaultProject) targetProject = defaultProject;
 
-        // Process directly into MongoDB through duplicate engine & auto-assignment
-        const leadResult = await processIncomingLead(
-          {
-            rawName: rawName.trim(),
-            rawMobile: cleanMobile,
-            project: targetProject._id,
-            source: rawSource,
-            intent: cleanIntent,
-            email: rawEmail || '',
-            city: rawCity || '',
-            owner: targetUserId || null,
-            importBatchId: assignedBatchId,
-            allowDuplicate: false,
-            reason: `Auto-save spreadsheet import batch ${assignedBatchId}`
-          },
-          req.user
-        );
-
-        if (leadResult.isDuplicate || !leadResult.opportunity) {
-          if (leadResult.existingOpportunity) {
-            // Update existing active opportunity to join this batch
-            await Opportunity.findByIdAndUpdate(leadResult.existingOpportunity._id, {
-              importBatchId: assignedBatchId,
-              ...(targetUserId ? { owner: targetUserId } : {})
-            });
-            importedCount++;
-            importedLeads.push({
-              _id: leadResult.existingOpportunity._id,
-              leadCode: leadResult.existingOpportunity.leadCode || 'EXISTING',
-              customerName: rawName.trim(),
-              phone: cleanMobile,
-              project: targetProject.name,
-              currentOwner: leadResult.existingOpportunity.owner?.name || 'Assigned Rep',
-              stage: leadResult.existingOpportunity.stage || 'new',
-              intent: cleanIntent || 'medium',
-              status: 'Linked Existing'
-            });
-          } else {
-            skippedCount++;
-            skippedDetails.push({
-              rowNumber: rowNum,
-              customerName: rawName.trim(),
-              mobile: cleanMobile,
-              reason: 'Duplicate active opportunity conflict'
-            });
-          }
-        } else {
-          importedCount++;
-          importedLeads.push({
-            _id: leadResult.opportunity._id,
-            leadCode: leadResult.opportunity.leadCode,
-            customerName: rawName.trim(),
-            phone: cleanMobile,
-            project: targetProject.name,
-            currentOwner: leadResult.opportunity.owner?.name || 'Assigned Agent',
-            stage: leadResult.opportunity.stage || 'new',
-            intent: cleanIntent || 'medium',
-            status: 'Newly Created'
-          });
-        }
+        validRows.push({
+          rowNum,
+          rawName: rawName.trim(),
+          rawMobile,
+          cleanMobile,
+          targetProject,
+          rawSource,
+          cleanIntent,
+          rawEmail: rawEmail || '',
+          rawCity: rawCity || ''
+        });
       } catch (rowErr) {
-        console.error(`[autoSaveImport] Error on row ${rowNum}:`, rowErr);
         skippedCount++;
         skippedDetails.push({
           rowNumber: rowNum,
           customerName: origRow.name || 'Unknown',
           mobile: origRow.phone || 'Unknown',
-          reason: rowErr.message || 'Error saving to MongoDB'
+          reason: rowErr.message || 'Row parsing error'
         });
       }
     }
 
-    console.log(`[autoSaveImport] Finished batch "${assignedBatchId}": saved=${importedCount}, skipped=${skippedCount}`);
+    if (validRows.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No valid rows found in spreadsheet',
+        importBatchId: assignedBatchId,
+        imported: 0,
+        skipped: skippedCount,
+        totalRows: rawRows.length,
+        leads: [],
+        skippedDetails
+      });
+    }
 
-    // Persist ImportBatch document
+    // 5. Bulk Customer Matching and Creation
+    const uniqueMobiles = Array.from(new Set(validRows.map(r => r.cleanMobile)));
+    const existingCustomers = await Customer.find({
+      $or: [
+        { primaryMobile: { $in: uniqueMobiles } },
+        { alternateMobile: { $in: uniqueMobiles } },
+        { whatsapp: { $in: uniqueMobiles } }
+      ]
+    }).lean();
+
+    const customerMap = new Map();
+    for (const cust of existingCustomers) {
+      if (cust.primaryMobile) customerMap.set(cust.primaryMobile, cust);
+      if (cust.alternateMobile) customerMap.set(cust.alternateMobile, cust);
+      if (cust.whatsapp) customerMap.set(cust.whatsapp, cust);
+    }
+
+    const newCustomerDocs = [];
+    for (const mob of uniqueMobiles) {
+      if (!customerMap.has(mob)) {
+        const sampleRow = validRows.find(r => r.cleanMobile === mob);
+        const newCust = {
+          _id: new mongoose.Types.ObjectId(),
+          name: sampleRow.rawName || 'Prospect',
+          primaryMobile: mob,
+          email: sampleRow.rawEmail || '',
+          city: sampleRow.rawCity || ''
+        };
+        newCustomerDocs.push(newCust);
+        customerMap.set(mob, newCust);
+      }
+    }
+
+    if (newCustomerDocs.length > 0) {
+      for (let c = 0; c < newCustomerDocs.length; c += 500) {
+        await Customer.insertMany(newCustomerDocs.slice(c, c + 500), { ordered: false });
+      }
+    }
+
+    // 6. Bulk Active Opportunity Matching
+    const customerIds = Array.from(new Set(validRows.map(r => customerMap.get(r.cleanMobile)._id)));
+    const projectIds = Array.from(new Set(validRows.map(r => r.targetProject._id)));
+
+    const existingActiveOpps = await Opportunity.find({
+      customer: { $in: customerIds },
+      project: { $in: projectIds },
+      isActive: true
+    }).populate('owner', 'name email role').lean();
+
+    const activeOppMap = new Map();
+    for (const opp of existingActiveOpps) {
+      const key = `${opp.customer.toString()}_${opp.project.toString()}`;
+      activeOppMap.set(key, opp);
+    }
+
+    // 7. Atomic Pre-Allocation of Sequential Lead Codes by Project
+    const neededCodesCountByProject = new Map();
+    const tempSeenKeys = new Set();
+
+    for (const row of validRows) {
+      const cust = customerMap.get(row.cleanMobile);
+      const key = `${cust._id.toString()}_${row.targetProject._id.toString()}`;
+      if (!activeOppMap.has(key) && !tempSeenKeys.has(key)) {
+        tempSeenKeys.add(key);
+        const projIdStr = row.targetProject._id.toString();
+        neededCodesCountByProject.set(projIdStr, (neededCodesCountByProject.get(projIdStr) || 0) + 1);
+      }
+    }
+
+    const availableCodesByProject = new Map();
+    const yymmdd = getYYMMDD(new Date());
+
+    for (const [projIdStr, countNeeded] of neededCodesCountByProject.entries()) {
+      const prj = projects.find(p => p._id.toString() === projIdStr) || defaultProject;
+      const projectCode = (prj.projectCode || prj.code || 'OMV').toUpperCase().trim();
+      const counterKey = `${projectCode}_${yymmdd}`;
+
+      const counter = await Counter.findOneAndUpdate(
+        { name: counterKey },
+        { $inc: { value: countNeeded } },
+        { upsert: true, new: true }
+      );
+
+      const startSeq = counter.value - countNeeded + 1;
+      const codes = [];
+      for (let s = 0; s < countNeeded; s++) {
+        const seqStr = String(startSeq + s).padStart(3, '0');
+        codes.push(`OMV-${projectCode}-${yymmdd}-${seqStr}`);
+      }
+      availableCodesByProject.set(projIdStr, codes);
+    }
+
+    // 8. Construct Bulk Operations for Opportunities & Leads
+    const oppsToInsert = [];
+    const leadsToInsert = [];
+    const bulkOppUpdates = [];
+    const importedLeads = [];
+    const seenCustProjectMap = new Map();
+    let importedCount = 0;
+
+    for (const row of validRows) {
+      const cust = customerMap.get(row.cleanMobile);
+      const projIdStr = row.targetProject._id.toString();
+      const key = `${cust._id.toString()}_${projIdStr}`;
+
+      // Determine Assigned Owner
+      let rowOwnerId = targetUserId || null;
+      let rowOwnerName = targetUserName;
+      if (!rowOwnerId && activeReps.length > 0) {
+        const rep = activeReps[repIndex % activeReps.length];
+        repIndex++;
+        rowOwnerId = rep._id;
+        rowOwnerName = rep.name;
+      }
+
+      if (activeOppMap.has(key)) {
+        // Re-link existing active opportunity in database to this batch
+        const existingOpp = activeOppMap.get(key);
+        bulkOppUpdates.push({
+          updateOne: {
+            filter: { _id: existingOpp._id },
+            update: {
+              $set: {
+                importBatchId: assignedBatchId,
+                ...(targetUserId ? { owner: targetUserId } : {})
+              }
+            }
+          }
+        });
+
+        leadsToInsert.push({
+          rawName: row.rawName,
+          rawMobile: row.cleanMobile,
+          project: row.targetProject._id,
+          source: row.rawSource,
+          campaign: '',
+          importBatchId: assignedBatchId,
+          intent: row.cleanIntent,
+          duplicateStatus: 'exact_match',
+          matchedCustomer: cust._id,
+          resultingOpportunity: existingOpp._id
+        });
+
+        importedCount++;
+        importedLeads.push({
+          _id: existingOpp._id,
+          leadCode: existingOpp.leadCode || 'EXISTING',
+          customerName: row.rawName,
+          phone: row.cleanMobile,
+          project: row.targetProject.name,
+          currentOwner: existingOpp.owner?.name || rowOwnerName,
+          stage: existingOpp.stage || 'new',
+          intent: row.cleanIntent || 'medium',
+          status: 'Linked Existing'
+        });
+      } else if (seenCustProjectMap.has(key)) {
+        // Intra-sheet duplicate: multiple rows in same file for same customer & project
+        const prevOpp = seenCustProjectMap.get(key);
+        leadsToInsert.push({
+          rawName: row.rawName,
+          rawMobile: row.cleanMobile,
+          project: row.targetProject._id,
+          source: row.rawSource,
+          campaign: '',
+          importBatchId: assignedBatchId,
+          intent: row.cleanIntent,
+          duplicateStatus: 'exact_match',
+          matchedCustomer: cust._id,
+          resultingOpportunity: prevOpp._id
+        });
+
+        importedCount++;
+        importedLeads.push({
+          _id: prevOpp._id,
+          leadCode: prevOpp.leadCode,
+          customerName: row.rawName,
+          phone: row.cleanMobile,
+          project: row.targetProject.name,
+          currentOwner: rowOwnerName,
+          stage: 'new',
+          intent: row.cleanIntent || 'medium',
+          status: 'Linked (Sheet Duplicate)'
+        });
+      } else {
+        // Brand New Opportunity
+        const oppId = new mongoose.Types.ObjectId();
+        const leadCode = availableCodesByProject.get(projIdStr)?.shift() || `OMV-${defaultCode}-${yymmdd}-${Date.now().toString().slice(-4)}`;
+
+        oppsToInsert.push({
+          _id: oppId,
+          leadCode,
+          customer: cust._id,
+          project: row.targetProject._id,
+          owner: rowOwnerId,
+          createdBy: req.user ? req.user._id : null,
+          source: row.rawSource,
+          campaign: '',
+          importBatchId: assignedBatchId,
+          intent: row.cleanIntent,
+          stage: 'new',
+          isActive: true
+        });
+
+        leadsToInsert.push({
+          rawName: row.rawName,
+          rawMobile: row.cleanMobile,
+          project: row.targetProject._id,
+          source: row.rawSource,
+          campaign: '',
+          importBatchId: assignedBatchId,
+          intent: row.cleanIntent,
+          duplicateStatus: 'no_match',
+          matchedCustomer: cust._id,
+          resultingOpportunity: oppId
+        });
+
+        seenCustProjectMap.set(key, { _id: oppId, leadCode });
+
+        importedCount++;
+        importedLeads.push({
+          _id: oppId,
+          leadCode,
+          customerName: row.rawName,
+          phone: row.cleanMobile,
+          project: row.targetProject.name,
+          currentOwner: rowOwnerName,
+          stage: 'new',
+          intent: row.cleanIntent || 'medium',
+          status: 'Newly Created'
+        });
+      }
+    }
+
+    // 9. Execute Bulk DB Writes in 500-item chunks
+    if (bulkOppUpdates.length > 0) {
+      for (let c = 0; c < bulkOppUpdates.length; c += 500) {
+        await Opportunity.bulkWrite(bulkOppUpdates.slice(c, c + 500), { ordered: false });
+      }
+    }
+    if (oppsToInsert.length > 0) {
+      for (let c = 0; c < oppsToInsert.length; c += 500) {
+        await Opportunity.insertMany(oppsToInsert.slice(c, c + 500), { ordered: false });
+      }
+    }
+    if (leadsToInsert.length > 0) {
+      for (let c = 0; c < leadsToInsert.length; c += 500) {
+        await Lead.insertMany(leadsToInsert.slice(c, c + 500), { ordered: false });
+      }
+    }
+
+    console.log(`[autoSaveImport] Bulk import completed successfully: saved=${importedCount}, skipped=${skippedCount}`);
+
+    // 10. Persist ImportBatch document
     const isPrivateBatch = isPrivate === true || isPrivate === 'true' || !!targetUserId;
     const importBatchDoc = await ImportBatch.findOneAndUpdate(
       { batchId: assignedBatchId },
@@ -839,11 +1074,10 @@ const autoSaveImport = async (req, res, next) => {
       { upsert: true, new: true }
     );
 
-    // If batch is assigned to an employee or private, create BatchAccess document
-    let createdBatchAccess = null;
+    // 11. Persist BatchAccess document
     if (isPrivateBatch && targetUserId) {
       const assignedUserIds = Array.isArray(targetUserId) ? targetUserId : [targetUserId];
-      createdBatchAccess = await BatchAccess.findOneAndUpdate(
+      await BatchAccess.findOneAndUpdate(
         { batchId: assignedBatchId },
         {
           batch: importBatchDoc._id,

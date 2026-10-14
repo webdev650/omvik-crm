@@ -47,7 +47,8 @@ export async function uploadAndAutoSaveImportLeads(
   if (accessLevel) formData.append('accessLevel', accessLevel);
 
   const response = await api.post('/import', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 300000 // 5 minutes timeout for large bulk imports
   });
   return response.data;
 }

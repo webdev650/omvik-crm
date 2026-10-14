@@ -18,7 +18,7 @@ export interface AssistantMessageResponse {
  * Fetch role-based, task-aware Omvik Assistant message
  */
 export async function getAssistantMessage(): Promise<AssistantMessageResponse> {
-  const response = await api.get('/assistant/message');
+  const response = await api.get('/assistant/message', { skipToast: true } as any);
   return response.data;
 }
 
