@@ -1,3 +1,11 @@
+const Opportunity = require('../models/Opportunity');
+const User = require('../models/User');
+const Project = require('../models/Project');
+const Lead = require('../models/Lead');
+const AssignmentHistory = require('../models/AssignmentHistory');
+const AuditLog = require('../models/AuditLog');
+const { checkUserBatchAccess } = require('../utils/batchAccessHelper');
+
 // @desc    Get summary list of all import batches with lead counts, assigned owners, and projects
 // @route   GET /api/admin/lead-batches
 // @access  Private (admin, super_admin, director, team_lead)
