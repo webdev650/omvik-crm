@@ -1,10 +1,28 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Tag, Search, ArrowLeft, Users, Trophy, ChevronRight, Eye, Trash2, UserCheck, RefreshCw, CheckSquare, Square, Download } from 'lucide-react';
+import {
+  Tag,
+  Search,
+  ArrowLeft,
+  Users,
+  Trophy,
+  ChevronRight,
+  Eye,
+  Trash2,
+  UserCheck,
+  RefreshCw,
+  CheckSquare,
+  Square,
+  Download,
+  AlertTriangle,
+  X,
+  ShieldAlert
+} from 'lucide-react';
 import { toast } from 'sonner';
 import Navbar from '../../components/Navbar';
 import api from '../../api/axios';
 import { getUsers } from '../../api/users';
+import useAuthStore from '../../store/authStore';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -20,12 +38,19 @@ import {
 
 export default function LeadBatchesPage() {
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuthStore();
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
+
   const [search, setSearch] = useState('');
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [leadSearch, setLeadSearch] = useState('');
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
   const [reassignUserId, setReassignUserId] = useState<string>('');
   const [isReassigning, setIsReassigning] = useState<boolean>(false);
+
+  // Deletion Modal States (Admin only)
+  const [batchToDelete, setBatchToDelete] = useState<{ batchId: string; totalLeads?: number } | null>(null);
+  const [isDeletingSelectedLeads, setIsDeletingSelectedLeads] = useState<boolean>(false);
 
   // Fetch Users for Reassignment Dropdown
   const { data: usersData } = useQuery({
@@ -43,21 +68,29 @@ export default function LeadBatchesPage() {
     }
   });
 
-  // Delete Batch Mutation
+  // Delete Batch / Leads Mutation (Strictly Admin only)
   const deleteBatchMutation = useMutation({
-    mutationFn: async (batchId: string) => {
-      const res = await api.delete(`/admin/lead-batches/${encodeURIComponent(batchId)}`);
+    mutationFn: async ({ batchId, leadIds }: { batchId: string; leadIds?: string[] }) => {
+      const res = await api.delete(`/admin/lead-batches/${encodeURIComponent(batchId)}`, {
+        data: { leadIds }
+      });
       return res.data;
     },
     onSuccess: (data) => {
-      toast.success(data.message || 'Batch deleted successfully');
-      setSelectedBatchId(null);
+      toast.success(data.message || 'Leads deleted successfully');
+      setBatchToDelete(null);
+      setIsDeletingSelectedLeads(false);
+      setSelectedLeadIds([]);
+      if (!isDeletingSelectedLeads) {
+        setSelectedBatchId(null);
+      }
       queryClient.invalidateQueries({ queryKey: ['leadBatches'] });
+      queryClient.invalidateQueries({ queryKey: ['batchLeads'] });
       queryClient.invalidateQueries({ queryKey: ['opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Failed to delete batch';
+      const msg = err.response?.data?.message || 'Failed to delete lead batch';
       toast.error(msg);
     }
   });
@@ -105,14 +138,12 @@ export default function LeadBatchesPage() {
 
   const batchOpportunities = batchLeadsData?.opportunities || [];
 
-  const handleDeleteBatch = (batchId: string) => {
-    if (batchId === 'MANUAL / WEBSITE' || batchId === 'manual') {
-      toast.error('Cannot delete manual / website lead entry batch');
+  const handleDeleteBatch = (batchId: string, totalLeads?: number) => {
+    if (!isAdmin) {
+      toast.error('Only administrators are allowed to delete lead lists');
       return;
     }
-    if (window.confirm(`⚠️ ARE YOU SURE?\n\nDo you want to delete and rollback batch "${batchId}"?\nAll leads imported under this file will be permanently removed.`)) {
-      deleteBatchMutation.mutate(batchId);
-    }
+    setBatchToDelete({ batchId, totalLeads });
   };
 
   const handleSelectAllLeads = () => {
@@ -171,15 +202,21 @@ export default function LeadBatchesPage() {
 
           {selectedBatchId && (
             <div className="flex items-center gap-2">
-              {selectedBatchId !== 'MANUAL / WEBSITE' && selectedBatchId !== 'manual' && (
+              {isAdmin && (
                 <Button
                   size="sm"
-                  onClick={() => handleDeleteBatch(selectedBatchId)}
+                  onClick={() =>
+                    handleDeleteBatch(
+                      selectedBatchId,
+                      batchLeadsData?.total || batchOpportunities.length
+                    )
+                  }
                   disabled={deleteBatchMutation.isPending}
-                  className="bg-red-500/20 hover:bg-red-600 text-red-300 hover:text-white text-xs font-bold rounded-xl flex items-center gap-1.5 border border-red-500/30"
+                  className="bg-red-500/20 hover:bg-red-600 text-red-300 hover:text-white text-xs font-bold rounded-xl flex items-center gap-1.5 border border-red-500/30 transition-colors shadow-sm"
+                  title="Permanently delete this lead list (Admin only)"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>{deleteBatchMutation.isPending ? 'Deleting Batch...' : 'Delete / Rollback Batch'}</span>
+                  <span>Delete Lead List</span>
                 </Button>
               )}
               <Button
@@ -288,14 +325,14 @@ export default function LeadBatchesPage() {
                             <span>Drill Down</span>
                             <ChevronRight className="w-3.5 h-3.5 ml-1" />
                           </Button>
-                          {b.batchName !== 'MANUAL / WEBSITE' && b.batchName !== 'manual' && (
+                          {isAdmin && (
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleDeleteBatch(b.batchName)}
+                              onClick={() => handleDeleteBatch(b.batchName, b.totalLeads)}
                               disabled={deleteBatchMutation.isPending}
-                              className="bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white border-red-500/30 text-xs font-bold rounded-xl h-8 px-2.5"
-                              title="Delete / Rollback this imported Excel batch"
+                              className="bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white border-red-500/30 text-xs font-bold rounded-xl h-8 px-2.5 transition-colors shadow-sm"
+                              title="Delete this lead list (Admin only)"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
@@ -379,6 +416,20 @@ export default function LeadBatchesPage() {
                     >
                       {reassignBatchMutation.isPending ? 'Reassigning...' : 'Confirm Reassign'}
                     </Button>
+
+                    {isAdmin && selectedLeadIds.length > 0 && (
+                      <Button
+                        size="sm"
+                        type="button"
+                        onClick={() => setIsDeletingSelectedLeads(true)}
+                        disabled={deleteBatchMutation.isPending}
+                        className="bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/30 text-xs font-bold rounded-xl h-9 px-3 flex items-center gap-1.5 transition-colors shadow-sm"
+                        title="Permanently delete selected leads from this list (Admin only)"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Selected ({selectedLeadIds.length})</span>
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -468,6 +519,129 @@ export default function LeadBatchesPage() {
                   )}
                 </TableBody>
               </Table>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL 1: FULL LEAD LIST / BATCH DELETION MODAL (ADMIN ONLY) */}
+        {batchToDelete && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+            <div className="bg-[#131c31] border border-red-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 text-slate-100 space-y-5 animate-in zoom-in-95 duration-150">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold text-white">Permanently Delete Lead List?</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    You are about to delete batch <strong className="text-red-300 font-mono">{batchToDelete.batchId}</strong>
+                    {batchToDelete.totalLeads !== undefined ? ` containing ${batchToDelete.totalLeads} lead(s)` : ''}.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-300 leading-relaxed space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-red-400">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>Admin Authority Deletion</span>
+                </div>
+                <p className="text-[11px] text-red-200/80">
+                  All leads, interaction logs, follow-ups, and rep assignments linked to this sheet tag will be permanently deleted from the database. This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={deleteBatchMutation.isPending}
+                  onClick={() => setBatchToDelete(null)}
+                  className="text-slate-400 hover:text-white text-xs font-semibold rounded-xl"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  disabled={deleteBatchMutation.isPending}
+                  onClick={() => deleteBatchMutation.mutate({ batchId: batchToDelete.batchId })}
+                  className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl px-4 h-9 shadow-lg shadow-red-900/30 flex items-center gap-2"
+                >
+                  {deleteBatchMutation.isPending ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Deleting Batch...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Yes, Delete Permanently</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL 2: SELECTIVE LEADS DELETION MODAL (ADMIN ONLY) */}
+        {isDeletingSelectedLeads && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+            <div className="bg-[#131c31] border border-red-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 text-slate-100 space-y-5 animate-in zoom-in-95 duration-150">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold text-white">Delete Selected Leads?</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    You are about to delete <strong className="text-red-300 font-bold">{selectedLeadIds.length}</strong> selected lead(s) from batch <strong className="text-indigo-300 font-mono">{selectedBatchId}</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-300 leading-relaxed">
+                <div className="font-bold flex items-center gap-1.5 text-red-400 mb-1">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>Irreversible Action</span>
+                </div>
+                <p className="text-[11px] text-red-200/80">
+                  The selected leads will be permanently purged from the system.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={deleteBatchMutation.isPending}
+                  onClick={() => setIsDeletingSelectedLeads(false)}
+                  className="text-slate-400 hover:text-white text-xs font-semibold rounded-xl"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  disabled={deleteBatchMutation.isPending}
+                  onClick={() => {
+                    if (selectedBatchId) {
+                      deleteBatchMutation.mutate({ batchId: selectedBatchId, leadIds: selectedLeadIds });
+                    }
+                  }}
+                  className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl px-4 h-9 shadow-lg shadow-red-900/30 flex items-center gap-2"
+                >
+                  {deleteBatchMutation.isPending ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Deleting Selected...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Yes, Delete Selected</span>
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         )}

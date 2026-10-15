@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { getImportHistory, getBatchLeadsDetail } from '../../api/importHistory';
 import { getUsers } from '../../api/users';
+import useAuthStore from '../../store/authStore';
+import api from '../../api/axios';
+import { toast } from 'sonner';
 import Navbar from '../../components/Navbar';
 import BatchReassignModal from '../../components/admin/BatchReassignModal';
 import { Button } from '../../components/ui/button';
@@ -22,12 +25,17 @@ import {
   X,
   Layers,
   Tag,
-  ArrowRight
+  ArrowRight,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function ImportHistoryPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user: currentUser } = useAuthStore();
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
 
   // Filters State
   const [fromDate, setFromDate] = useState<string>('');
@@ -39,9 +47,31 @@ export default function ImportHistoryPage() {
   // Modal State
   const [selectedBatchForDrilldown, setSelectedBatchForDrilldown] = useState<string | null>(null);
   const [selectedBatchForReassign, setSelectedBatchForReassign] = useState<string | null>(null);
+  const [batchToDelete, setBatchToDelete] = useState<{ batchId: string; totalLeads?: number } | null>(null);
 
   // Search inside drilldown modal
   const [drillSearchQuery, setDrillSearchQuery] = useState<string>('');
+
+  // Delete Batch Mutation (Admin only)
+  const deleteBatchMutation = useMutation({
+    mutationFn: async (batchId: string) => {
+      const res = await api.delete(`/admin/lead-batches/${encodeURIComponent(batchId)}`);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || 'Batch deleted successfully');
+      setBatchToDelete(null);
+      setSelectedBatchForDrilldown(null);
+      queryClient.invalidateQueries({ queryKey: ['importHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['leadBatches'] });
+      queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to delete batch';
+      toast.error(msg);
+    }
+  });
 
   // Fetch Users for Assigned To Filter
   const { data: usersData } = useQuery({
@@ -357,6 +387,20 @@ export default function ImportHistoryPage() {
                               <RefreshCw className="w-3.5 h-3.5" />
                               <span>Reassign</span>
                             </Button>
+
+                            {isAdmin && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setBatchToDelete({ batchId: batch.importBatchId, totalLeads: batch.leadCount })}
+                                disabled={deleteBatchMutation.isPending}
+                                className="h-8 px-2.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg flex items-center gap-1 transition-colors"
+                                title="Delete this lead list (Admin only)"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Delete</span>
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -389,6 +433,19 @@ export default function ImportHistoryPage() {
               </div>
 
               <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setBatchToDelete({ batchId: selectedBatchForDrilldown, totalLeads: drillLeads.length })}
+                    disabled={deleteBatchMutation.isPending}
+                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/30 text-xs font-bold rounded-xl flex items-center gap-1.5"
+                    title="Delete entire batch (Admin only)"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Batch</span>
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
@@ -499,6 +556,66 @@ export default function ImportHistoryPage() {
           isOpen={!!selectedBatchForReassign}
           onClose={() => setSelectedBatchForReassign(null)}
         />
+      )}
+
+      {/* Delete Lead List Modal (Admin only) */}
+      {batchToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-[#131c31] border border-red-500/30 rounded-2xl w-full max-w-md shadow-2xl p-6 text-slate-100 space-y-5 animate-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-white">Permanently Delete Lead List?</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  You are about to delete batch <strong className="text-red-300 font-mono">{batchToDelete.batchId}</strong>
+                  {batchToDelete.totalLeads !== undefined ? ` containing ${batchToDelete.totalLeads} lead(s)` : ''}.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-300 leading-relaxed space-y-1">
+              <div className="font-bold flex items-center gap-1.5 text-red-400">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>Admin Authority Deletion</span>
+              </div>
+              <p className="text-[11px] text-red-200/80">
+                All leads, interaction logs, follow-ups, and rep assignments linked to this sheet tag will be permanently deleted from the database. This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={deleteBatchMutation.isPending}
+                onClick={() => setBatchToDelete(null)}
+                className="text-slate-400 hover:text-white text-xs font-semibold rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={deleteBatchMutation.isPending}
+                onClick={() => deleteBatchMutation.mutate(batchToDelete.batchId)}
+                className="bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl px-4 h-9 shadow-lg shadow-red-900/30 flex items-center gap-2"
+              >
+                {deleteBatchMutation.isPending ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting Batch...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Yes, Delete Permanently</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

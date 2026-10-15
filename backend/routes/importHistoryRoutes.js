@@ -8,14 +8,18 @@ const {
   getBatchReassignOptions,
   reassignBatchLeads
 } = require('../controllers/importHistoryController');
+const { deleteLeadBatch } = require('../controllers/leadBatchController');
 
 // All import history endpoints require authentication & admin oversight
 router.use(protect);
-router.use(authorize('super_admin', 'admin', 'director', 'team_lead'));
 
-router.get('/', getImportHistory);
-router.get('/:batchId/leads', getBatchLeadsDetail);
-router.get('/:batchId/reassign-options', getBatchReassignOptions);
-router.post('/:batchId/reassign', reassignBatchLeads);
+router.get('/', authorize('super_admin', 'admin', 'director', 'team_lead'), getImportHistory);
+router.get('/:batchId/leads', authorize('super_admin', 'admin', 'director', 'team_lead'), getBatchLeadsDetail);
+router.get('/:batchId/reassign-options', authorize('super_admin', 'admin', 'director', 'team_lead'), getBatchReassignOptions);
+router.post('/:batchId/reassign', authorize('super_admin', 'admin', 'director', 'team_lead'), reassignBatchLeads);
+
+// CRITICAL: Lead list deletion strictly restricted to admin only
+router.delete('/:batchId', authorize('super_admin', 'admin'), deleteLeadBatch);
+router.delete('/', authorize('super_admin', 'admin'), deleteLeadBatch);
 
 module.exports = router;

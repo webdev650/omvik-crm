@@ -237,50 +237,152 @@ const reassignBatchLeads = async (req, res, next) => {
 // @desc    Delete/Rollback an entire lead import batch and all its leads
 // @route   DELETE /api/admin/lead-batches/:batchId
 // @access  Private (admin, super_admin, director)
+// @desc    Delete/Rollback an entire lead import batch or selected leads within a batch
+// @route   DELETE /api/admin/lead-batches/:batchId
+// @access  Private (admin, super_admin only)
 const deleteLeadBatch = async (req, res, next) => {
   try {
-    const { batchId } = req.params;
-
-    if (!batchId || batchId === 'MANUAL / WEBSITE' || batchId === 'manual') {
-      return res.status(400).json({ message: 'Cannot delete manual/website batch' });
+    // 1. Strict admin-only enforcement
+    const userRole = req.user?.role;
+    if (!['admin', 'super_admin'].includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Only administrators can delete lead lists or batches.'
+      });
     }
 
-    const Lead = require('../models/Lead');
-    const query = {
-      importBatchId: batchId,
-      ...(req.dataScope || {})
-    };
+    // 2. Extract batch identifier
+    const rawBatchId = req.params?.batchId || req.query?.batchId || req.body?.batchId;
+    const { leadIds } = req.body || {};
 
-    // Find opportunities to delete
-    const oppsToDelete = await Opportunity.find(query);
+    if (!rawBatchId && (!leadIds || leadIds.length === 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Batch identifier or lead IDs are required for deletion.'
+      });
+    }
+
+    const batchId = rawBatchId ? decodeURIComponent(rawBatchId).trim() : null;
+    const isManualBatch = batchId === 'MANUAL / WEBSITE' || batchId === 'manual' || !batchId;
+
+    // 3. Build Opportunity match filter
+    const oppMatchQuery = {};
+    if (isManualBatch) {
+      oppMatchQuery.importBatchId = { $in: [null, '', 'MANUAL / WEBSITE', 'manual'] };
+    } else {
+      oppMatchQuery.$or = [
+        { importBatchId: batchId },
+        { batchCode: batchId }
+      ];
+    }
+
+    // If specific leadIds provided (drill-down selective delete)
+    const isSelectiveDelete = Array.isArray(leadIds) && leadIds.length > 0;
+    if (isSelectiveDelete) {
+      oppMatchQuery._id = { $in: leadIds };
+    }
+
+    // 4. Fetch matching Opportunity IDs (lightweight projection, lean)
+    const oppsToDelete = await Opportunity.find(oppMatchQuery).select('_id').lean();
     const oppIds = oppsToDelete.map((o) => o._id);
 
-    // Delete opportunities & related leads
+    const ImportBatch = require('../models/ImportBatch');
+    const BatchAccess = require('../models/BatchAccess');
+
+    if (oppIds.length === 0 && !isManualBatch) {
+      // Even if no opportunities exist, clean up any stray ImportBatch or BatchAccess with this tag
+      await Promise.all([
+        ImportBatch.deleteMany({ $or: [{ batchId }, { batchName: batchId }] }),
+        BatchAccess.deleteMany({ batchId })
+      ]);
+
+      return res.json({
+        success: true,
+        message: `Batch "${batchId}" had 0 active leads. Any leftover batch metadata has been removed.`,
+        deletedCount: 0
+      });
+    }
+
+    // 5. Delete Opportunities and Leads
+    const leadMatchQuery = isManualBatch
+      ? { importBatchId: { $in: [null, '', 'MANUAL / WEBSITE', 'manual'] } }
+      : { importBatchId: batchId };
+
+    if (isSelectiveDelete) {
+      leadMatchQuery.resultingOpportunity = { $in: oppIds };
+    }
+
     const [oppResult, leadResult] = await Promise.all([
       Opportunity.deleteMany({ _id: { $in: oppIds } }),
-      Lead.deleteMany({ importBatchId: batchId })
+      Lead.deleteMany(leadMatchQuery)
     ]);
 
-    // Record AuditLog
+    // 6. If deleting the full batch, clean up ImportBatch & BatchAccess
+    if (!isSelectiveDelete && !isManualBatch) {
+      await Promise.all([
+        ImportBatch.deleteMany({ $or: [{ batchId }, { batchName: batchId }] }),
+        BatchAccess.deleteMany({ batchId })
+      ]);
+    }
+
+    // 7. Cascading cleanup for related models in chunks of 1000 to prevent BSON query size limits
+    const Activity = require('../models/Activity');
+    const Followup = require('../models/Followup');
+    const SiteVisit = require('../models/SiteVisit');
+    const VisitReminder = require('../models/VisitReminder');
+    const Task = require('../models/Task');
+    const AssignmentHistory = require('../models/AssignmentHistory');
+    const Notification = require('../models/Notification');
+
+    const CHUNK_SIZE = 1000;
+    for (let i = 0; i < oppIds.length; i += CHUNK_SIZE) {
+      const chunk = oppIds.slice(i, i + CHUNK_SIZE);
+
+      const siteVisits = await SiteVisit.find({ opportunity: { $in: chunk } }).select('_id').lean();
+      const svIds = siteVisits.map((s) => s._id);
+
+      await Promise.all([
+        Activity.deleteMany({ opportunity: { $in: chunk } }),
+        Followup.deleteMany({ opportunity: { $in: chunk } }),
+        SiteVisit.deleteMany({ opportunity: { $in: chunk } }),
+        svIds.length > 0 ? VisitReminder.deleteMany({ siteVisit: { $in: svIds } }) : Promise.resolve(),
+        Task.deleteMany({ opportunity: { $in: chunk } }),
+        AssignmentHistory.deleteMany({ opportunity: { $in: chunk } }),
+        Notification.deleteMany({ 'data.opportunityId': { $in: chunk } })
+      ]);
+    }
+
+    // 8. Record in AuditLog
     try {
       const AuditLog = require('../models/AuditLog');
       await AuditLog.create({
-        action: 'DELETE_LEAD_BATCH',
-        actor: req.user._id,
-        targetModel: 'Opportunity',
-        details: {
-          batchId,
+        user: req.user._id,
+        action: isSelectiveDelete ? 'DELETE_SELECTED_BATCH_LEADS' : 'DELETE_LEAD_BATCH',
+        entity: 'Opportunity',
+        reason: req.body?.reason || (isSelectiveDelete ? `Admin deleted selected leads from ${batchId || 'MANUAL'}` : `Admin deleted lead batch ${batchId || 'MANUAL'}`),
+        metadata: {
+          batchId: batchId || 'MANUAL / WEBSITE',
           deletedOpportunitiesCount: oppResult.deletedCount,
-          deletedLeadsCount: leadResult.deletedCount
+          deletedLeadsCount: leadResult.deletedCount,
+          isSelectiveDelete,
+          deletedBy: {
+            _id: req.user._id,
+            name: req.user.name,
+            role: req.user.role
+          }
         }
       });
     } catch (auditErr) {
       console.error('AuditLog error during batch deletion:', auditErr);
     }
 
-    res.json({
+    const label = isSelectiveDelete
+      ? `${oppResult.deletedCount} selected lead(s)`
+      : `lead list "${batchId || 'MANUAL / WEBSITE'}" (${oppResult.deletedCount} leads)`;
+
+    return res.json({
       success: true,
-      message: `Successfully deleted batch "${batchId}" (${oppResult.deletedCount} leads removed).`,
+      message: `Successfully deleted ${label}.`,
       deletedCount: oppResult.deletedCount
     });
   } catch (error) {
