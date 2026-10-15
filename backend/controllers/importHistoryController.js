@@ -64,7 +64,7 @@ const getImportHistory = async (req, res, next) => {
           User.find({ _id: { $in: creatorIds } }).select('name email employeeId role')
         ]);
 
-        const uploadedBy = creators.length > 0 ? creators[0] : (owners.length > 0 ? owners[0] : { name: 'System Admin', email: 'admin@omvik.com' });
+        const uploadedBy = creators.length > 0 ? creators[0] : (owners.length > 0 ? owners[0] : { name: 'System Administrator', email: process.env.ADMIN_ALERT_EMAIL || 'admin@omvikrealcon.com' });
 
         let assignedToInfo = 'Auto Round-Robin';
         if (owners.length === 1) {

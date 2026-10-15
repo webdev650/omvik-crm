@@ -47,6 +47,32 @@ api.interceptors.response.use(
     const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
     const isAuthPage = ['/login', '/forgot-password', '/reset-password', '/register'].some(p => pathname.startsWith(p));
 
+    if (error.response?.data?.code === 'PASSWORD_CHANGE_REQUIRED') {
+      if (typeof window !== 'undefined' && !pathname.startsWith('/change-password')) {
+        toast.error('Password change is required before proceeding.', { id: 'pwd-req' });
+        setTimeout(() => {
+          window.location.href = '/change-password';
+        }, 500);
+      }
+      return Promise.reject(error);
+    }
+
+    if (status === 401 && !isAuthPage) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('omvik_token');
+        localStorage.removeItem('omvik_user');
+        localStorage.removeItem('user');
+        sessionStorage.clear();
+        if (!pathname.startsWith('/login')) {
+          toast.error('Session expired. Please log in again.', { id: 'session-expired' });
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 500);
+        }
+      }
+      return Promise.reject(error);
+    }
+
     // Show toast for non-401 errors, or 401 errors when NOT on auth pages (unless skipToast is true)
     if ((status !== 401 || !isAuthPage) && !(error.config as any)?.skipToast) {
       toast.error(message, {

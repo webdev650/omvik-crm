@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const { submitPublicLead } = require('../controllers/publicLeadController');
 const { verifyApiKey } = require('../middlewares/apiKeyAuth');
+const { validatePublicLead } = require('../validators/publicLeadValidator');
 
 // Strict Rate Limiter for Public Website Webhook (30 requests / 1 hour window)
 const publicRateLimiter = rateLimit({
@@ -28,6 +29,6 @@ const websiteCors = cors({
 });
 
 router.use(websiteCors);
-router.post('/leads', publicRateLimiter, verifyApiKey, submitPublicLead);
+router.post('/leads', publicRateLimiter, verifyApiKey, validatePublicLead, submitPublicLead);
 
 module.exports = router;

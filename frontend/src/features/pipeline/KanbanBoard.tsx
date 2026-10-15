@@ -71,7 +71,7 @@ function KanbanCardItem({ opp, isDragging, onSelect }: CardProps) {
       {...attributes}
       {...listeners}
       onClick={onSelect}
-      className={`group p-4 rounded-xl border bg-[#131c31] hover:bg-slate-800/90 hover:border-indigo-500/50 shadow-lg cursor-grab active:cursor-grabbing transition-all duration-150 space-y-3 ${
+      className={`group p-4 rounded-xl border bg-[#131c31] hover:bg-slate-800/90 hover:border-indigo-500/50 shadow-lg cursor-grab active:cursor-grabbing transition-all duration-150 space-y-3 touch-none select-none ${
         opp.slaBreached ? 'border-red-500/30' : 'border-slate-800/80'
       }`}
     >
@@ -472,7 +472,7 @@ export default function KanbanBoard() {
                       <select
                         value={opp.stage || 'new'}
                         onChange={(e) => handleMobileStageChange(opp._id, e.target.value)}
-                        className="h-9 px-2.5 rounded-lg bg-[#131c31] border border-slate-700 text-slate-100 text-xs font-semibold focus:outline-none focus:border-indigo-500 min-h-[36px]"
+                        className="h-10 px-2.5 rounded-lg bg-[#131c31] border border-slate-700 text-slate-100 text-xs font-semibold focus:outline-none focus:border-indigo-500 min-h-[40px]"
                       >
                         {PIPELINE_STAGES.map((s) => (
                           <option key={s.id} value={s.id}>

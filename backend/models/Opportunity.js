@@ -10,12 +10,14 @@ const opportunitySchema = new mongoose.Schema(
     project: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Project',
-      required: [true, 'Project reference is required']
+      required: [true, 'Project reference is required'],
+      index: true
     },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      default: null
+      default: null,
+      index: true
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -145,7 +147,10 @@ opportunitySchema.index(
 );
 
 // High-speed indexes for bulk import lookup and batch filtering
-opportunitySchema.index({ phone: 1, project: 1 });
+opportunitySchema.index(
+  { phone: 1, project: 1 },
+  { unique: true, partialFilterExpression: { isActive: true, phone: { $type: 'string', $gt: '' } } }
+);
 
 module.exports = mongoose.model('Opportunity', opportunitySchema);
 

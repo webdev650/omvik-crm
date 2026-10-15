@@ -268,7 +268,7 @@ export default function Login() {
               <span>Don't have an account? </span>
               <button
                 type="button"
-                onClick={() => setServerError('Account creation is managed by System Admin. Please contact admin@omvik.com')}
+                onClick={() => setServerError('Account creation is managed by the System Administrator. Please contact your company administrator.')}
                 className="font-bold text-white hover:underline cursor-pointer"
               >
                 Register

@@ -35,12 +35,30 @@ const customerSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: ''
+    },
+    owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      index: true
+    },
+    phone: {
+      type: String,
+      trim: true,
+      default: ''
     }
   },
   {
     timestamps: true
   }
 );
+
+// Indexes for high-speed pagination, searching and scoping
+customerSchema.index({ owner: 1, createdAt: -1 });
+customerSchema.index({ phone: 1 });
+customerSchema.index({ name: 1 });
+customerSchema.index({ createdAt: -1 });
+customerSchema.index({ updatedAt: -1 });
 
 // Pre-save hook to normalize phone numbers before saving
 customerSchema.pre('save', function () {

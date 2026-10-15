@@ -104,6 +104,8 @@ const bookingSchema = new mongoose.Schema(
   }
 );
 
+bookingSchema.index({ customer: 1 });
+
 // Virtual field: paymentRemaining = totalCost - totalPaid
 bookingSchema.virtual('paymentRemaining').get(function () {
   const cost = this.totalCost || 0;

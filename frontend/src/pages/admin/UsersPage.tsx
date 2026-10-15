@@ -392,7 +392,7 @@ export default function UsersPage() {
               <Label htmlFor="name" className="text-xs text-slate-300">Full Name</Label>
               <Input
                 id="name"
-                placeholder="e.g. Vikram Malhotra"
+                placeholder="Enter full name"
                 {...register('name')}
                 className="bg-[#0b0f19] border-slate-800 text-xs h-11 rounded-xl"
               />
@@ -406,7 +406,7 @@ export default function UsersPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="vikram@omvik.com"
+                placeholder="official.email@company.com"
                 {...register('email')}
                 className="bg-[#0b0f19] border-slate-800 text-xs h-11 rounded-xl"
               />
@@ -436,7 +436,7 @@ export default function UsersPage() {
                 </Label>
                 <Input
                   id="employeeId"
-                  placeholder="e.g. OMVR-E26-SBD001"
+                  placeholder="e.g. EMP-001"
                   {...register('employeeId')}
                   className="bg-[#0b0f19] border-slate-800 text-xs h-11 rounded-xl font-mono text-indigo-300"
                 />
@@ -446,7 +446,7 @@ export default function UsersPage() {
                 <Label htmlFor="phone" className="text-xs text-slate-300">Phone Number (Optional)</Label>
                 <Input
                   id="phone"
-                  placeholder="e.g. +91 9876543210"
+                  placeholder="Enter 10-digit mobile number"
                   {...register('phone')}
                   className="bg-[#0b0f19] border-slate-800 text-xs h-11 rounded-xl font-mono"
                 />

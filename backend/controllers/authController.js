@@ -41,7 +41,7 @@ const register = async (req, res, next) => {
       finalEmpId = `EMP-${String(count + 1).padStart(3, '0')}`;
     }
 
-    const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const user = await User.create({
@@ -99,16 +99,40 @@ const login = async (req, res, next) => {
       return res.status(403).json({ message: 'Account disabled. Please contact system administrator.' });
     }
 
+    // Account lockout check for repeated failed login attempts
+    if (user.lockUntil && user.lockUntil > new Date()) {
+      const remainingMin = Math.ceil((user.lockUntil.getTime() - Date.now()) / (60 * 1000));
+      return res.status(423).json({
+        message: `Account is temporarily locked due to repeated failed login attempts. Please try again in ${remainingMin} minute${remainingMin > 1 ? 's' : ''}.`
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+      if (user.failedLoginAttempts >= 5) {
+        user.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15-minute lock
+        user.failedLoginAttempts = 0;
+        await user.save({ validateBeforeSave: false });
+        return res.status(423).json({
+          message: 'Account locked: 5 consecutive failed login attempts. Please try again after 15 minutes or reset your password.'
+        });
+      }
+      await user.save({ validateBeforeSave: false });
       return res.status(401).json({ message: 'Invalid credentials. Please check your username or email and password.' });
+    }
+
+    // Reset lockout counters on successful authentication
+    if (user.failedLoginAttempts > 0 || user.lockUntil) {
+      user.failedLoginAttempts = 0;
+      user.lockUntil = null;
     }
 
     const token = generateToken(user._id);
 
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('token', token, {
-      expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
       httpOnly: true,
       sameSite: isProd ? 'none' : 'lax',
       secure: isProd
@@ -213,7 +237,7 @@ const changePassword = async (req, res, next) => {
       }
     }
 
-    user.password = await bcrypt.hash(newPassword, 10);
+    user.password = await bcrypt.hash(newPassword, 12);
     user.mustChangePassword = false;
     await user.save();
 
@@ -503,7 +527,7 @@ const resetPasswordWithToken = async (req, res, next) => {
       return res.status(400).json({ message: 'User account not found or disabled.' });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
     await User.findByIdAndUpdate(user._id, {
       password:          hashedPassword,
       mustChangePassword: false

@@ -98,11 +98,21 @@ const getOpportunities = async (req, res, next) => {
       }
     }
 
-    const opportunities = await Opportunity.find(filter)
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = req.query.limit ? Math.max(1, parseInt(req.query.limit)) : 0;
+    const totalCount = await Opportunity.countDocuments(filter);
+
+    let query = Opportunity.find(filter)
       .populate('customer', 'name primaryMobile alternateMobile email city state country address')
       .populate('project', 'name code location projectCode')
       .populate('owner', 'name email role employeeId')
       .sort({ createdAt: -1 });
+
+    if (limit > 0) {
+      query = query.skip((page - 1) * limit).limit(limit);
+    }
+
+    const opportunities = await query;
 
     const Booking = require('../models/Booking');
     const oppIds = opportunities.map((o) => o._id);
@@ -129,6 +139,9 @@ const getOpportunities = async (req, res, next) => {
     res.json({
       success: true,
       count: oppsWithBookings.length,
+      total: totalCount,
+      page,
+      totalPages: limit > 0 ? Math.ceil(totalCount / limit) : 1,
       opportunities: oppsWithBookings
     });
   } catch (error) {

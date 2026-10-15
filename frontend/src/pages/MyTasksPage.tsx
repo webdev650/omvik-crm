@@ -122,7 +122,7 @@ export default function MyTasksPage() {
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Collect ID proof from Rahul Sharma..."
+                  placeholder="e.g. Collect verification documents from client..."
                   className="w-full h-10 px-3 rounded-xl bg-[#0b0f19] border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-indigo-500 transition-colors"
                 />
               </div>

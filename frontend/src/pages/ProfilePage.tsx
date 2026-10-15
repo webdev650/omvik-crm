@@ -197,7 +197,7 @@ export default function ProfilePage() {
                     type="text"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="e.g. +91 98765 43210"
+                    placeholder="Enter phone number"
                     className="bg-[#0b0f19] border-slate-800 text-slate-100 text-xs h-10 rounded-xl"
                   />
                 </div>

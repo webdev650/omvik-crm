@@ -27,14 +27,14 @@ function computeReminderTimes(scheduledAt) {
     };
   }
 
-  // Production: morning_of = 08:00 AM on the day of the visit
-  const visitDay = new Date(scheduledAt);
-  const morningOf = new Date(visitDay);
-  morningOf.setHours(8, 0, 0, 0);
+  // Production: morning_of = 08:00 AM Asia/Kolkata (IST) on the day of the visit (02:30 UTC)
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(t + IST_OFFSET_MS);
+  const morningOf = new Date(Date.UTC(istDate.getUTCFullYear(), istDate.getUTCMonth(), istDate.getUTCDate(), 2, 30, 0, 0));
 
   return {
     day_before:     new Date(t - 24 * 60 * 60 * 1000), // 24h before
-    morning_of:     morningOf,                          // 8:00 AM day-of
+    morning_of:     morningOf,                          // 8:00 AM IST (02:30 UTC) day-of
     final_reminder: new Date(t - 60 * 60 * 1000)       // 1h before
   };
 }

@@ -41,11 +41,35 @@ app.use(compression());
 // Trust proxy for reverse proxies (Render, Vercel, Heroku) for secure cookies & rate limiting
 app.set('trust proxy', 1);
 
-// Enable CORS at top of middleware stack (reflects request origin for credentials support)
+// Whitelisted Origins for CORS
+const allowedOrigins = [
+  'https://omvik-crm.vercel.app',
+  process.env.FRONTEND_URL,
+  process.env.CLIENT_URL
+].filter(Boolean);
+
+if (process.env.NODE_ENV !== 'production') {
+  allowedOrigins.push(
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000'
+  );
+}
+
 app.use(cors({
-  origin: true,
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (
+      allowedOrigins.includes(origin) ||
+      (process.env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin))
+    ) {
+      return callback(null, true);
+    }
+    return callback(new Error('Blocked by CORS policy'), false);
+  },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Api-Key', 'x-api-key'],
   credentials: true
 }));
 
@@ -74,9 +98,9 @@ app.use('/api', generalLimiter);
 // Cookie parser
 app.use(cookieParser());
 
-// Body parser
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Body parser with 10MB payload limit
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
@@ -139,11 +163,12 @@ app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.originalUrl} not found` });
 });
 
-// Global error handler
+// Global error handler (never leaks stack traces or internal DB details in production)
 app.use((err, req, res, next) => {
   const status = err.status || err.statusCode || 500;
+  const isProd = process.env.NODE_ENV === 'production';
   res.status(status).json({
-    message: err.message || 'Internal Server Error'
+    message: isProd && status === 500 ? 'An internal server error occurred' : (err.message || 'Internal Server Error')
   });
 });
 

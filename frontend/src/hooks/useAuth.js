@@ -47,7 +47,14 @@ export function useAuth() {
       console.error('Logout error:', e);
     } finally {
       queryClient.setQueryData(['authUser'], null);
+      queryClient.clear();
       storeLogout();
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('omvik_token');
+        localStorage.removeItem('omvik_user');
+        localStorage.removeItem('user');
+        sessionStorage.clear();
+      }
     }
   };
 

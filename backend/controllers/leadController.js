@@ -271,16 +271,29 @@ const getLeads = async (req, res, next) => {
       filter.project = req.query.project;
     }
 
-    const opportunities = await Opportunity.find(filter)
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = req.query.limit ? Math.max(1, parseInt(req.query.limit)) : 0;
+    const totalCount = await Opportunity.countDocuments(filter);
+
+    let query = Opportunity.find(filter)
       .populate('customer', 'name primaryMobile alternateMobile email city')
       .populate('project', 'name code projectCode')
       .populate('owner', 'name email role employeeId')
       .populate('createdBy', 'name email role')
       .sort({ createdAt: -1 });
 
+    if (limit > 0) {
+      query = query.skip((page - 1) * limit).limit(limit);
+    }
+
+    const opportunities = await query;
+
     res.json({
       success: true,
       count: opportunities.length,
+      total: totalCount,
+      page,
+      totalPages: limit > 0 ? Math.ceil(totalCount / limit) : 1,
       leads: opportunities
     });
   } catch (error) {

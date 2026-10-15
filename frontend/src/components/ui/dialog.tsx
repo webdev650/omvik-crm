@@ -17,7 +17,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
         onClick={() => onOpenChange(false)}
       />
       {/* Modal Container */}
-      <div className="relative z-10 w-full max-w-lg animate-in zoom-in-95 duration-150">
+      <div className="relative z-10 w-full max-w-lg max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-150">
         {children}
       </div>
     </div>
@@ -30,7 +30,7 @@ export const DialogContent = React.forwardRef<
 >(({ className = '', children, ...props }, ref) => (
   <div
     ref={ref}
-    className={`p-6 rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl space-y-4 ${className}`}
+    className={`p-6 rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto ${className}`}
     {...props}
   >
     {children}

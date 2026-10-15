@@ -275,7 +275,7 @@ export default function NewLeadForm() {
             <Label htmlFor="rawName">Customer Full Name</Label>
             <Input
               id="rawName"
-              placeholder="e.g. Rahul Sharma"
+              placeholder="Enter full name"
               {...register('rawName')}
             />
             {errors.rawName && (
@@ -288,7 +288,7 @@ export default function NewLeadForm() {
             <Label htmlFor="rawMobile">Primary Mobile Number</Label>
             <Input
               id="rawMobile"
-              placeholder="+91 98765 43210"
+              placeholder="Enter 10-digit mobile number"
               {...register('rawMobile')}
             />
             {errors.rawMobile && (

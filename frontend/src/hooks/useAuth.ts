@@ -59,6 +59,12 @@ export function useAuth() {
       queryClient.setQueryData(['authUser'], null);
       queryClient.clear();
       storeLogout();
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('omvik_token');
+        localStorage.removeItem('omvik_user');
+        localStorage.removeItem('user');
+        sessionStorage.clear();
+      }
       if (onComplete) onComplete();
     }
   };

@@ -1,4 +1,5 @@
 const Followup = require('../models/Followup');
+const Opportunity = require('../models/Opportunity');
 
 // @desc    Get logged-in user's followups (Filterable by status, sorted by dueAt ascending)
 // @route   GET /api/followups/me
@@ -74,6 +75,12 @@ const completeFollowup = async (req, res, next) => {
 const getFollowupsByOpportunity = async (req, res, next) => {
   try {
     const { opportunityId } = req.params;
+
+    const scopeFilter = req.dataScopeFilter ? { _id: opportunityId, ...req.dataScopeFilter } : { _id: opportunityId };
+    const opportunity = await Opportunity.findOne(scopeFilter);
+    if (!opportunity) {
+      return res.status(404).json({ message: 'Opportunity not found or access denied' });
+    }
 
     const followups = await Followup.find({ opportunity: opportunityId })
       .sort({ dueAt: 1 })

@@ -29,6 +29,18 @@ const protect = async (req, res, next) => {
       return res.status(403).json({ message: 'User account is deactivated' });
     }
 
+    if (user.mustChangePassword) {
+      const allowedPaths = ['/api/auth/change-password', '/api/auth/me', '/api/auth/logout'];
+      const currentPath = req.originalUrl ? req.originalUrl.split('?')[0] : '';
+      const isAllowed = allowedPaths.some(p => currentPath === p || currentPath.endsWith('/change-password') || currentPath.endsWith('/logout') || currentPath.endsWith('/me'));
+      if (!isAllowed) {
+        return res.status(403).json({
+          message: 'Password change is required before accessing system resources',
+          code: 'PASSWORD_CHANGE_REQUIRED'
+        });
+      }
+    }
+
     req.user = user;
     next();
   } catch (error) {
