@@ -141,15 +141,18 @@ app.get('/api/my-accessible-batches', require('./middlewares/auth').protect, req
 
 
 // Keep-alive monitor: ping /api/health every 10 minutes to prevent Render free instance sleep
-const keepAliveUrl = process.env.RENDER_EXTERNAL_URL || process.env.BACKEND_URL;
+const keepAliveUrl = process.env.RENDER_EXTERNAL_URL || process.env.BACKEND_URL || 'https://omvik-crm-dy3u.onrender.com';
 if (keepAliveUrl) {
+  const pingUrl = `${keepAliveUrl.replace(/\/$/, '')}/api/health`;
+  console.log(`[KeepAlive] Registered ping target: ${pingUrl}`);
   setInterval(() => {
     try {
-      const pingUrl = `${keepAliveUrl.replace(/\/$/, '')}/api/health`;
       const httpModule = pingUrl.startsWith('https') ? require('https') : require('http');
       httpModule.get(pingUrl, (res) => {
         res.resume();
-      }).on('error', () => {});
+      }).on('error', (err) => {
+        console.warn(`[KeepAlive] Ping failed: ${err.message}`);
+      });
     } catch (e) {}
   }, 10 * 60 * 1000);
 }

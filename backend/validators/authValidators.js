@@ -1,9 +1,9 @@
 const { z } = require('zod');
 
 // Password Complexity Rule:
-// Min 7 chars, at least 1 uppercase (A-Z), 1 lowercase (a-z), 1 number (0-9), 1 special char (@, #, $, %, !, etc.)
+// Min 8 chars, at least 1 uppercase (A-Z), 1 lowercase (a-z), 1 number (0-9), 1 special char (@, #, $, %, !, etc.)
 const passwordComplexitySchema = z.string()
-  .min(7, 'Password must be at least 7 characters')
+  .min(8, 'Password must be at least 8 characters')
   .regex(/[A-Z]/, 'Password must contain at least 1 uppercase letter (A-Z)')
   .regex(/[a-z]/, 'Password must contain at least 1 lowercase letter (a-z)')
   .regex(/[0-9]/, 'Password must contain at least 1 number (0-9)')

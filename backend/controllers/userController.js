@@ -102,10 +102,24 @@ const createUser = async (req, res, next) => {
       }
     }
 
-    // Generate random server-side temporary password if not explicitly supplied
-    const crypto = require('crypto');
+    // Generate compliant temporary password (min 8 chars, uppercase, lowercase, number, symbol)
+    let tempPassword;
+    if (password && password.trim()) {
+      tempPassword = password.trim();
+      const hasUpper = /[A-Z]/.test(tempPassword);
+      const hasLower = /[a-z]/.test(tempPassword);
+      const hasNumber = /[0-9]/.test(tempPassword);
+      const hasSpecial = /[^A-Za-z0-9]/.test(tempPassword);
+      if (tempPassword.length < 8 || !hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+        return res.status(400).json({
+          message: 'Password must be at least 8 characters long and contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character.'
+        });
+      }
+    } else {
+      const crypto = require('crypto');
+      tempPassword = `Omvik#${crypto.randomBytes(4).toString('hex')}`; // 14 chars, guaranteed to satisfy all complexity rules
+    }
     const sendEmail = require('../utils/sendEmail');
-    const tempPassword = password && password.trim() ? password.trim() : `Omvik#${crypto.randomBytes(4).toString('hex')}`;
     const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
     const userData = {

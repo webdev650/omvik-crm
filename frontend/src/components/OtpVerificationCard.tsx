@@ -121,8 +121,8 @@ export default function OtpVerificationCard({
     }
 
     if (requireNewPassword) {
-      if (!newPassword || newPassword.length < 7) {
-        setValidationError('Password must be at least 7 characters long.');
+      if (!newPassword || newPassword.length < 8) {
+        setValidationError('Password must be at least 8 characters long.');
         return;
       }
 
@@ -248,7 +248,7 @@ export default function OtpVerificationCard({
                 <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 space-y-1">
                   <p className="font-bold text-slate-800">Password Requirements:</p>
                   <ul className="list-disc pl-4 space-y-0.5 text-[10px] text-slate-500">
-                    <li>Min 7 characters</li>
+                    <li>Min 8 characters</li>
                     <li>1 uppercase letter (A-Z), 1 lowercase letter (a-z)</li>
                     <li>1 number (0-9) & 1 special char (@, #, $, %, !)</li>
                   </ul>

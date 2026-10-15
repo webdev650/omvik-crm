@@ -2,15 +2,23 @@ const crypto = require('crypto');
 const ApiKey = require('../models/ApiKey');
 
 function safeCompare(a, b) {
-  if (!a || !b) return false;
-  const bufA = Buffer.from(String(a));
-  const bufB = Buffer.from(String(b));
-  if (bufA.length !== bufB.length) {
-    // Avoid timing leak on length mismatch
-    crypto.timingSafeEqual(bufA, bufA);
+  try {
+    if (!a || !b) return false;
+    const strA = String(a);
+    const strB = String(b);
+    const bufA = Buffer.from(strA, 'utf8');
+    const bufB = Buffer.from(strB, 'utf8');
+
+    if (bufA.length !== bufB.length) {
+      if (bufA.length > 0) {
+        crypto.timingSafeEqual(bufA, bufA);
+      }
+      return false;
+    }
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch (err) {
     return false;
   }
-  return crypto.timingSafeEqual(bufA, bufB);
 }
 
 const verifyApiKey = async (req, res, next) => {
@@ -40,8 +48,8 @@ const verifyApiKey = async (req, res, next) => {
     req.apiKey = apiKeyDoc;
     next();
   } catch (error) {
-    next(error);
+    return res.status(401).json({ message: 'Invalid or unauthorized API key' });
   }
 };
 
-module.exports = { verifyApiKey };
+module.exports = { verifyApiKey, safeCompare };

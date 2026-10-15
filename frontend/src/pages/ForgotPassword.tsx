@@ -125,8 +125,8 @@ export default function ForgotPassword() {
       return;
     }
 
-    if (!newPassword || newPassword.length < 7) {
-      setErrorMsg('Password must be at least 7 characters long.');
+    if (!newPassword || newPassword.length < 8) {
+      setErrorMsg('Password must be at least 8 characters long.');
       return;
     }
 
@@ -344,7 +344,7 @@ export default function ForgotPassword() {
                   <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1.5">
                     <p className="font-bold text-slate-800">Password Requirements:</p>
                     <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-slate-500 font-medium">
-                      <li>Minimum 7 characters long</li>
+                      <li>Minimum 8 characters long</li>
                       <li>At least 1 uppercase letter (A-Z) & 1 lowercase letter (a-z)</li>
                       <li>At least 1 number (0-9) & 1 special character (@, #, $, %, !, &)</li>
                     </ul>

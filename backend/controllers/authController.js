@@ -114,6 +114,27 @@ const login = async (req, res, next) => {
         user.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15-minute lock
         user.failedLoginAttempts = 0;
         await user.save({ validateBeforeSave: false });
+
+        try {
+          const AuditLog = require('../models/AuditLog');
+          await AuditLog.create({
+            user: user._id,
+            action: 'ACCOUNT_LOCKOUT',
+            entity: 'User',
+            entityId: user._id,
+            reason: `Account locked for 15 minutes due to 5 consecutive failed login attempts from IP: ${req.ip || req.headers['x-forwarded-for'] || 'unknown'}`,
+            metadata: {
+              email: user.email,
+              employeeId: user.employeeId,
+              name: user.name,
+              ip: req.ip || req.headers['x-forwarded-for'] || 'unknown',
+              lockUntil: user.lockUntil
+            }
+          });
+        } catch (auditErr) {
+          console.error('[Lockout Audit Failure]:', auditErr.message);
+        }
+
         return res.status(423).json({
           message: 'Account locked: 5 consecutive failed login attempts. Please try again after 15 minutes or reset your password.'
         });
@@ -132,7 +153,7 @@ const login = async (req, res, next) => {
 
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('token', token, {
-      expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+      expires: new Date(Date.now() + 10 * 60 * 60 * 1000), // 10 hours (matches JWT expiry)
       httpOnly: true,
       sameSite: isProd ? 'none' : 'lax',
       secure: isProd
@@ -203,9 +224,9 @@ const changePassword = async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
-    if (!newPassword || newPassword.length < 7) {
+    if (!newPassword || newPassword.length < 8) {
       return res.status(400).json({
-        message: 'New password must be at least 7 characters long.'
+        message: 'New password must be at least 8 characters long.'
       });
     }
 
@@ -495,8 +516,8 @@ const resetPasswordWithToken = async (req, res, next) => {
       return res.status(400).json({ message: 'Authorization token and new password are required.' });
     }
 
-    if (newPassword.length < 7) {
-      return res.status(400).json({ message: 'Password must be at least 7 characters long.' });
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
     }
 
     // Password Complexity Check

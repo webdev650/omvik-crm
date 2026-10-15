@@ -59,8 +59,8 @@ export default function ProfilePage() {
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPassword || newPassword.length < 6) {
-      toast.error('New password must be at least 6 characters long.');
+    if (!newPassword || newPassword.length < 8) {
+      toast.error('New password must be at least 8 characters long.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -259,7 +259,7 @@ export default function ProfilePage() {
 
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="newPassword" className="text-xs font-bold text-slate-300">New Password (min 6 characters)</Label>
+                  <Label htmlFor="newPassword" className="text-xs font-bold text-slate-300">New Password (min 8 characters)</Label>
                   <Input
                     id="newPassword"
                     type="password"

@@ -616,10 +616,12 @@ const confirmImport = async (req, res, next) => {
       } catch (err) {
         console.error(`Error importing row ${i + 1} (${rawName}):`, err);
         skippedCount++;
+        const isDuplicate = err.code === 11000 || (err.message && (err.message.includes('E11000') || err.message.includes('duplicate key')));
         results.push({
           index: i,
           success: false,
-          reason: err.message || 'Import failed'
+          isDuplicate: !!isDuplicate,
+          reason: isDuplicate ? 'Duplicate skipped (already assigned for this project)' : (err.message || 'Import failed')
         });
       }
     }
@@ -1051,7 +1053,14 @@ const autoSaveImport = async (req, res, next) => {
 
     if (newCustomersToInsert.length > 0) {
       for (let c = 0; c < newCustomersToInsert.length; c += 500) {
-        await Customer.insertMany(newCustomersToInsert.slice(c, c + 500), { ordered: false });
+        try {
+          await Customer.insertMany(newCustomersToInsert.slice(c, c + 500), { ordered: false });
+        } catch (err) {
+          const isBulkDup = err.code === 11000 || (err.writeErrors && err.writeErrors.some(e => e.code === 11000));
+          if (!isBulkDup) {
+            console.warn('[autoSaveImport] Customer insert warning:', err.message);
+          }
+        }
       }
     }
 
@@ -1160,14 +1169,45 @@ const autoSaveImport = async (req, res, next) => {
     }
 
     // 5D. Execute Bulk Inserts in chunks of 500
+    let oppDuplicatesCount = 0;
     if (oppsToInsert.length > 0) {
       for (let c = 0; c < oppsToInsert.length; c += 500) {
-        await Opportunity.insertMany(oppsToInsert.slice(c, c + 500), { ordered: false });
+        const chunk = oppsToInsert.slice(c, c + 500);
+        try {
+          await Opportunity.insertMany(chunk, { ordered: false });
+        } catch (err) {
+          const isBulkDup = err.code === 11000 || (err.writeErrors && err.writeErrors.some(e => e.code === 11000));
+          if (isBulkDup) {
+            const dupErrors = err.writeErrors ? err.writeErrors.filter(e => e.code === 11000) : [{ index: 0 }];
+            oppDuplicatesCount += dupErrors.length;
+            dupErrors.forEach(de => {
+              const dupOpp = chunk[de.index];
+              if (dupOpp) {
+                skippedDetails.push({
+                  row: (de.index ?? 0) + c + 1,
+                  name: dupOpp.phone || 'Duplicate Record',
+                  phone: dupOpp.phone || '',
+                  reason: 'Duplicate unique index (already exists in database)'
+                });
+              }
+            });
+            console.log(`[autoSaveImport] Handled ${dupErrors.length} E11000 duplicate opportunity inserts as skipped.`);
+          } else {
+            throw err;
+          }
+        }
       }
     }
     if (leadsToInsert.length > 0) {
       for (let c = 0; c < leadsToInsert.length; c += 500) {
-        await Lead.insertMany(leadsToInsert.slice(c, c + 500), { ordered: false });
+        try {
+          await Lead.insertMany(leadsToInsert.slice(c, c + 500), { ordered: false });
+        } catch (err) {
+          const isBulkDup = err.code === 11000 || (err.writeErrors && err.writeErrors.some(e => e.code === 11000));
+          if (!isBulkDup) {
+            console.warn('[autoSaveImport] Lead insert warning:', err.message);
+          }
+        }
       }
     }
 
@@ -1189,7 +1229,9 @@ const autoSaveImport = async (req, res, next) => {
     }
 
     // 5F. Persist ImportBatch & BatchAccess Documents
-    const importedCount = oppsToInsert.length;
+    const actualImportedCount = Math.max(0, oppsToInsert.length - oppDuplicatesCount);
+    duplicateCount += oppDuplicatesCount;
+    const importedCount = actualImportedCount;
     const skippedCount = totalRawRows - importedCount;
     const isPrivateBatch = isPrivate === true || isPrivate === 'true' || !!targetUserId;
 

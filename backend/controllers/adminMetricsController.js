@@ -147,9 +147,60 @@ const getLoginActivity = async (req, res, next) => {
   }
 };
 
+// @desc    Get system audit logs (supports filtering by action, user, and date range)
+// @route   GET /api/admin/audit-logs
+// @access  Private (Admin, Super Admin, Director)
+const getAuditLogs = async (req, res, next) => {
+  try {
+    const { action, userId, from, to } = req.query;
+    const query = {};
+
+    if (action) {
+      query.action = action;
+    }
+
+    if (userId) {
+      query.user = userId;
+    }
+
+    if (from || to) {
+      query.createdAt = {};
+      if (from) query.createdAt.$gte = new Date(from);
+      if (to) {
+        const toDate = new Date(to);
+        if (to.length <= 10) toDate.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = toDate;
+      }
+    }
+
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+    const totalCount = await AuditLog.countDocuments(query);
+
+    const auditLogs = await AuditLog.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate('user', 'name email employeeId role')
+      .lean();
+
+    res.json({
+      success: true,
+      count: auditLogs.length,
+      total: totalCount,
+      page,
+      totalPages: Math.ceil(totalCount / limit),
+      auditLogs
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDataQualityMetrics,
   getDuplicateMonitorMetrics,
-  getLoginActivity
+  getLoginActivity,
+  getAuditLogs
 };
 

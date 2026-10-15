@@ -5,7 +5,8 @@ const opportunitySchema = new mongoose.Schema(
     customer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Customer',
-      required: [true, 'Customer reference is required']
+      required: [true, 'Customer reference is required'],
+      index: true
     },
     project: {
       type: mongoose.Schema.Types.ObjectId,

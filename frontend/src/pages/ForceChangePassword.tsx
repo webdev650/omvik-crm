@@ -21,8 +21,8 @@ export default function ForceChangePassword() {
     e.preventDefault();
     setErrorMsg(null);
 
-    if (newPassword.length < 7) {
-      setErrorMsg('Password must be at least 7 characters long.');
+    if (newPassword.length < 8) {
+      setErrorMsg('Password must be at least 8 characters long.');
       return;
     }
 

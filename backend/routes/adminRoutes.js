@@ -3,7 +3,8 @@ const router = express.Router();
 const {
   getDataQualityMetrics,
   getDuplicateMonitorMetrics,
-  getLoginActivity
+  getLoginActivity,
+  getAuditLogs
 } = require('../controllers/adminMetricsController');
 const { protect } = require('../middlewares/auth');
 const { authorize } = require('../middlewares/rbac');
@@ -22,5 +23,6 @@ router.use(authorize('admin', 'super_admin', 'director'));
 
 router.get('/data-quality', getDataQualityMetrics);
 router.get('/duplicate-monitor', getDuplicateMonitorMetrics);
+router.get('/audit-logs', getAuditLogs);
 
 module.exports = router;

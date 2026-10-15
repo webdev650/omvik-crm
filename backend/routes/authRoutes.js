@@ -15,11 +15,11 @@ const validate = require('../middlewares/validate');
 const { protect } = require('../middlewares/auth');
 const { registerSchema, loginSchema } = require('../validators/authValidators');
 
-// Rate limiter for login (50 attempts per 15 mins per IP)
+// Strict Rate limiter for login (10 attempts per 15 mins per IP)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 50,
-  message: { message: 'Too many login attempts from this IP, please try again later' },
+  max: 10,
+  message: { message: 'Too many login attempts from this IP address. Please try again after 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false
 });
