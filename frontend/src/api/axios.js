@@ -5,8 +5,10 @@ let rawURL =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) ||
   'https://omvik-crm-dy3u.onrender.com/api';
 
-// Fallback safeguard against old/dead URL in environment variables
-if (!rawURL || rawURL.includes('omvik-backend.onrender.com')) {
+// Auto-target local backend on port 5000 when running on localhost
+if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+  rawURL = 'http://localhost:5000/api';
+} else if (!rawURL || rawURL.includes('omvik-backend.onrender.com')) {
   rawURL = 'https://omvik-crm-dy3u.onrender.com/api';
 }
 

@@ -44,25 +44,20 @@ app.set('trust proxy', 1);
 // Whitelisted Origins for CORS
 const allowedOrigins = [
   'https://omvik-crm.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
   process.env.FRONTEND_URL,
   process.env.CLIENT_URL
 ].filter(Boolean);
-
-if (process.env.NODE_ENV !== 'production') {
-  allowedOrigins.push(
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:3000'
-  );
-}
 
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     if (
       allowedOrigins.includes(origin) ||
-      (process.env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin))
+      /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)
     ) {
       return callback(null, true);
     }
@@ -121,6 +116,7 @@ app.use('/api/contact', require('./routes/contactRoutes'));
 app.use('/api/properties', require('./routes/propertyRoutes'));
 app.use('/api/posts', require('./routes/postRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
+app.use('/api/performance', require('./routes/performanceRoutes'));
 app.use('/api/customers', require('./routes/customerRoutes'));
 app.use('/api/public', require('./routes/publicRoutes'));
 app.use('/api/search', require('./routes/searchRoutes'));
@@ -182,3 +178,5 @@ app.listen(PORT, () => {
     `Server running in ${process.env.NODE_ENV} mode on port ${PORT}`
   );
 });
+
+module.exports = app;

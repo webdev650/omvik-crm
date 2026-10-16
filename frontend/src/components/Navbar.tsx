@@ -306,10 +306,10 @@ export default function Navbar() {
                           </div>
                           <div>
                             <div className="text-xs font-bold text-white group-hover:text-indigo-300 transition-colors">
-                              My Performance
+                              {isPrivilegedRole ? 'Team Performance' : 'My Performance'}
                             </div>
                             <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
-                              Personal KPI overview
+                              {isPrivilegedRole ? 'Team KPI & conversion audit' : 'Personal KPI overview'}
                             </div>
                           </div>
                         </NavLink>
@@ -761,7 +761,7 @@ export default function Navbar() {
               </NavLink>
               <NavLink to="/performance" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded-xl min-h-[40px]">
                 <TrendingUp className="w-4 h-4 text-indigo-400" />
-                <span>My Performance</span>
+                <span>{isPrivilegedRole ? 'Team Performance' : 'My Performance'}</span>
               </NavLink>
             </div>
 
