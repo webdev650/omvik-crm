@@ -13,7 +13,7 @@ router.use(protect);
 
 router.post('/', submitDailyReport);
 router.get('/today', getTodayReport);
-router.get('/flagged', authorize('super_admin', 'admin', 'director'), getFlaggedReports);
+router.get('/flagged', authorize('super_admin', 'admin', 'director', 'team_lead'), getFlaggedReports);
 router.get('/team-overview', authorize('super_admin', 'admin', 'director', 'team_lead'), getTeamOverview);
 
 module.exports = router;

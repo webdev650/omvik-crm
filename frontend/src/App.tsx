@@ -266,7 +266,7 @@ export default function App() {
           <Route
             path="/admin/flagged-reports"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director']}>
+              <ProtectedRoute allowedRoles={['admin', 'super_admin', 'director', 'team_lead']}>
                 <FlaggedReportsPage />
               </ProtectedRoute>
             }
