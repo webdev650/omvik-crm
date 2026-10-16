@@ -5,6 +5,7 @@ const SiteVisit = require('../models/SiteVisit');
 const Opportunity = require('../models/Opportunity');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
+const Leave = require('../models/Leave');
 const Notification = require('../models/Notification');
 const sendAdminAlert = require('../utils/sendAdminAlert');
 
@@ -218,6 +219,15 @@ const getTeamOverview = async (req, res, next) => {
   try {
     const targetDate = req.query.date ? req.query.date.toString().trim() : new Date().toISOString().split('T')[0];
 
+    // Compute start and end timestamp boundaries for targetDate (UTC and local)
+    const [y, m, d] = targetDate.split('-').map(Number);
+    const startOfDayUTC = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+    const endOfDayUTC = new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999));
+    const startOfDayLocal = new Date(y, m - 1, d, 0, 0, 0, 0);
+    const endOfDayLocal = new Date(y, m - 1, d, 23, 59, 59, 999);
+    const dateStart = startOfDayUTC < startOfDayLocal ? startOfDayUTC : startOfDayLocal;
+    const dateEnd = endOfDayUTC > endOfDayLocal ? endOfDayUTC : endOfDayLocal;
+
     // Fetch all active employees
     const activeEmployees = await User.find({ isActive: true })
       .select('name email role employeeId')
@@ -229,27 +239,70 @@ const getTeamOverview = async (req, res, next) => {
         const currentLeadsAssigned = await Opportunity.countDocuments({ owner: emp._id, isActive: true });
         
         // EOD daily activity report submission is strictly required for telecallers/sales reps
-        const isRequiredSubmitter = ['telecaller', 'team_lead'].includes(emp.role);
+        const isExempt = ['super_admin', 'admin', 'director'].includes(emp.role);
+        const isRequiredSubmitter = !isExempt && ['telecaller', 'team_lead', 'field_executive'].includes(emp.role);
+
+        // Check if employee has an approved leave on this date
+        const approvedLeave = await Leave.findOne({
+          user: emp._id,
+          status: 'approved',
+          startDate: { $lte: dateEnd },
+          endDate: { $gte: dateStart }
+        });
+        const isOnLeave = !!approvedLeave;
+
+        // Real activities/calls logged in CRM for this employee on this date
+        const realCallsCount = await Activity.countDocuments({
+          user: emp._id,
+          createdAt: { $gte: dateStart, $lte: dateEnd }
+        });
+
+        const realConnectedCallsCount = await Activity.countDocuments({
+          user: emp._id,
+          channel: 'call',
+          outcome: 'connected',
+          createdAt: { $gte: dateStart, $lte: dateEnd }
+        });
+
+        // Canonical status:
+        let status = 'Pending';
+        if (report) {
+          status = report.discrepancyFlag ? 'Flagged' : 'Submitted';
+        } else if (isExempt) {
+          status = 'Exempt';
+        } else if (isOnLeave) {
+          status = 'On leave';
+        } else {
+          status = 'Pending';
+        }
 
         return {
           user: emp,
           submitted: !!report,
           isRequiredSubmitter,
+          isExempt,
+          isOnLeave,
+          status,
           report: report || null,
-          currentLeadsAssigned
+          currentLeadsAssigned,
+          realCallsCount,
+          realConnectedCallsCount
         };
       })
     );
 
-    // Required submitters summary counts
-    const requiredSubmitters = overviewList.filter((item) => item.isRequiredSubmitter);
+    // Grouping counts - all derived from the SAME overviewList
+    const totalCount = overviewList.length;
     const submittedCount = overviewList.filter((item) => item.submitted).length;
-    const pendingCount = requiredSubmitters.filter((item) => !item.submitted).length;
+    const pendingCount = overviewList.filter((item) => !item.submitted && !item.isExempt && !item.isOnLeave).length;
+    const discrepantCount = overviewList.filter((item) => item.report?.discrepancyFlag).length;
+    const exemptCount = overviewList.filter((item) => item.isExempt).length;
+    const onLeaveCount = overviewList.filter((item) => item.isOnLeave).length;
 
     // Sort: NOT-YET-SUBMITTED telecallers appear FIRST, then submitted/exempt, then alphabetically by name
     overviewList.sort((a, b) => {
-      const aPending = a.isRequiredSubmitter && !a.submitted;
-      const bPending = b.isRequiredSubmitter && !b.submitted;
+      const aPending = a.status === 'Pending';
+      const bPending = b.status === 'Pending';
       if (aPending !== bPending) {
         return aPending ? -1 : 1;
       }
@@ -262,10 +315,15 @@ const getTeamOverview = async (req, res, next) => {
     res.json({
       success: true,
       date: targetDate,
-      count: overviewList.length,
-      requiredCount: requiredSubmitters.length,
+      count: totalCount,
+      totalCount,
+      requiredCount: overviewList.filter((i) => i.isRequiredSubmitter).length,
       submittedCount,
       pendingCount,
+      discrepantCount,
+      flaggedCount: discrepantCount,
+      exemptCount,
+      onLeaveCount,
       overview: overviewList
     });
   } catch (error) {

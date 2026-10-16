@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { History, Calendar, UserCheck, PhoneCall, CheckCircle2, AlertTriangle, ArrowRight, User, Tag, FileSpreadsheet, ChevronRight } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import { getUsers } from '../../api/users';
@@ -19,16 +19,32 @@ function formatDateISO(d: Date) {
 
 export default function AdminEmployeeHistory() {
   const { userId: urlUserId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Selected Employee & Date State
-  const [selectedUserId, setSelectedUserId] = useState<string>(urlUserId || '');
+  const queryDate = searchParams.get('date');
+  const queryFrom = searchParams.get('fromDate') || queryDate;
+  const queryTo = searchParams.get('toDate') || queryDate;
+  const queryUserId = searchParams.get('userId') || searchParams.get('employeeId') || urlUserId;
 
   const now = new Date();
   const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
 
-  const [fromDate, setFromDate] = useState<string>(formatDateISO(tenDaysAgo));
-  const [toDate, setToDate] = useState<string>(formatDateISO(now));
+  // Selected Employee & Date State
+  const [selectedUserId, setSelectedUserId] = useState<string>(queryUserId || '');
+  const [fromDate, setFromDate] = useState<string>(queryFrom || formatDateISO(tenDaysAgo));
+  const [toDate, setToDate] = useState<string>(queryTo || formatDateISO(now));
+
+  // Sync state if URL param or search param changes
+  useEffect(() => {
+    if (queryUserId) {
+      setSelectedUserId(queryUserId);
+    } else if (urlUserId) {
+      setSelectedUserId(urlUserId);
+    }
+    if (queryFrom) setFromDate(queryFrom);
+    if (queryTo) setToDate(queryTo);
+  }, [urlUserId, queryUserId, queryFrom, queryTo]);
 
   // Query User List for Picker Dropdown
   const { data: usersData } = useQuery({
