@@ -146,38 +146,38 @@ export default function Navbar() {
   return (
     <header className="w-full bg-[#0b0f19] border-b border-slate-800/80 sticky top-0 z-40 shadow-sm">
       {/* ── SINGLE MAIN TOP NAVIGATION BAR ────────────────────────────────────── */}
-      <div className="max-w-[1650px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3 sm:gap-6">
+      <div className="max-w-[1650px] mx-auto px-2.5 sm:px-4 md:px-6 h-16 flex items-center justify-between gap-1.5 sm:gap-3 md:gap-6">
         
         {/* LEFT: Brand Logo & Search */}
-        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink min-w-0">
           <div
-            className="flex items-center gap-2.5 cursor-pointer"
+            className="flex items-center gap-2 cursor-pointer shrink-0"
             onClick={() => navigate('/dashboard')}
           >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-600 flex items-center justify-center font-black text-white text-base shadow-md shadow-indigo-600/20">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-600 flex items-center justify-center font-black text-white text-sm sm:text-base shadow-md shadow-indigo-600/20 shrink-0">
               O
             </div>
-            <div className="hidden min-[400px]:block">
-              <h1 className="text-sm font-extrabold tracking-tight text-white leading-tight">
+            <div className="hidden min-[480px]:block shrink-0">
+              <h1 className="text-xs sm:text-sm font-extrabold tracking-tight text-white leading-tight">
                 OMVIK CRM
               </h1>
-              <p className="text-[9px] font-semibold uppercase tracking-widest text-indigo-400 leading-tight">
+              <p className="text-[8px] sm:text-[9px] font-semibold uppercase tracking-widest text-indigo-400 leading-tight hidden sm:block">
                 REAL-ESTATE PLATFORM
               </p>
             </div>
           </div>
 
           {/* Global Search Input */}
-          <div className="relative w-36 min-[480px]:w-52 sm:w-60 xl:w-64">
+          <div className="relative w-28 min-[380px]:w-36 min-[520px]:w-44 sm:w-56 md:w-52 lg:w-60 xl:w-64">
             <div className="relative flex items-center">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 pointer-events-none" />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 sm:left-3 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search CRM..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => searchQuery.trim().length >= 2 && setIsSearchOpen(true)}
-                className="w-full h-9 pl-8 pr-3 text-xs bg-[#131c31] border border-slate-800 rounded-xl text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-all shadow-inner"
+                className="w-full h-8 sm:h-9 pl-7 sm:pl-8 pr-2.5 sm:pr-3 text-xs bg-[#131c31] border border-slate-800 rounded-xl text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-all shadow-inner"
               />
             </div>
 
@@ -214,8 +214,8 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* CENTER: Main Top Navigation Items (Desktop) */}
-        <nav className="hidden lg:flex items-center gap-1 xl:gap-1.5 shrink-0">
+        {/* CENTER: Main Top Navigation Items (Desktop & iPad / Tablet) */}
+        <nav className="hidden md:flex items-center gap-1 xl:gap-1.5 shrink-0">
           <NavLink to="/dashboard" className={topNavLinkClass}>Dashboard</NavLink>
           <NavLink to="/leads" className={({ isActive }) => topNavLinkClass({ isActive: isActive && !location.pathname.startsWith('/leads/') })}>Leads</NavLink>
           {isPrivilegedRole && (
@@ -599,7 +599,7 @@ export default function Navbar() {
         </nav>
 
         {/* RIGHT: EOD Status Pill, Notifications, Subtle Super Admin Indicator & Compact Profile Menu */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 ml-auto">
 
           {/* Persistent EOD Status Indicator Pill for Logged-In Telecallers */}
           {user && user.role === 'telecaller' && (
@@ -607,7 +607,7 @@ export default function Navbar() {
               type="button"
               onClick={() => navigate('/daily-report')}
               title="Click to open today's EOD Daily Activity Report submission"
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border transition-all cursor-pointer ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border transition-all cursor-pointer shrink-0 ${
                 hasSubmittedEOD
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 shadow-sm'
                   : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20 animate-pulse'
@@ -615,18 +615,19 @@ export default function Navbar() {
             >
               {hasSubmittedEOD ? (
                 <>
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                  <span>EOD Submitted ✓</span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="hidden min-[480px]:inline">EOD Done ✓</span>
+                  <span className="min-[480px]:hidden">EOD ✓</span>
                 </>
               ) : (
                 <>
-                  <Clock className="w-3 h-3 text-amber-400 shrink-0" />
-                  <span>EOD Pending</span>
+                  <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="hidden min-[480px]:inline">EOD Pending</span>
+                  <span className="min-[480px]:hidden">EOD !</span>
                 </>
               )}
             </button>
           )}
-
 
           {/* Subtle SUPER ADMIN / ADMIN Indicator */}
           {isSuperAdmin && (
@@ -643,12 +644,12 @@ export default function Navbar() {
             <button
               type="button"
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-              className="flex items-center gap-2 p-1 px-2.5 rounded-xl border border-slate-800 bg-[#131c31] hover:bg-slate-800 transition-all cursor-pointer shadow-sm hover:border-slate-700 group min-h-[40px]"
+              className="flex items-center gap-1.5 sm:gap-2 p-1 sm:px-2 rounded-xl border border-slate-800 bg-[#131c31] hover:bg-slate-800 transition-all cursor-pointer shadow-sm hover:border-slate-700 group min-h-[36px] sm:min-h-[40px] shrink-0"
             >
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-600 to-blue-600 flex items-center justify-center font-bold text-white text-xs shadow-sm group-hover:scale-105 transition-transform">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-600 to-blue-600 flex items-center justify-center font-bold text-white text-xs shadow-sm group-hover:scale-105 transition-transform shrink-0">
                 {user?.name ? user.name.trim().charAt(0).toUpperCase() : 'U'}
               </div>
-              <span className="hidden sm:inline-block text-xs font-bold text-slate-200 whitespace-nowrap">
+              <span className="hidden xl:inline-block text-xs font-bold text-slate-200 whitespace-nowrap">
                 {user?.name?.split(' ')[0] || 'User'}
               </span>
               <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180 text-indigo-400' : ''}`} />
@@ -723,13 +724,14 @@ export default function Navbar() {
             </AnimatePresence>
           </div>
 
-          {/* Mobile Menu Toggle Button (40px+ tap target) */}
+          {/* Mobile Menu Toggle Button (Always visible on mobile & tablet < md) */}
           <button
+            type="button"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden h-10 w-10 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl bg-[#131c31] border border-slate-800 text-slate-300 hover:text-white transition-colors"
+            className="md:hidden h-9 w-9 min-h-[36px] min-w-[36px] sm:h-10 sm:w-10 flex items-center justify-center rounded-xl bg-[#131c31] border border-slate-800 text-slate-300 hover:text-white transition-colors shrink-0"
             aria-label="Toggle navigation drawer"
           >
-            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {isMobileMenuOpen ? <X className="w-5 h-5 text-indigo-400" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
@@ -742,7 +744,7 @@ export default function Navbar() {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
-            className="lg:hidden border-t border-slate-800 bg-[#090d18] p-4 space-y-4 z-50 shadow-2xl max-h-[85vh] overflow-y-auto"
+            className="md:hidden border-t border-slate-800 bg-[#090d18] p-4 space-y-4 z-50 shadow-2xl max-h-[85vh] overflow-y-auto"
           >
             {/* Primary Mobile Menu */}
             <div className="space-y-1">
@@ -865,6 +867,81 @@ export default function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── MOBILE / IPAD BOTTOM NAVIGATION DOCK (Native App Thumb Navigation) ───────── */}
+      <nav
+        aria-label="Mobile Bottom Navigation"
+        className="fixed bottom-0 left-0 right-0 z-40 bg-[#090d18]/95 backdrop-blur-xl border-t border-slate-800/80 px-2 py-1.5 flex items-center justify-around md:hidden shadow-[0_-4px_25px_rgba(0,0,0,0.6)]"
+      >
+        <NavLink
+          to="/dashboard"
+          className={({ isActive }) =>
+            `flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
+              isActive
+                ? 'text-indigo-400 font-bold scale-105'
+                : 'text-slate-400 hover:text-slate-200'
+            }`
+          }
+        >
+          <BarChart3 className="w-5 h-5" />
+          <span className="text-[10px] tracking-tight mt-0.5">Home</span>
+        </NavLink>
+
+        <NavLink
+          to="/leads"
+          className={({ isActive }) =>
+            `flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
+              isActive
+                ? 'text-indigo-400 font-bold scale-105'
+                : 'text-slate-400 hover:text-slate-200'
+            }`
+          }
+        >
+          <Users className="w-5 h-5" />
+          <span className="text-[10px] tracking-tight mt-0.5">Leads</span>
+        </NavLink>
+
+        <NavLink
+          to="/pipeline"
+          className={({ isActive }) =>
+            `flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
+              isActive
+                ? 'text-indigo-400 font-bold scale-105'
+                : 'text-slate-400 hover:text-slate-200'
+            }`
+          }
+        >
+          <Layers className="w-5 h-5" />
+          <span className="text-[10px] tracking-tight mt-0.5">Pipeline</span>
+        </NavLink>
+
+        <NavLink
+          to="/followups"
+          className={({ isActive }) =>
+            `flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all ${
+              isActive
+                ? 'text-indigo-400 font-bold scale-105'
+                : 'text-slate-400 hover:text-slate-200'
+            }`
+          }
+        >
+          <Clock className="w-5 h-5" />
+          <span className="text-[10px] tracking-tight mt-0.5">Follow-up</span>
+        </NavLink>
+
+        <button
+          type="button"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
+            isMobileMenuOpen
+              ? 'text-indigo-400 font-bold scale-105'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          {isMobileMenuOpen ? <X className="w-5 h-5 text-indigo-400" /> : <Menu className="w-5 h-5" />}
+          <span className="text-[10px] tracking-tight mt-0.5">Menu</span>
+        </button>
+      </nav>
     </header>
   );
 }
