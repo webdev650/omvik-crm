@@ -193,19 +193,71 @@ const getTodayReport = async (req, res, next) => {
   }
 };
 
-// @desc    Get all flagged EOD reports (Admin view)
-// @route   GET /api/admin/daily-reports/flagged
-// @access  Private (admin, super_admin, director)
+// @desc    Get all flagged EOD reports (Admin view with date range & status filters)
+// @route   GET /api/daily-reports/flagged
+// @access  Private (admin, super_admin, director, team_lead)
 const getFlaggedReports = async (req, res, next) => {
   try {
-    const reports = await DailyReport.find({ discrepancyFlag: true })
+    const { status, fromDate, toDate, date } = req.query;
+    const filter = { discrepancyFlag: true };
+
+    if (date) {
+      filter.date = date.toString().trim();
+    } else if (fromDate || toDate) {
+      filter.date = {};
+      if (fromDate) filter.date.$gte = fromDate.toString().trim();
+      if (toDate) filter.date.$lte = toDate.toString().trim();
+    }
+
+    if (status && status !== 'all') {
+      filter.resolutionStatus = status.toString().trim();
+    }
+
+    const reports = await DailyReport.find(filter)
       .populate('user', 'name email role employeeId')
-      .sort({ createdAt: -1 });
+      .populate('resolvedBy', 'name email role')
+      .sort({ date: -1, createdAt: -1 });
 
     res.json({
       success: true,
       count: reports.length,
       reports
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Resolve, review, or add notes to a flagged EOD report
+// @route   PATCH /api/daily-reports/:id/resolve
+// @access  Private (admin, super_admin, director, team_lead)
+const resolveFlaggedReport = async (req, res, next) => {
+  try {
+    const { status = 'resolved', resolutionNotes = '' } = req.body;
+    const report = await DailyReport.findById(req.params.id);
+    if (!report) {
+      return res.status(404).json({ message: 'Daily report not found' });
+    }
+
+    if (['open', 'reviewed', 'resolved'].includes(status)) {
+      report.resolutionStatus = status;
+    }
+    report.resolvedAt = new Date();
+    report.resolvedBy = req.user._id;
+    if (resolutionNotes !== undefined) {
+      report.resolutionNotes = resolutionNotes.trim();
+    }
+
+    await report.save();
+
+    const populated = await DailyReport.findById(report._id)
+      .populate('user', 'name email role employeeId')
+      .populate('resolvedBy', 'name email role');
+
+    res.json({
+      success: true,
+      message: `Report marked as ${report.resolutionStatus}`,
+      report: populated
     });
   } catch (error) {
     next(error);
@@ -335,6 +387,7 @@ module.exports = {
   submitDailyReport,
   getTodayReport,
   getFlaggedReports,
+  resolveFlaggedReport,
   getTeamOverview
 };
 

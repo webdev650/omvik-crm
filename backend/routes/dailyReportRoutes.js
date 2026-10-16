@@ -6,6 +6,7 @@ const {
   submitDailyReport,
   getTodayReport,
   getFlaggedReports,
+  resolveFlaggedReport,
   getTeamOverview
 } = require('../controllers/dailyReportController');
 
@@ -14,6 +15,7 @@ router.use(protect);
 router.post('/', submitDailyReport);
 router.get('/today', getTodayReport);
 router.get('/flagged', authorize('super_admin', 'admin', 'director', 'team_lead'), getFlaggedReports);
+router.patch('/:id/resolve', authorize('super_admin', 'admin', 'director', 'team_lead'), resolveFlaggedReport);
 router.get('/team-overview', authorize('super_admin', 'admin', 'director', 'team_lead'), getTeamOverview);
 
 module.exports = router;

@@ -82,6 +82,22 @@ const dailyReportSchema = new mongoose.Schema(
     discrepancyNote: {
       type: String,
       default: ''
+    },
+    resolutionStatus: {
+      type: String,
+      enum: ['open', 'reviewed', 'resolved'],
+      default: 'open'
+    },
+    resolvedAt: {
+      type: Date
+    },
+    resolvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    resolutionNotes: {
+      type: String,
+      default: ''
     }
   },
   {

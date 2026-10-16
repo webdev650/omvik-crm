@@ -22,8 +22,21 @@ export const getTodayReport = async () => {
   return res.data;
 };
 
-export const getFlaggedReports = async () => {
-  const res = await api.get('/daily-reports/flagged');
+export const getFlaggedReports = async (params?: {
+  status?: string;
+  fromDate?: string;
+  toDate?: string;
+  date?: string;
+}) => {
+  const res = await api.get('/daily-reports/flagged', { params: params || {} });
+  return res.data;
+};
+
+export const resolveFlaggedReport = async (
+  id: string,
+  data: { status: 'open' | 'reviewed' | 'resolved'; resolutionNotes?: string }
+) => {
+  const res = await api.patch(`/daily-reports/${id}/resolve`, data);
   return res.data;
 };
 

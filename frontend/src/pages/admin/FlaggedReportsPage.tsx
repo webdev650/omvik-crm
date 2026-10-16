@@ -1,6 +1,6 @@
 import React from 'react';
-import TeamEODOverviewPage from './TeamEODOverviewPage';
+import { Navigate } from 'react-router-dom';
 
 export default function FlaggedReportsPage() {
-  return <TeamEODOverviewPage defaultTab="flagged" />;
+  return <Navigate to="/admin/team-eod?tab=flagged" replace />;
 }

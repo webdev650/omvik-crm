@@ -140,6 +140,7 @@ export default function Navbar() {
     '/admin/projects',
     '/admin/teams',
     '/admin/data-quality',
+    '/admin/team-eod',
     '/admin/flagged-reports'
   ].some((path) => location.pathname.startsWith(path));
 
@@ -561,25 +562,7 @@ export default function Navbar() {
                                 Team EOD Overview
                               </div>
                               <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
-                                Full team EOD submission status & figures
-                              </div>
-                            </div>
-                          </NavLink>
-
-                          <NavLink
-                            to="/admin/flagged-reports"
-                            onClick={() => setIsMoreOpen(false)}
-                            className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-slate-800/80 transition-all group"
-                          >
-                            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-amber-600 group-hover:text-white transition-colors">
-                              <FileWarning className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors">
-                                Flagged EOD Discrepancies
-                              </div>
-                              <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
-                                Review flagged daily reports
+                                Full team EOD submissions & discrepancy audits
                               </div>
                             </div>
                           </NavLink>
@@ -857,10 +840,6 @@ export default function Navbar() {
                 <NavLink to="/admin/data-quality" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded-xl min-h-[40px]">
                   <Layers className="w-4 h-4 text-amber-400" />
                   <span>Invalid / Missing Data</span>
-                </NavLink>
-                <NavLink to="/admin/flagged-reports" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded-xl min-h-[40px]">
-                  <FileWarning className="w-4 h-4 text-amber-400" />
-                  <span>Flagged EOD Discrepancies</span>
                 </NavLink>
               </div>
             )}
