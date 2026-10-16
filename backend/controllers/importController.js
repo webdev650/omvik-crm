@@ -7,67 +7,25 @@ const Lead = require('../models/Lead');
 const Project = require('../models/Project');
 const Counter = require('../models/Counter');
 const User = require('../models/User');
+const Activity = require('../models/Activity');
 const ImportBatch = require('../models/ImportBatch');
 const BatchAccess = require('../models/BatchAccess');
 const Notification = require('../models/Notification');
 const { processIncomingLead } = require('../services/duplicateEngine');
 const normalizePhone = require('../utils/normalizePhone');
+const { isValidIndianMobile, cleanSinglePhone, PHONE_INVALID_REASONS } = require('../utils/phoneValidator');
 const { getYYMMDD } = require('../utils/generateLeadCode');
 
 // In-memory locks for concurrent duplicate prevention per file hash and batch
 const activeImportLocks = new Set();
 
 /**
- * Universal Indian phone cleaner & normalizer
- * Strips 'p:', '+91', '91', spaces, dashes, dots, brackets, and handles float strings (e.g. 9938901127.0)
+ * Universal Indian phone cleaner & normalizer using isValidIndianMobile
  */
 function cleanAndNormalizePhone(rawVal) {
   if (rawVal === undefined || rawVal === null) return null;
-  let str = String(rawVal).trim();
-  if (!str) return null;
-
-  // Handle numbers stored as floats like 9938901127.0 or scientific notation
-  if (typeof rawVal === 'number') {
-    str = Math.floor(rawVal).toString();
-  } else if (/\.\d+$/.test(str)) {
-    str = str.replace(/\.\d+$/, '');
-  }
-
-  // Strip prefixes like "p:", "tel:"
-  str = str.replace(/^(?:p|tel)\s*:\s*/i, '');
-
-  // Strip whitespace and formatting characters: spaces, dashes, dots, brackets, slashes
-  str = str.replace(/[\s\-\.\(\)\\\/]/g, '');
-
-  // Strip leading international prefix +91 or 0091
-  if (str.startsWith('+91')) {
-    str = str.slice(3);
-  } else if (str.startsWith('0091')) {
-    str = str.slice(4);
-  }
-
-  // Strip non-digits
-  str = str.replace(/\D/g, '');
-
-  // If 12 digits and starts with 91
-  if (str.length === 12 && str.startsWith('91')) {
-    str = str.slice(2);
-  }
-
-  // If 11 digits and starts with 0
-  if (str.length === 11 && str.startsWith('0')) {
-    str = str.slice(1);
-  }
-
-  // Validate 10-digit mobile
-  if (/^[6-9]\d{9}$/.test(str)) {
-    return str;
-  }
-  if (/^\d{10}$/.test(str)) {
-    return str;
-  }
-
-  return null;
+  const res = isValidIndianMobile(rawVal);
+  return res.isValid ? res.cleanPhone : null;
 }
 
 /**
@@ -289,27 +247,28 @@ const previewImport = async (req, res, next) => {
           'Address', 'address', 'city', 'location', 'City', 'Location'
         ]);
 
-        let cleanMobile = normalizePhone(rawMobile);
-
-        // SMART AUTO-DETECT 1: If cleanMobile missing/invalid, scan ALL cell values in row for 10-digit phone number
-        if (!cleanMobile || cleanMobile.length < 10) {
-          for (const [k, val] of Object.entries(row)) {
-            if (!val) continue;
-            const candidate = normalizePhone(String(val));
-            if (candidate && candidate.length === 10) {
-              cleanMobile = candidate;
-              rawMobile = String(val);
-              break;
-            }
-          }
+        const phoneValidation = isValidIndianMobile(rawMobile);
+        if (!phoneValidation.isValid) {
+          invalid.push({
+            rowNumber: rowNum,
+            rawRow: row,
+            name: rawName || 'Unknown',
+            customerName: rawName || 'Unknown',
+            mobile: rawMobile || '—',
+            originalValue: rawMobile || '—',
+            reason: phoneValidation.reason
+          });
+          continue;
         }
+
+        const cleanMobile = phoneValidation.cleanPhone;
 
         // SMART AUTO-DETECT 2: If rawName missing, scan text cells in row for candidate customer name
         if (!rawName) {
           for (const [k, val] of Object.entries(row)) {
             if (!val) continue;
             const strVal = String(val).trim();
-            const candidatePhone = normalizePhone(strVal);
+            const candidatePhone = cleanSinglePhone(strVal);
             if (candidatePhone && candidatePhone.length >= 10) continue;
             if (
               strVal.length >= 2 &&
@@ -326,8 +285,8 @@ const previewImport = async (req, res, next) => {
         }
 
         // SMART FALLBACK 3: If mobile is valid (10 digits) but rawName is still empty, auto-generate Prospect Name
-        if (!rawName && cleanMobile && cleanMobile.length === 10) {
-          rawName = `Prospect (${cleanMobile})`;
+        if (!rawName) {
+          rawName = `Prospect ${cleanMobile.slice(-4)}`;
         }
 
         let cleanIntent = null;
@@ -832,28 +791,28 @@ const autoSaveImport = async (req, res, next) => {
         const intentCell = colMap.intent !== undefined ? row[colMap.intent] : '';
         const addressCell = colMap.address !== undefined ? row[colMap.address] : '';
         const sourceCell = colMap.source !== undefined ? row[colMap.source] : '';
+        const remarksCell = colMap.remarks !== undefined ? row[colMap.remarks] : '';
 
-        // Clean & Normalize Phone
-        const cleanPhone = cleanAndNormalizePhone(phoneCell);
+        // Clean & Normalize Phone & Validate with isValidIndianMobile
+        const phoneValidation = isValidIndianMobile(phoneCell);
 
-        // Skip sub-header rows (e.g. "Conversation Remark / Status" rows with no phone digits)
-        if (!cleanPhone) {
-          const phoneStr = String(phoneCell || '').trim();
-          const digitCount = (phoneStr.match(/\d/g) || []).length;
-          if (digitCount < 7) {
-            // Sub-header or description row without a valid phone — skip silently
-            continue;
-          }
-
+        if (!phoneValidation.isValid) {
+          const rawMobileStr = phoneValidation.originalValue || String(phoneCell || '').trim();
           skippedDetails.push({
             row: r + 1,
+            rowNumber: r + 1,
             sheet: sheetName,
             name: String(nameCell || 'Unknown').trim(),
-            mobile: phoneStr,
-            reason: 'Invalid 10-digit mobile number'
+            customerName: String(nameCell || 'Unknown').trim(),
+            mobile: rawMobileStr || '—',
+            originalValue: rawMobileStr || '—',
+            reason: phoneValidation.reason
           });
           continue;
         }
+
+        const cleanPhone = phoneValidation.cleanPhone;
+        const secondaryPhone = phoneValidation.secondaryPhone;
 
         // Hard-validation of name: If name is blank but phone is valid, fallback to "Prospect XXXX"
         let cleanName = String(nameCell || '').trim();
@@ -866,9 +825,12 @@ const autoSaveImport = async (req, res, next) => {
           const prior = seenWorkbookPhones.get(cleanPhone);
           skippedDetails.push({
             row: r + 1,
+            rowNumber: r + 1,
             sheet: sheetName,
             name: cleanName,
+            customerName: cleanName,
             mobile: cleanPhone,
+            originalValue: phoneValidation.originalValue || cleanPhone,
             reason: `Duplicate mobile within file (already found in sheet "${prior.sheet}", row ${prior.row})`
           });
           continue;
@@ -894,6 +856,8 @@ const autoSaveImport = async (req, res, next) => {
           rowNum: r + 1,
           cleanName,
           cleanPhone,
+          secondaryPhone,
+          rawRemarks: String(remarksCell || '').trim(),
           rawProject: String(projectCell || '').trim(),
           cleanIntent,
           cleanSource,
@@ -1044,6 +1008,7 @@ const autoSaveImport = async (req, res, next) => {
           _id: newCustId,
           name: row.cleanName,
           primaryMobile: row.cleanPhone,
+          alternateMobile: row.secondaryPhone || '',
           city: row.city || ''
         };
         newCustomersToInsert.push(newCustDoc);
@@ -1097,12 +1062,18 @@ const autoSaveImport = async (req, res, next) => {
     // 5C. Construct Bulk Documents for Opportunities & Leads
     const oppsToInsert = [];
     const leadsToInsert = [];
+    const activitiesToInsert = [];
     const importedLeads = [];
     const assignedCountsByRep = new Map(); // repId -> { repName, count }
 
     for (const row of rowsToInsert) {
       const cust = custMapByPhone.get(row.cleanPhone);
       const projIdStr = row.targetProject._id.toString();
+
+      // If secondary phone exists and customer doesn't have alternateMobile, set it
+      if (row.secondaryPhone && cust && !cust.alternateMobile) {
+        cust.alternateMobile = row.secondaryPhone;
+      }
 
       // Determine Assigned Owner
       let rowOwnerId = targetUserId || null;
@@ -1154,6 +1125,23 @@ const autoSaveImport = async (req, res, next) => {
         matchedCustomer: cust._id,
         resultingOpportunity: oppId
       });
+
+      // If remarks exist or secondary phone was found, create an Activity note
+      let combinedRemarks = row.rawRemarks || '';
+      if (row.secondaryPhone) {
+        const secondMsg = `Second phone: ${row.secondaryPhone}`;
+        combinedRemarks = combinedRemarks ? `${combinedRemarks} | ${secondMsg}` : secondMsg;
+      }
+
+      if (combinedRemarks) {
+        activitiesToInsert.push({
+          opportunity: oppId,
+          user: rowOwnerId || req.user?._id || new mongoose.Types.ObjectId(),
+          channel: 'note',
+          outcome: 'done',
+          notes: combinedRemarks
+        });
+      }
 
       importedLeads.push({
         _id: oppId,
@@ -1207,6 +1195,16 @@ const autoSaveImport = async (req, res, next) => {
           if (!isBulkDup) {
             console.warn('[autoSaveImport] Lead insert warning:', err.message);
           }
+        }
+      }
+    }
+
+    if (activitiesToInsert.length > 0) {
+      for (let c = 0; c < activitiesToInsert.length; c += 500) {
+        try {
+          await Activity.insertMany(activitiesToInsert.slice(c, c + 500), { ordered: false });
+        } catch (err) {
+          console.warn('[autoSaveImport] Activity insert warning:', err.message);
         }
       }
     }
@@ -1270,6 +1268,13 @@ const autoSaveImport = async (req, res, next) => {
     const insertMs = Date.now() - t3;
     const totalMs = Date.now() - t0;
 
+    // Reason counts breakdown for summary
+    const reasonCounts = {};
+    for (const item of skippedDetails) {
+      const r = item.reason || 'Other';
+      reasonCounts[r] = (reasonCounts[r] || 0) + 1;
+    }
+
     // Stage Timing Server Logs
     console.log(
       `[Bulk Import Timing] Batch "${assignedBatchId}": parse=${parseMs}ms, validate=${validateMs}ms, dedupe=${duplicateCheckMs}ms, insert=${insertMs}ms, total=${totalMs}ms | Rows=${totalRawRows}, Imported=${importedCount}, Duplicates=${duplicateCount}, Invalid=${skippedDetails.length - duplicateCount}`
@@ -1284,6 +1289,7 @@ const autoSaveImport = async (req, res, next) => {
       skipped: skippedCount,
       duplicates: duplicateCount,
       invalid: skippedDetails.length - duplicateCount,
+      reasonCounts,
       leads: importedLeads,
       skippedDetails,
       timing: {

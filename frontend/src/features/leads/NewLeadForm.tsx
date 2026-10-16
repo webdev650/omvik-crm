@@ -14,6 +14,8 @@ import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
 import { AlertDialog } from '../../components/ui/alert-dialog';
 
+import { isValidIndianMobile, PHONE_INVALID_REASONS } from '../../utils/phoneValidator';
+
 // Fixed lead source options — controlled list prevents casing duplicates
 const LEAD_SOURCE_OPTIONS = [
   { value: 'call_received', label: 'Call Received' },
@@ -31,7 +33,15 @@ const ROLES_WITH_ASSIGN_DROPDOWN = ['super_admin', 'admin', 'director', 'team_le
 
 const newLeadSchema = z.object({
   rawName: z.string().min(2, 'Full name must be at least 2 characters'),
-  rawMobile: z.string().min(10, 'Mobile number must be at least 10 digits'),
+  rawMobile: z.string().superRefine((val, ctx) => {
+    const res = isValidIndianMobile(val);
+    if (!res.isValid) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: res.reason || 'Invalid Indian mobile number'
+      });
+    }
+  }),
   project: z.string().min(1, 'Please select a project'),
   assignedTo: z.string().optional(),
   source: z.string().optional()
@@ -131,6 +141,13 @@ export default function NewLeadForm() {
       } else {
         const msg =
           error.response?.data?.message || 'Failed to submit lead. Please try again.';
+        const knownReasons = Object.values(PHONE_INVALID_REASONS) as string[];
+        if (knownReasons.includes(msg) || /phone|mobile|digit/i.test(msg)) {
+          setError('rawMobile', {
+            type: 'server',
+            message: msg
+          });
+        }
         setErrorMessage(msg);
       }
     }

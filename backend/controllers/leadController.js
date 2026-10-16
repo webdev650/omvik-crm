@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Customer = require('../models/Customer');
 const Project = require('../models/Project');
 const sendAdminAlert = require('../utils/sendAdminAlert');
+const { isValidIndianMobile } = require('../utils/phoneValidator');
 
 // @desc    Submit a new lead
 // @route   POST /api/leads
@@ -15,6 +16,14 @@ const submitLead = async (req, res, next) => {
     if (!rawMobile || !project) {
       return res.status(400).json({
         message: 'rawMobile and project fields are required'
+      });
+    }
+
+    const phoneValidation = isValidIndianMobile(rawMobile);
+    if (!phoneValidation.isValid) {
+      return res.status(400).json({
+        message: phoneValidation.reason || 'Invalid Indian mobile number',
+        reason: phoneValidation.reason || 'Invalid Indian mobile number'
       });
     }
 

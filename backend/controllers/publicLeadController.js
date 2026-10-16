@@ -1,5 +1,6 @@
 const Project = require('../models/Project');
 const { processIncomingLead } = require('../services/duplicateEngine');
+const { isValidIndianMobile } = require('../utils/phoneValidator');
 
 // @desc    Public lead capture webhook for website integration (protected by API Key & strict rate limiter)
 // @route   POST /api/public/leads
@@ -25,6 +26,14 @@ const submitPublicLead = async (req, res, next) => {
 
     if (!rawName || !rawMobile) {
       return res.status(400).json({ message: 'rawName and rawMobile are required fields' });
+    }
+
+    const phoneValidation = isValidIndianMobile(rawMobile);
+    if (!phoneValidation.isValid) {
+      return res.status(400).json({
+        message: phoneValidation.reason || 'Invalid Indian mobile number',
+        reason: phoneValidation.reason || 'Invalid Indian mobile number'
+      });
     }
 
     // Resolve project ID if string name or code was provided

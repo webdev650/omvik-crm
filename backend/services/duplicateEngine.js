@@ -3,6 +3,7 @@ const Opportunity = require('../models/Opportunity');
 const Lead = require('../models/Lead');
 const AuditLog = require('../models/AuditLog');
 const normalizePhone = require('../utils/normalizePhone');
+const { isValidIndianMobile } = require('../utils/phoneValidator');
 const { generateLeadCode } = require('../utils/generateLeadCode');
 
 
@@ -12,11 +13,13 @@ const { generateLeadCode } = require('../utils/generateLeadCode');
  * @param {Object} submittingUser - Authenticated user submitting the lead
  */
 async function processIncomingLead(leadInput, submittingUser) {
-  const cleanMobile = normalizePhone(leadInput.rawMobile);
+  const phoneValidation = isValidIndianMobile(leadInput.rawMobile);
 
-  if (!cleanMobile) {
-    throw new Error('Valid primary mobile number is required');
+  if (!phoneValidation.isValid) {
+    throw new Error(phoneValidation.reason || 'Valid primary mobile number is required');
   }
+
+  const cleanMobile = phoneValidation.cleanPhone;
 
   // Normalize intent value if provided ('high' / 'medium' / 'low')
   let cleanIntent = null;
@@ -40,6 +43,7 @@ async function processIncomingLead(leadInput, submittingUser) {
     customer = await Customer.create({
       name: leadInput.rawName || 'Prospect',
       primaryMobile: cleanMobile,
+      alternateMobile: phoneValidation.secondaryPhone || '',
       email: leadInput.email || '',
       city: leadInput.city || ''
     });
@@ -75,7 +79,11 @@ async function processIncomingLead(leadInput, submittingUser) {
   }
 
   // 3. Ensure Mongoose unique index build is finished
-  await Opportunity.init();
+  try {
+    await Opportunity.init();
+  } catch (initErr) {
+    // Gracefully continue if index already exists in DB
+  }
 
   // 4. Pre-check for existing active opportunity for this customer & project
   const existingActive = await Opportunity.findOne({

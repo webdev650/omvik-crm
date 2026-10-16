@@ -262,6 +262,27 @@ export default function ImportLeadsPage() {
     toast.success('Downloaded imported leads Excel sheet!');
   };
 
+  const handleExportInvalidRows = () => {
+    if (!importResult?.skippedDetails || importResult.skippedDetails.length === 0) {
+      toast.error('No invalid rows available to export.');
+      return;
+    }
+
+    const exportData = importResult.skippedDetails.map((item: any, idx: number) => ({
+      'Row #': item.rowNumber || item.row || idx + 1,
+      'Sheet': item.sheet || 'Sheet1',
+      'Customer Name': item.customerName || item.name || 'Unknown',
+      'Original Phone Value': item.originalValue || item.mobile || '—',
+      'Reason': item.reason || 'Invalid data'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Invalid Rows');
+    XLSX.writeFile(wb, `Invalid_Rows_${importResult.importBatchId || 'batch'}.csv`, { bookType: 'csv' });
+    toast.success('Downloaded Invalid Rows CSV!');
+  };
+
   const handleResetForNewImport = () => {
     setSelectedFile(null);
     setImportResult(null);
@@ -394,6 +415,17 @@ export default function ImportLeadsPage() {
                     <Download className="w-4 h-4 text-indigo-400" />
                     <span>Export Leads (.xlsx)</span>
                   </Button>
+                  {importResult.skippedDetails?.length > 0 && (
+                    <Button
+                      size="default"
+                      variant="outline"
+                      onClick={handleExportInvalidRows}
+                      className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs font-bold rounded-xl flex items-center gap-2 h-11 px-4 shadow-sm"
+                    >
+                      <Download className="w-4 h-4 text-amber-400" />
+                      <span>Download Invalid Rows (.csv)</span>
+                    </Button>
+                  )}
                   <Button
                     size="default"
                     variant="ghost"
@@ -453,7 +485,7 @@ export default function ImportLeadsPage() {
                           : 'border-transparent text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      Skipped Rows & Conflicts ({importResult.skippedDetails.length})
+                      Invalid Rows ({importResult.skippedDetails.length})
                     </button>
                   )}
                 </div>
@@ -539,33 +571,67 @@ export default function ImportLeadsPage() {
                 </Table>
               )}
 
-              {/* Skipped Details Table */}
+              {/* Invalid Rows Table */}
               {resultsTab === 'skipped' && (
-                <Table>
-                  <TableHeader className="bg-[#0b0f19]">
-                    <TableRow className="border-b border-slate-800">
-                      <TableHead className="text-slate-400 font-semibold text-xs">Row #</TableHead>
-                      <TableHead className="text-slate-400 font-semibold text-xs">Customer Name</TableHead>
-                      <TableHead className="text-slate-400 font-semibold text-xs">Mobile</TableHead>
-                      <TableHead className="text-slate-400 font-semibold text-xs">Reason Skipped</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {importResult.skippedDetails?.map((item: any, idx: number) => (
-                      <TableRow
-                        key={idx}
-                        className="border-b border-slate-800/40 hover:bg-slate-800/40 border-l-4 border-l-amber-500 bg-amber-500/5"
+                <div>
+                  {importResult.reasonCounts && Object.keys(importResult.reasonCounts).length > 0 && (
+                    <div className="p-3 bg-[#0e1628] border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mr-1">
+                          Reason Breakdown:
+                        </span>
+                        {Object.entries(importResult.reasonCounts).map(([reason, count]: any) => (
+                          <span
+                            key={reason}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-semibold"
+                          >
+                            <span>{reason}</span>
+                            <span className="bg-amber-500/30 text-amber-200 px-1.5 py-0.2 rounded font-mono font-bold text-[11px]">
+                              {count}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleExportInvalidRows}
+                        className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs font-bold rounded-xl flex items-center gap-2 h-8 px-3 cursor-pointer"
                       >
-                        <TableCell className="text-slate-500 text-xs font-mono">{item.rowNumber}</TableCell>
-                        <TableCell className="font-semibold text-slate-200 text-xs">{item.customerName || 'Unknown'}</TableCell>
-                        <TableCell className="text-slate-300 font-mono text-xs">{item.mobile || '—'}</TableCell>
-                        <TableCell className="text-amber-400 text-xs font-semibold">
-                          ⚠️ {item.reason || 'Duplicate active opportunity or invalid data'}
-                        </TableCell>
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download CSV</span>
+                      </Button>
+                    </div>
+                  )}
+
+                  <Table>
+                    <TableHeader className="bg-[#0b0f19]">
+                      <TableRow className="border-b border-slate-800">
+                        <TableHead className="text-slate-400 font-semibold text-xs">Row #</TableHead>
+                        <TableHead className="text-slate-400 font-semibold text-xs">Sheet</TableHead>
+                        <TableHead className="text-slate-400 font-semibold text-xs">Customer Name</TableHead>
+                        <TableHead className="text-slate-400 font-semibold text-xs">Original Value</TableHead>
+                        <TableHead className="text-slate-400 font-semibold text-xs">Reason</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {importResult.skippedDetails?.map((item: any, idx: number) => (
+                        <TableRow
+                          key={idx}
+                          className="border-b border-slate-800/40 hover:bg-slate-800/40 border-l-4 border-l-amber-500 bg-amber-500/5"
+                        >
+                          <TableCell className="text-slate-500 text-xs font-mono">{item.rowNumber || item.row || idx + 1}</TableCell>
+                          <TableCell className="text-slate-400 text-xs">{item.sheet || 'Sheet1'}</TableCell>
+                          <TableCell className="font-semibold text-slate-200 text-xs">{item.customerName || item.name || 'Unknown'}</TableCell>
+                          <TableCell className="text-slate-300 font-mono text-xs">{item.originalValue || item.mobile || '—'}</TableCell>
+                          <TableCell className="text-amber-400 text-xs font-semibold">
+                            ⚠️ {item.reason || 'Invalid phone or duplicate'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </div>
           </div>
